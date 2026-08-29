@@ -5,6 +5,15 @@ import { promptAction, router } from '@kit.ArkUI';
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-SPIKE-EDITOR';
 
+// 模块级桥接回调（ArkWeb javaScriptProxy 要求普通函数，不能捕获组件 this）
+let bridgeHandler: ((type: string, payload: string) => void) | undefined = undefined;
+
+function nativeBridgeSend(type: string, payload: string): void {
+  if (bridgeHandler !== undefined) {
+    bridgeHandler(type, payload);
+  }
+}
+
 const SAMPLE_MD: string = `# 尖峰测试文档
 
 这是一个 **M0-03** 尖峰页面，用于验证 ArkWeb + CodeMirror 6：
@@ -46,6 +55,16 @@ struct SpikeEditorPage {
   private append(line: string): void {
     this.log = `${line}\n---\n${this.log}`;
     hilog.info(DOMAIN, TAG, '%{public}s', line);
+  }
+
+  aboutToAppear(): void {
+    bridgeHandler = (type: string, payload: string): void => {
+      this.onBridgeMessage(type, payload);
+    };
+  }
+
+  aboutToDisappear(): void {
+    bridgeHandler = undefined;
   }
 
   private runJs(script: string): void {
@@ -98,8 +117,8 @@ struct SpikeEditorPage {
         Button('快照')
           .fontSize(13)
           .onClick(() => {
-            this.runJs('window.__editorApi.requestSnapshot();');
-            this.append('快照请求已发送');
+            // 返回值通道实测可用（空字符串会以 null 返回，先加载内容再快照）
+            this.runJs('window.__editorApi.getSnapshot();');
           })
         Button('深色')
           .fontSize(13)
@@ -108,12 +127,16 @@ struct SpikeEditorPage {
             this.runJs(`window.__editorApi.setTheme(${this.themeDark});`);
             this.append(`主题切换: ${this.themeDark ? 'dark' : 'light'}`);
           })
+        Button('返回测')
+          .fontSize(13)
+          .onClick(() => {
+            this.runJs('"hello-return"');
+          })
         Button('诊断')
           .fontSize(13)
           .onClick(() => {
-            // M0-03 诊断：验证 CodeMirror 状态与文档长度（事件推送方式）
-            this.runJs('window.__editorApi.requestDiagnostics();');
-            this.append('诊断请求已发送');
+            // M0-03 诊断：验证 CodeMirror 状态与文档长度（返回值方式）
+            this.runJs("(function(){var e=document.getElementById('js-err');var v=window.__editorApi;return 'err='+(e?e.textContent:'none')+';api='+(v?'ok':'miss');})();");
           })
       }
       .width('100%')
@@ -123,16 +146,27 @@ struct SpikeEditorPage {
         .domStorageAccess(true)
         .javaScriptProxy({
           object: {
-            postMessage: (type: string, payload: string): void => {
-              this.onBridgeMessage(type, payload);
-            },
+            send: nativeBridgeSend,
           },
           name: '__nativeBridge',
-          methodList: ['postMessage'],
+          methodList: ['send'],
           controller: this.controller,
         })
         .onPageEnd(() => {
           this.append('页面加载完成（editor.html ready）');
+        })
+        .onConsole((event) => {
+          const msg: string = event.message.getMessage();
+          if (msg.includes('HMWB_BRIDGE')) {
+            this.append(`[console] ${msg.substring(0, 120)}`);
+          }
+          return false;
+        })
+        .onTitleReceive((event) => {
+          const title: string = event.title;
+          if (title.startsWith('CM:')) {
+            this.append(`[title] ${title.substring(0, 160)}`);
+          }
         })
         .onErrorReceive((event) => {
           this.append(`页面加载错误: ${JSON.stringify(event.request)}`);
