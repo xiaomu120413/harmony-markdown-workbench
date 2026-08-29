@@ -84,7 +84,16 @@ scripts/              clean-build、图标生成等脚本
 
 ## 签名说明
 
-当前工程未配置 `signingConfigs`，构建产物为 **unsigned HAP**（可安装调试包需在 DevEco Studio 中配置自动签名）。参考同目录工程 `PythonExecDemo` 的配置方式：`signingConfigs: []` + 构建产出 unsigned 产物。正式签名在发布阶段（M6-04）经 AppGallery Connect 配置，签名密钥一律不入库。
+工程保持 `signingConfigs` 为空（hvigor 6 密码为 IDE 加密格式，明文不入库），构建产 unsigned HAP。真机安装包用本地签名脚本生成：
+
+```bash
+# 生成官方 OpenHarmony CA 签名的安装包（材料在工程外 ../local-sign/，勿入库）
+bash scripts/sign-local.sh entry/build/default/outputs/default/entry-default-unsigned.hap
+```
+
+签名链路（app 证书由 OpenHarmony Application CA 签发、profile 由官方 Profile Debug CA 签发）已在 M0-02 尖峰完整打通，详见 `docs/spikes/external-uri.md`。
+
+**注意（R-11）**：本开发机（MateBook Pro，华为定制 OpenHarmony 7.0 镜像）信任库不含 Profile CA 且 erofs 只读，**不接受第三方调试签名安装**；功能验证需可调试镜像/设备或华为发布签名。正式发布签名（M6-04）经 AppGallery 配置，密钥一律不入库。
 
 ## 相关文档
 

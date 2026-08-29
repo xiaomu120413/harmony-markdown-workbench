@@ -46,8 +46,10 @@ flowchart TD
 
 - **TASK-M0-01 工程基线** ✅（本次完成）：构建、单测、clean-build 门禁、README、文档基线。
   - 门禁项：全新环境按 README 构建 Debug HAP ✓；单测可执行 ✓；无缓存构建 ✓（clean-build 脚本）；无签名密钥入库 ✓。
-- **TASK-M0-02 外部文件 URI 尖峰**（待启动）：矩阵见 SDD 13 章；输出 `docs/spikes/external-uri.md`。
-  - 门禁：若无法可靠持久访问 → 产品显示"临时访问"，最近文件改重新定位流程。
+- **TASK-M0-02 外部文件 URI 尖峰** ⏳（进行中，见 `docs/spikes/external-uri.md`）：
+  - 完成：尖峰页面（选择/读取/持久化诊断/重启重开/原位写探针）、签名脚本 `scripts/sign-local.sh`（官方 CA 全链路）、签名链路排障记录。
+  - 阻塞：本机设备镜像拒绝调试签名安装（R-11）；persistPermission 类型缺失（R-10）。
+  - 门禁：若无法可靠持久访问 → 产品显示"临时访问"，最近文件改重新定位流程（经 R-10 证实为 V0.1 必选）。
 - **TASK-M0-03 ArkWeb 编辑器尖峰**（待启动）：中文 IME 5 分钟、剪贴板/撤销、1MB/5MB、生命周期、进程异常；输出 `docs/spikes/editor-runtime.md` 与性能数据。
 - **TASK-M0-04 保存恢复尖峰**（待启动）：原子写、URI 写失败、草稿、状态机、冲突、强杀恢复；**门禁：核心异常用例全部通过后才能开始 M2 编辑页面**。
 
