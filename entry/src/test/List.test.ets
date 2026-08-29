@@ -6,6 +6,7 @@ import recentFileListTest from './RecentFileList.test';
 import fileNameValidatorTest from './FileNameValidator.test';
 import textEncodingTest from './TextEncoding.test';
 import documentAdapterContractTest from './DocumentAdapterContract.test';
+import saveSchedulerTest from './SaveScheduler.test';
 
 /**
  * 测试入口（hvigor 单测索引固定引用本文件，业务套件在此聚合注册）。
@@ -35,4 +36,5 @@ export default function listTest(): void {
   fileNameValidatorTest();
   textEncodingTest();
   documentAdapterContractTest();
+  saveSchedulerTest();
 }
