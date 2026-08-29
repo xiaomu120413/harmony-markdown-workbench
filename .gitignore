@@ -1,0 +1,30 @@
+# 构建产物
+build/
+entry/build/
+entry/.test/
+build-logs/
+*.hap
+*.app
+
+# 依赖与工具缓存
+oh_modules/
+/.hvigor/
+/node_modules/
+/local.properties
+
+# IDE
+.idea/
+files/
+!.gitkeep
+
+# 签名与密钥（禁止入库）
+*.p7b
+*.cer
+*.p12
+*.jks
+*.keystore
+
+# 日志与杂项
+*.log
+.DS_Store
+screenshots/

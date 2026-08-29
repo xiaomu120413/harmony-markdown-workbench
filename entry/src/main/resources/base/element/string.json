@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Harmony Markdown Workbench entry module"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Markdown file editor and previewer"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Markdown Workbench"
+    }
+  ]
+}

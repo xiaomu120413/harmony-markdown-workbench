@@ -1,0 +1,23 @@
+# CI
+
+> 状态：预留。GitHub-hosted runner 无 HarmonyOS SDK，本 workflow 需要自托管 runner（预先安装 DevEco Studio 与 Node.js，并配置 `DEVECO_STUDIO_PATH`）。
+> 在自托管 runner 就绪并实跑通过之前，本文件**不作为验收门禁**（SDD 不允许声称未实际运行的测试通过）；本地等价验证使用 `scripts/clean-build.sh`。
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  clean-build:
+    runs-on: [self-hosted, harmonyos]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clean build with test gate
+        shell: bash
+        run: bash scripts/clean-build.sh
+```
