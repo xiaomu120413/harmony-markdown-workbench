@@ -2,11 +2,14 @@ import { describe, expect, it } from '@ohos/hypium';
 import saveStateMachineTest from './SaveStateMachine.test';
 import fileRevisionTest from './FileRevision.test';
 import draftDecisionTest from './DraftDecision.test';
+import recentFileListTest from './RecentFileList.test';
+import fileNameValidatorTest from './FileNameValidator.test';
 
 /**
  * 测试入口（hvigor 单测索引固定引用本文件，业务套件在此聚合注册）。
  * - BaselineSmoke：框架冒烟
  * - SaveStateMachine / FileRevision / DraftDecision：M0-04 领域层
+ * - RecentFileList / FileNameValidator：M1 领域层先行
  */
 export default function listTest(): void {
   describe('BaselineSmoke', () => {
@@ -26,4 +29,6 @@ export default function listTest(): void {
   saveStateMachineTest();
   fileRevisionTest();
   draftDecisionTest();
+  recentFileListTest();
+  fileNameValidatorTest();
 }
