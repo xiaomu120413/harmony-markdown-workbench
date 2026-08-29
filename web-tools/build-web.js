@@ -13,7 +13,7 @@ esbuild.buildSync({
   entryPoints: [path.resolve(__dirname, 'src/editor.js')],
   bundle: true,
   format: 'iife',
-  minify: true,
+  minify: false,
   target: ['chrome80'],
   outfile: path.join(outDir, 'editor.bundle.js'),
   logLevel: 'info',
