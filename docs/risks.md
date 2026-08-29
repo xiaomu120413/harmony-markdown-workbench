@@ -29,3 +29,5 @@
 | R-07 | hypium 用例失败时 hvigor `test` 任务仍返回成功（断言失败仅打 ERROR 日志，无结构化结果文件） | 已发生 | 高 | clean-build 脚本 grep 日志 ERROR 行作为门禁；文档注明；后续任务评估自定义 runner/退出码 | M2 起持续 |
 | R-08 | 构建用 SDK 为 API 26 **Beta1**（HarmonyOS 6.6.0 Beta），正式发布存在工具链变更风险 | 中 | 中 | 正式发布前复核发布版 DevEco/SDK；构建产物仅用于开发验证 | M6-04 |
 | R-09 | app 图标为脚本生成占位（渐变+M），非正式设计 | 确定 | 低 | M6 前输出正式图标资源 | M6-03 |
+| R-10 | API 26 Beta（26.0.0.23）`uriPermissionManager` 类型为空，persistPermission 编译期不可调用；模块增强在 ArkTS 下不生效 | 已发生 | 高 | FR-FILE-002 按"临时访问+重新定位"降级交付（ADR-009 草案）；正式 SDK 复核后关闭 | 正式 SDK 发布后 |
+| R-11 | 本机设备（MateBook Pro，OpenHarmony 7.0 华为定制镜像）信任库不含 OpenHarmony Profile CA，且 erofs 只读，**第三方调试签名安装被拒绝**（安装失败 9568329） | 已发生 | 高 | 更换可调试镜像/设备验证功能矩阵；M0-02 真机矩阵按"待可调试设备"如实登记；签名脚本已固化（sign-local.sh） | M0-02 门禁复核 |

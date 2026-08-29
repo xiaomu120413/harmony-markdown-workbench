@@ -1,3 +1,5 @@
+import { router } from '@kit.ArkUI';
+
 @Entry
 @Component
 struct HomePage {
@@ -18,6 +20,13 @@ struct HomePage {
       Text(`版本：${this.appVersion}`)
         .fontSize(12)
         .fontColor('#66000000')
+      // 临时入口：M0-02 尖峰验证页（M5-01 实现正式首页时移除）
+      Button('M0-02 尖峰：外部文件 URI')
+        .fontSize(14)
+        .margin({ top: 16 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SpikeUriPage' });
+        })
     }
     .width('100%')
     .height('100%')
