@@ -14,7 +14,17 @@
 | runJavaScript 直接返回值 | ⚠️ 不可靠 | `getSnapshot()` 返回 null（ArkWeb 26 Beta 返回值传递问题）→ **已改为事件推送**（requestSnapshot/requestDiagnostics，SDD 8.4 请求式快照协议方向） |
 | 主题切换（setTheme） | ⏳ 待解锁复测 | 代码就绪 |
 
-## 2. 待验证矩阵（R-13 锁屏阻塞，设备解锁后执行）
+## 2. 模拟器验证结果（2026-08-29，Pura 90 / HarmonyOS 6.1.1）
+
+| 项 | 结果 |
+|---|---|
+| ArkWeb 加载 rawfile 页面 | ✅ 复现 |
+| Native→Web 桥（runJavaScript） | ✅ 返回值通道正常（`"hello-return"`），空字符串以 null 返回 |
+| Web→Native（jsProxy / console / title） | ⚠️ 通道存在但事件未达（与真机相同观察；可能受脚本崩溃影响） |
+| CM6.x 运行 | ❌ **进程崩溃（R-15）**：613KB CM6.x bundle 使 ArkWeb 进程崩溃；613KB padding 与 CM0.20（2.2MB）均不崩 → 内容相关性 |
+| CM 版本排障 | 0.20.x pre-release 与 6.x 混用导致 "Unrecognized extension value"；已统一 6.x（basic-setup 404 → codemirror 包） |
+
+## 3. 待验证矩阵（真机解锁后执行）
 
 | 必测项（SDD M0-03） | 验证方式 | 状态 |
 |---|---|---|
