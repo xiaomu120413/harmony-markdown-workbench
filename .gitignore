@@ -9,7 +9,7 @@ build-logs/
 # 依赖与工具缓存
 oh_modules/
 /.hvigor/
-/node_modules/
+node_modules/
 /local.properties
 
 # IDE

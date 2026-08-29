@@ -1,6 +1,7 @@
 {
   "src": [
     "pages/HomePage",
-    "pages/SpikeUriPage"
+    "pages/SpikeUriPage",
+    "pages/SpikeEditorPage"
   ]
 }
