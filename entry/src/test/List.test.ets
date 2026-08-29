@@ -1,9 +1,12 @@
 import { describe, expect, it } from '@ohos/hypium';
+import saveStateMachineTest from './SaveStateMachine.test';
+import fileRevisionTest from './FileRevision.test';
+import draftDecisionTest from './DraftDecision.test';
 
 /**
- * TASK-M0-01 示例测试套件。
- * 目的：验证 hvigor test 任务与 hypium 框架可用（工程基线门禁）。
- * 业务用例将在各功能任务中补充；本套件不是业务逻辑的替代测试。
+ * 测试入口（hvigor 单测索引固定引用本文件，业务套件在此聚合注册）。
+ * - BaselineSmoke：框架冒烟
+ * - SaveStateMachine / FileRevision / DraftDecision：M0-04 领域层
  */
 export default function listTest(): void {
   describe('BaselineSmoke', () => {
@@ -19,4 +22,8 @@ export default function listTest(): void {
       expect('foo' + 'bar').assertEqual('foobar');
     });
   });
+
+  saveStateMachineTest();
+  fileRevisionTest();
+  draftDecisionTest();
 }
