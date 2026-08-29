@@ -22,8 +22,8 @@
 
 | 需求 ID | 实现任务 | 自动化用例 | 状态 |
 |---|---|---|---|
-| FR-FILE-003 | M1-01 | 契约测试：UTF-8/BOM 识别、LF/CRLF 保持读写一致 | Todo |
-| FR-FILE-003 | M1-01 | 非 UTF-8 提示只读/转换副本，不静默覆盖 | Todo |
+| FR-FILE-003 | M1-01 | 契约测试：UTF-8/BOM 识别、LF/CRLF 保持读写一致 | ✅ 编码/换行 10 用例 + 契约测试 7 用例（M1 领域层先行） |
+| FR-FILE-003 | M1-01 | 非 UTF-8 提示只读/转换副本，不静默覆盖 | ✅ 无效 UTF-8 序列检测（TextEncodingDetector） |
 | FR-FILE-001 | M1-03 | 新建/重命名/软删除/恢复；非法文件名与目录穿越拒绝 | ✅ 文件名校验 7 用例（M1 领域层先行：FileNameValidator） |
 | FR-RECENT | M1-02 | 排序、固定、30 条淘汰逻辑单测；正文不写入元数据库 | ✅ 6 用例（M1 领域层先行：RecentFileList） |
 | FR-FILE-004 | M4-03 | 冲突检测：外部修改后状态机进入 CONFLICT，磁盘不被覆盖 | Todo |
