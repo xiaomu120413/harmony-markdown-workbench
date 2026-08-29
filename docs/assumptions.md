@@ -36,10 +36,12 @@
 
 - modelVersion `6.0.1`（与 hvigor 6.26.1、现有工程一致），wrapper 以转发方式调用 DevEco 官方 `tools/hvigor/bin/hvigorw.js`（ADR-006 说明原因）。
 
-## A-08 签名与真机调试策略（M0-02 实测）
+## A-08 签名与真机调试策略（M0-02 实测，2026-08-29）
 
-- 工程保持 `signingConfigs` 为空（密码零入库）；真机安装包由 `scripts/sign-local.sh` 生成（OpenHarmony 官方 CA 签名，材料在工程外 `../local-sign/`，不入库）。
-- 本机 MateBook Pro 为华为定制镜像，**不开放第三方调试签名安装**（R-11）；功能矩阵验证需可调试镜像/设备，或华为发布签名。
+- 工程保持 `signingConfigs` 为空（密码零入库）；`scripts/sign-local.sh` 产出官方 OpenHarmony CA 签名安装包（材料在工程外 `../local-sign/`，不入库）。
+- **真机安装已验证**（MateBook Pro / OpenHarmony 7.0.0.28）：官方 CA 体系 + 设备信任库补入 Profile CA（一次性操作，见 external-uri.md 第 5 节）。
+- module.json5 `deliveryWithInstall=false`（true 会被动态交付机制回收）。
+- **外部 URI 为单次运行临时授权**（重启实测失效 13900001）：V0.1 产品明示"临时访问"，最近文件提供"重新定位"（ADR-009 草案）。
 
 ## 待澄清问题（不阻塞当前任务）
 

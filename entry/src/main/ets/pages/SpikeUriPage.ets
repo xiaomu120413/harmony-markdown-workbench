@@ -3,6 +3,7 @@ import { common } from '@kit.AbilityKit';
 import { preferences } from '@kit.ArkData';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
+import { util } from '@kit.ArkTS';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-SPIKE';
@@ -61,7 +62,12 @@ struct SpikeUriPage {
       const file = fs.openSync(uri, fs.OpenMode.READ_ONLY);
       const stat = fs.statSync(file.fd);
       this.currentSize = `${stat.size} 字节`;
-      const text = fs.readTextSync(uri);
+      // 实测：同步 readTextSync(uri) 在 API 26 返回 13900002（不支持 URI），
+      // 改经 fd + readSync + TextDecoder 读取（对 URI 与路径均有效）。
+      const raw = new ArrayBuffer(stat.size);
+      const len = fs.readSync(file.fd, raw);
+      const decoder = util.TextDecoder.create('utf-8');
+      const text = decoder.decodeToString(new Uint8Array(raw).slice(0, len));
       fs.closeSync(file);
       this.append(`选择成功：${this.currentName}（${stat.size} 字节）`);
       this.append(`内容预览（前 200 字符）：\n${text.substring(0, 200).replace(/\n/g, '⏎')}`);

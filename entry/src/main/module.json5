@@ -8,7 +8,7 @@
       "phone",
       "tablet"
     ],
-    "deliveryWithInstall": true,
+    "deliveryWithInstall": false,
     "installationFree": false,
     "pages": "$profile:main_pages",
     "abilities": [

@@ -1,17 +1,25 @@
 #!/usr/bin/env bash
 # M0-02 本地签名脚本：为 Debug HAP 生成 OpenHarmony 官方 CA 签名的安装包。
 #
-# 背景（docs/spikes/external-uri.md、R-10/R-11）：
-# - hvigor 6 的 signingConfigs 密码是 IDE 加密格式，不适合脚本化；本脚本绕开 hvigor，
-#   直接使用 SDK 的 hap-sign-tool + OpenHarmony 官方调试 CA（DevEco 内置）签名。
-# - profile p7b 用 openssl cms -nodetach 生成（hap-sign-tool 对自签 CA 链有行为限制，
-#   见脚本内注释），由 OpenHarmony Application Profile Debug CA 签发。
+# 链路（docs/spikes/external-uri.md 全程排障结论）：
+#   1. app 证书：generate-app-cert，由 OpenHarmony Application CA 签发，
+#      subject 必须是 'OpenHarmony Application Release'（设备按 DN 匹配信任源）。
+#   2. profile 证书：generate-profile-cert，由 Application CA 签发，
+#      subject 必须是 'OpenHarmony Application Profile Debug'（设备要求
+#      profile 签名者的 issuer == issuer-ca，且 subject 匹配 profile-debug-signing-certificate）。
+#   3. profile：hap-sign-tool sign-profile（profileCertFile 为 3 证书链；
+#      证书字段用带尾部换行的 PEM 文本——工具与设备都接受）。
+#   4. profile 必须含 validity（时间窗口），否则设备判"应用已过期"并限制启动。
+#   5. HAP：sign-app，appCertFile 为 certChain。
+#   6. 设备信任库：若镜像缺少 Profile CA（如华为定制 OpenHarmony），
+#      需将 Profile Debug/Release CA 补入 /system/etc/security/trusted_root_ca.json
+#      （overlay 可写；见脚本末尾说明，仅一次性操作）。
+#   7. module.json5 须 deliveryWithInstall=false，否则应用会被按需回收。
 #
 # 用法：
 #   bash scripts/sign-local.sh <unsigned.hap> [输出路径] [UDID] [bundleName]
-# 默认输出到工程外 ../local-sign/entry-signed-local.hap。
-# 材料目录：../local-sign/（工程外，不入库；README「签名说明」章节）。
-# 需要：DevEco Studio 完整安装（SDK toolchains）、openssl、Node/Python 可用。
+# 材料目录：../local-sign/（工程外，不入库）。
+# 需要：DevEco Studio 完整安装（SDK toolchains）、openssl、python。
 
 set -euo pipefail
 
@@ -24,33 +32,36 @@ OUT_HAP="${2:-${BASE_DIR}/entry-signed-local.hap}"
 UDID="${3:-$(hdc list targets 2>/dev/null | head -1 | tr -d '[:space:]')}"
 BUNDLE_NAME="${4:-com.markdownworkbench.app}"
 
-TOOLCHAINS='/c/Program Files/Huawei/DevEco Studio/sdk/default/openharmony/toolchains'
+TOOLCHAINS='C:/Program Files/Huawei/DevEco Studio/sdk/default/openharmony/toolchains'
 HAP_SIGN_TOOL="${TOOLCHAINS}/lib/hap-sign-tool.jar"
 OH_P12="${TOOLCHAINS}/lib/OpenHarmony.p12"
 OH_P12_PASS='123456'
 
 KEYSTORE="${BASE_DIR}/hmwb-local.p12"
-KEY_ALIAS='hmwb-local'
+KEY_ALIAS='hmwb-local'        # app 密钥
+PROFILE_KEY_ALIAS='hmwb-profile'  # profile 密钥
 KEY_PASS='hmwb123456'
 
 mkdir -p "${BASE_DIR}"
 
-echo "[sign-local] 检查材料目录: ${BASE_DIR}"
+# ---- 1. app keystore（含 app key + profile key 两个 alias）----
 if [ ! -f "${KEYSTORE}" ]; then
-  echo "[sign-local] 生成应用密钥对（EC secp256r1）"
-  openssl ecparam -genkey -name prime256v1 -noout -out "${BASE_DIR}/leaf.key"
-  printf "keyUsage=critical,digitalSignature\nextendedKeyUsage=codeSigning\n" > "${BASE_DIR}/leaf.ext"
-  openssl req -new -key "${BASE_DIR}/leaf.key" -out "${BASE_DIR}/leaf.csr" \
-    -subj "/CN=HMWB Local Dev/O=MarkdownWorkbench/C=CN"
-  openssl x509 -req -in "${BASE_DIR}/leaf.csr" -signkey "${BASE_DIR}/leaf.key" \
-    -out "${BASE_DIR}/leaf-tmp.cer" -days 3650 -sha256 -extfile "${BASE_DIR}/leaf.ext"
-  # 用占位自签证书初始化 p12（随后 generate-app-cert 会以官方 CA 覆盖证书链）
-  openssl pkcs12 -export -inkey "${BASE_DIR}/leaf.key" -in "${BASE_DIR}/leaf-tmp.cer" \
-    -name "${KEY_ALIAS}" -out "${KEYSTORE}" -passout pass:"${KEY_PASS}"
-  rm -f "${BASE_DIR}/leaf-tmp.cer"
+  echo "[sign-local] 生成应用密钥对"
+  keytool -genkeypair -alias "${KEY_ALIAS}" -keyalg EC -groupname secp256r1 \
+    -sigalg SHA256withECDSA -dname 'CN=HMWB Local Dev, O=MarkdownWorkbench, C=CN' \
+    -keystore "${KEYSTORE}" -storepass "${KEY_PASS}" -keypass "${KEY_PASS}" \
+    -validity 3650 -storetype PKCS12 2>/dev/null
+fi
+if ! keytool -list -keystore "${KEYSTORE}" -storepass "${KEY_PASS}" -storetype PKCS12 2>/dev/null | grep -q "${PROFILE_KEY_ALIAS}"; then
+  echo "[sign-local] 生成 profile 密钥"
+  keytool -genkeypair -alias "${PROFILE_KEY_ALIAS}" -keyalg EC -groupname secp256r1 \
+    -sigalg SHA256withECDSA -dname 'CN=HMWB Profile Dev, O=MarkdownWorkbench, C=CN' \
+    -keystore "${KEYSTORE}" -storepass "${KEY_PASS}" -keypass "${KEY_PASS}" \
+    -validity 3650 -storetype PKCS12 2>/dev/null
 fi
 
-if [ ! -f "${BASE_DIR}/app.certChain.cer" ]; then
+# ---- 2. 导出官方 CA 证书 ----
+if [ ! -f "${BASE_DIR}/app-ca.cer" ]; then
   echo "[sign-local] 导出 OpenHarmony 官方 CA 证书"
   openssl pkcs12 -legacy -in "${OH_P12}" -passin pass:"${OH_P12_PASS}" -nokeys -out "${BASE_DIR}/ca-all.pem" 2>/dev/null
   python - "${BASE_DIR}" <<'PYEOF'
@@ -60,7 +71,6 @@ pem = open(f'{base}/ca-all.pem', encoding='utf-8').read()
 blocks = re.findall(r'(subject=[^\n]*\n.*?-----BEGIN CERTIFICATE-----.*?-----END CERTIFICATE-----)', pem, re.S)
 need = {
     'openharmony application ca': 'app-ca.cer',
-    'openharmony application profile debug': 'profile-debug-ca.cer',
     'openharmony application root ca': 'root-ca.cer',
 }
 got = {}
@@ -72,87 +82,91 @@ for b in blocks:
             got[key] = cert
 for key, cert in got.items():
     open(f'{base}/{need[key]}', 'w').write(cert + '\n')
-root = got.get('openharmony application root ca', '')
-if root:
-    open(f'{base}/root-ca.cer', 'w').write(root + '\n')
 print('exported:', list(got.keys()))
 PYEOF
-  echo "[sign-local] 用官方 Application CA 签发应用证书"
+fi
+
+# ---- 3. app 证书（官方 CommonName 必须匹配信任源 app-signing-cert）----
+if [ ! -f "${BASE_DIR}/app-oh.certChain.cer" ]; then
+  echo "[sign-local] 签发 app 证书（Application CA）"
   java -jar "${HAP_SIGN_TOOL}" generate-app-cert \
     -keyAlias "${KEY_ALIAS}" -keyPwd "${KEY_PASS}" \
     -issuer 'C=CN, O=OpenHarmony, OU=OpenHarmony Team, CN=OpenHarmony Application CA' \
     -issuerKeyAlias 'openharmony application ca' -issuerKeyPwd "${OH_P12_PASS}" \
     -issuerKeystoreFile "${OH_P12}" -issuerKeystorePwd "${OH_P12_PASS}" \
-    -subject 'C=CN, O=MarkdownWorkbench, OU=Dev, CN=HMWB App' \
+    -subject 'C=CN, O=OpenHarmony, OU=OpenHarmony Team, CN=OpenHarmony Application Release' \
     -validity 3650 -signAlg SHA256withECDSA \
     -keystoreFile "${KEYSTORE}" -keystorePwd "${KEY_PASS}" \
     -outForm certChain -rootCaCertFile "${BASE_DIR}/root-ca.cer" -subCaCertFile "${BASE_DIR}/app-ca.cer" \
-    -outFile "${BASE_DIR}/app.certChain.cer"
+    -outFile "${BASE_DIR}/app-oh.certChain.cer"
 fi
 
-if [ ! -f "${BASE_DIR}/profile-debug.key" ]; then
-  echo "[sign-local] 导出 OpenHarmony Profile Debug 私钥"
-  openssl pkcs12 -legacy -in "${OH_P12}" -passin pass:"${OH_P12_PASS}" -nodes -out "${BASE_DIR}/oh-all.pem" 2>/dev/null
-  python - "${BASE_DIR}" <<'PYEOF'
-import re, sys
-base = sys.argv[1]
-pem = open(f'{base}/oh-all.pem', encoding='utf-8').read()
-for seg in re.split(r'(?=Bag Attributes)', pem):
-    if 'friendlyName: openharmony application profile debug' in seg:
-        key = re.search(r'-----BEGIN PRIVATE KEY-----.*?-----END PRIVATE KEY-----', seg, re.S)
-        open(f'{base}/profile-debug.key', 'w').write(key.group(0) + '\n')
-        print('profile-debug.key exported')
-        break
-PYEOF
+# ---- 4. profile 证书（subject 匹配 profile-debug-signing-certificate）----
+if [ ! -f "${BASE_DIR}/profile-cert.chain.cer" ]; then
+  echo "[sign-local] 签发 profile 证书（Application CA）"
+  java -jar "${HAP_SIGN_TOOL}" generate-profile-cert \
+    -keyAlias "${PROFILE_KEY_ALIAS}" -keyPwd "${KEY_PASS}" \
+    -issuer 'C=CN, O=OpenHarmony, OU=OpenHarmony Team, CN=OpenHarmony Application CA' \
+    -issuerKeyAlias 'openharmony application ca' -issuerKeyPwd "${OH_P12_PASS}" \
+    -issuerKeystoreFile "${OH_P12}" -issuerKeystorePwd "${OH_P12_PASS}" \
+    -subject 'C=CN, O=OpenHarmony, OU=OpenHarmony Team, CN=OpenHarmony Application Profile Debug' \
+    -validity 3650 -signAlg SHA256withECDSA \
+    -keystoreFile "${KEYSTORE}" -keystorePwd "${KEY_PASS}" \
+    -outForm certChain -rootCaCertFile "${BASE_DIR}/root-ca.cer" -subCaCertFile "${BASE_DIR}/app-ca.cer" \
+    -outFile "${BASE_DIR}/profile-cert.chain.cer"
 fi
 
-echo "[sign-local] 生成 profile.json（官方 UnsgnedDebugProfileTemplate 结构）"
+# ---- 5. profile JSON（PEM 证书字段 + validity 时间窗口 + debug-info）----
 python - "${BASE_DIR}" "${UDID}" "${BUNDLE_NAME}" <<'PYEOF'
-import json, re, sys, uuid
+import json, sys, uuid
 base, udid, bundle = sys.argv[1], sys.argv[2], sys.argv[3]
-chain = open(f'{base}/app.certChain.cer', encoding='utf-8').read()
+chain = open(f'{base}/app-oh.certChain.cer', encoding='utf-8').read()
 first = chain.split('-----END CERTIFICATE-----')[0] + '-----END CERTIFICATE-----'
-b64 = re.sub(r'-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s', '', first)
-b64url = b64.replace('+', '-').replace('/', '_')  # URL-safe base64（关键，普通 base64 会被拒）
+cert_pem = first + '\n'   # 尾部换行：工具与设备两侧解析都要求
 profile = {
     'version-name': '2.0.0',
     'version-code': 2,
     'uuid': str(uuid.uuid4()),
     'type': 'debug',
+    'validity': {'not-before': 1577808000, 'not-after': 2524579200},
     'bundle-info': {
         'developer-id': 'OpenHarmony',
-        'development-certificate': b64url,
+        'development-certificate': cert_pem,
         'bundle-name': bundle,
         'apl': 'normal',
         'app-feature': 'hos_normal_app'
     },
-    'debug-info': {
-        'device-ids': [udid],
-        'device-id-type': 'udid'
-    },
+    'debug-info': {'device-ids': [udid], 'device-id-type': 'udid'},
     'issuer': 'pki_internal'
 }
 with open(f'{base}/profile-local.json', 'w', encoding='utf-8') as f:
     json.dump(profile, f, indent=2, ensure_ascii=False)
-print('profile-local.json written for udid:', udid)
+print('profile-local.json written')
 PYEOF
 
-echo "[sign-local] 签名 profile（openssl cms，-nodetach 内嵌 content 为必需）"
-openssl cms -sign -binary -nodetach \
-  -in "${BASE_DIR}/profile-local.json" \
-  -signer "${BASE_DIR}/profile-debug-ca.cer" \
-  -inkey "${BASE_DIR}/profile-debug.key" \
-  -outform DER -out "${BASE_DIR}/profile-local.p7b" \
-  -md sha256 -nosmimecap
+# ---- 6. 签名 profile 与 HAP ----
+echo "[sign-local] sign-profile"
+java -jar "${HAP_SIGN_TOOL}" sign-profile \
+  -keyAlias "${PROFILE_KEY_ALIAS}" -keyPwd "${KEY_PASS}" -signAlg SHA256withECDSA \
+  -mode localSign -profileCertFile "${BASE_DIR}/profile-cert.chain.cer" \
+  -inFile "${BASE_DIR}/profile-local.json" \
+  -keystoreFile "${KEYSTORE}" -keystorePwd "${KEY_PASS}" \
+  -outFile "${BASE_DIR}/profile-local.p7b"
 
-echo "[sign-local] 签名 HAP"
+echo "[sign-local] sign-app"
 java -jar "${HAP_SIGN_TOOL}" sign-app \
   -mode localSign -keyAlias "${KEY_ALIAS}" -keyPwd "${KEY_PASS}" \
   -signAlg SHA256withECDSA \
-  -appCertFile "${BASE_DIR}/app.certChain.cer" \
+  -appCertFile "${BASE_DIR}/app-oh.certChain.cer" \
   -profileFile "${BASE_DIR}/profile-local.p7b" \
   -keystoreFile "${KEYSTORE}" -keystorePwd "${KEY_PASS}" \
   -inFile "${IN_HAP}" -outFile "${OUT_HAP}"
 
 echo "[sign-local] 完成: ${OUT_HAP}"
 ls -la "${OUT_HAP}"
+
+# ---- 一次性提示：设备信任库 ----
+# 若安装报 'verify signature failed / do not come from trusted root'：
+# 将 Profile Debug/Release CA（从 OpenHarmony.p12 导出）追加进设备
+# /system/etc/security/trusted_root_ca.json（KEY = subject DN，VALUE = PEM 文本），
+# 并以 root 覆盖后重启 accesstoken_service。详见 docs/spikes/external-uri.md 第 5 节。
