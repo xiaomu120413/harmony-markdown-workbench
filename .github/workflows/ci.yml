@@ -1,23 +1,113 @@
-# CI
+# CI 流水线（V0.1）
+#
+# 分层设计：
+#   1) web-bundle   —— 公共 runner 可执行：esbuild 重新打包 editor/preview，
+#                      产物必须与仓库已提交 bundle 一致（漂移即失败，防止
+#                      未提交的 Web 源码变更被漏掉）。
+#   2) scripts-json —— 脚本语法与 JSON/JSON5 静态检查（公共 runner）。
+#   3) hvigor       —— 需要 DevEco 完整工具链 + HarmonyOS SDK：
+#                      在仓库 Settings → Variables 配置 DEVECO_HOME（指向
+#                      自托管 runner 上 DevEco Studio 安装目录）后自动激活；
+#                      未配置时显式跳过（公共 runner 无华为 SDK 供给）。
+#
+# hvigor job 在 runner 上执行：
+#   hvigorw test（test-log ERROR gate）→ assembleHap（unsigned 产物上传）
+#   注意：签名材料位于仓库之外（../local-sign/），CI 只产出 unsigned HAP。
 
-> 状态：预留。GitHub-hosted runner 无 HarmonyOS SDK，本 workflow 需要自托管 runner（预先安装 DevEco Studio 与 Node.js，并配置 `DEVECO_STUDIO_PATH`）。
-> 在自托管 runner 就绪并实跑通过之前，本文件**不作为验收门禁**（SDD 不允许声称未实际运行的测试通过）；本地等价验证使用 `scripts/clean-build.sh`。
-
-```yaml
-name: CI
+name: ci
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
-  clean-build:
-    runs-on: [self-hosted, harmonyos]
+  web-bundle:
+    name: Web bundle consistency
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: web-tools/package-lock.json
+      - name: Install web toolchain
+        run: npm ci
+        working-directory: web-tools
+      - name: Rebuild bundles
+        run: node build-web.js
+        working-directory: web-tools
+      - name: Assert committed bundles unchanged
+        run: |
+          git diff --exit-code -- entry/src/main/resources/rawfile/web/ \
+            || { echo "::error::web bundles differ from committed output - run 'node build-web.js' and commit"; exit 1; }
 
-      - name: Clean build with test gate
-        shell: bash
-        run: bash scripts/clean-build.sh
-```
+  scripts-json:
+    name: Script & manifest checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: |
+          set -e
+          for f in scripts/*.sh; do bash -n "$f"; done
+      - name: Manifest JSON parse
+        run: |
+          set -e
+          for f in \
+            AppScope/app.json5 \
+            entry/src/main/module.json5 \
+            entry/src/main/resources/base/profile/main_pages.json \
+            build-profile.json5 \
+            entry/build-profile.json5 \
+            oh-package.json5; do
+            echo "check $f"
+            node -e "
+              const fs=require('fs');
+              const s=fs.readFileSync('$f','utf8')
+                .replace(/\/\/.*$/gm,'')
+                .replace(/,\s*([}\]])/g,'\$1');
+              JSON.parse(s);
+            "
+          done
+      - name: Test aggregator sanity
+        run: |
+          ls entry/src/test/*.test.ets > /dev/null
+          grep -q "saveCoordinatorTest()" entry/src/test/List.test.ets
+          echo "aggregator ok"
+
+  hvigor:
+    name: hvigor test + build (self-hosted, opt-in)
+    runs-on: [self-hosted, linux, x64]
+    if: vars.DEVECO_HOME != ''
+    steps:
+      - uses: actions/checkout@v4
+      - name: Load DevEco environment
+        env:
+          DEVECO_HOME: ${{ vars.DEVECO_HOME }}
+        run: |
+          echo "DEVECO_HOME=$DEVECO_HOME"
+          test -d "$DEVECO_HOME" || { echo "::error::DEVECO_HOME not a directory on runner"; exit 1; }
+          echo "NODE_HOME=$DEVECO_HOME/tools/node" >> "$GITHUB_ENV"
+      - name: Unit tests + gate
+        run: |
+          export NODE_HOME="$DEVECO_HOME/tools/node"
+          mkdir -p build-logs
+          ./hvigorw test --mode module -p product=default > build-logs/test.log 2>&1 || true
+          if grep -qE "Error in |BUILD FAILED" build-logs/test.log; then
+            echo "::error::unit test failures or build failure (see build-logs/test.log)"
+            grep -E "Error in |BUILD FAILED" build-logs/test.log | head -20
+            exit 1
+          fi
+          grep -qE "BUILD SUCCESSFUL" build-logs/test.log || { echo "::error::test task did not succeed"; exit 1; }
+      - name: Assemble debug HAP (unsigned artifact)
+        run: |
+          export NODE_HOME="$DEVECO_HOME/tools/node"
+          ./hvigorw assembleHap --mode module -p product=default
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-unsigned
+          path: entry/build/default/outputs/default/entry-default-unsigned.hap
+          retention-days: 14
