@@ -2,6 +2,8 @@ import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
+import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
+import { RecentFileList } from '../domain/document/RecentFileList';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { DraftDecisionEvaluator, RecoveryDecision, RecoveryDraft } from '../domain/recovery/DraftDecision';
 import { FileRevisionContract, InternalSource, WriteFailResult } from '../domain/document/DocumentFileAdapter';
@@ -36,6 +38,19 @@ struct RecoveryPage {
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private store: DraftStore = new DraftStore(getContext(this) as common.UIAbilityContext);
   private internal: InternalFileSource = new InternalFileSource(getContext(this) as common.UIAbilityContext);
+  private meta: MetadataStore = new MetadataStore(getContext(this) as common.UIAbilityContext);
+
+  /** M5-01：恢复写回/另存副本后同步最近列表元数据（失败不阻塞正文） */
+  private async trackRecent(relativePath: string): Promise<void> {
+    try {
+      const entries = await this.meta.loadRecent();
+      const list = new RecentFileList(entries);
+      list.touch(relativePath, Date.now());
+      await this.meta.saveRecent(list.snapshot());
+    } catch (e) {
+      // 元数据失败不影响正文
+    }
+  }
 
   private append(line: string): void {
     this.log = `${line}\n---\n${this.log}`;
@@ -115,6 +130,7 @@ struct RecoveryPage {
       const result = await this.internal.write(src, d.content, base);
       if (result.ok) {
         this.store.remove(d.documentId);
+        this.trackRecent(rel);
         this.append(`[恢复] 已写回 ${rel} 并清除草稿`);
       } else {
         this.append(`[恢复] 写回冲突/失败：${(result as WriteFailResult).message}（请改用另存副本）`);
@@ -135,6 +151,7 @@ struct RecoveryPage {
       const result = await this.internal.write(src, d.content, { size: 0, contentHash: '' });
       if (result.ok) {
         this.store.remove(d.documentId);
+        this.trackRecent(rel);
         this.append(`[副本] 已保存 ${rel} 并清除草稿`);
       } else {
         this.append(`[副本] 失败：${(result as WriteFailResult).message}`);

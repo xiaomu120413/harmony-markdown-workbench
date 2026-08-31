@@ -36,6 +36,12 @@ struct HomePage {
     await this.refreshRecovery();
   }
 
+  /** 页面每次显示（含从编辑器返回）时刷新最近列表与恢复入口 */
+  onPageShow(): void {
+    this.refresh();
+    this.refreshRecovery();
+  }
+
   /** M4-04 恢复入口：存在未处理检查点时提示（含损坏草稿的保守处理——整目录由用户决定） */
   private async refreshRecovery(): Promise<void> {
     try {
@@ -70,6 +76,12 @@ struct HomePage {
 
   private goEditor(): void {
     router.pushUrl({ url: 'pages/EditorPage' });
+  }
+
+  /** 打开最近/资料库文档（M5-01：name 参数 → EditorPage 读取并加载） */
+  private goEditorWith(name: string): void {
+    const params: ESObject = { name: name } as ESObject;
+    router.pushUrl({ url: 'pages/EditorPage', params: params });
   }
 
   build() {
@@ -120,6 +132,7 @@ struct HomePage {
                 .fontColor('#99000000')
             }
             .width('100%')
+            .onClick(() => this.goEditorWith(item.documentId))
           }
         }, (item: RecentEntry) => item.documentId)
       }

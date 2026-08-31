@@ -11,6 +11,8 @@ import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, Fi
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { ExternalUriFileSource } from '../infrastructure/file/ExternalUriFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
+import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
+import { RecentFileList } from '../domain/document/RecentFileList';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { AppSettings, SettingsValidator, ThemeMode } from '../domain/settings/AppSettings';
 
@@ -83,6 +85,7 @@ struct EditorPage {
   private external: ExternalUriFileSource = new ExternalUriFileSource();
   private drafts: DraftStore = new DraftStore(getContext(this) as common.UIAbilityContext);
   private settings: SettingsStore = new SettingsStore(getContext(this) as common.UIAbilityContext);
+  private meta: MetadataStore = new MetadataStore(getContext(this) as common.UIAbilityContext);
   private appSettings: AppSettings = SettingsValidator.defaults();
   private coordinator: SaveCoordinator | undefined = undefined;
   private docTarget: DocumentSource | undefined = undefined;
@@ -212,12 +215,28 @@ struct EditorPage {
     src.read(target).then((r) => {
       this.expectedRevision = r.revision;
       this.pendingLoad = r.content;
+      this.trackRecent(target);
       if (this.webReady) {
         this.flushPendingLoad();
       }
     }).catch((e: ESObject) => {
       this.append(`[打开] 失败：${JSON.stringify(e)}`);
     });
+  }
+
+  /** M5-01：保存/打开后更新最近文件元数据（FR-RECENT；失败不阻塞保存） */
+  private async trackRecent(target: DocumentSource): Promise<void> {
+    try {
+      const id = target.kind === 'internal'
+        ? (target as InternalSource).relativePath
+        : (target as ExternalSource).uri;
+      const entries = await this.meta.loadRecent();
+      const list = new RecentFileList(entries);
+      list.touch(id, Date.now());
+      await this.meta.saveRecent(list.snapshot());
+    } catch (e) {
+      // 元数据失败不影响正文保存
+    }
   }
 
   private flushPendingLoad(): void {
@@ -263,6 +282,7 @@ struct EditorPage {
     if (result.ok) {
       this.expectedRevision = result.revision;
       this.drafts.remove(this.draftIdOf(target));
+      this.trackRecent(target);
     }
     return result;
   }
@@ -316,12 +336,29 @@ struct EditorPage {
     return new Promise<string>((resolve) => {
       try {
         this.controller.runJavaScript(script, (err, result) => {
-          resolve(err ? '' : (result === undefined ? '' : String(result)));
+          resolve(err ? '' : (result === undefined ? '' : EditorPage.decodeReturn(result)));
         });
       } catch (e) {
         resolve('');
       }
     });
+  }
+
+  /**
+   * ArkWeb runJavaScript 对字符串返回值按 JSON 编码返回（含引号与 \n 转义），
+   * 需解码回原字符串。不为 '"' 开头（对象/数字/空）时原样返回。
+   */
+  private static decodeReturn(result: string): string {
+    const trimmed = result.trim();
+    if (trimmed.length === 0 || trimmed.charAt(0) !== '"') {
+      return result;
+    }
+    try {
+      const v: ESObject = JSON.parse(trimmed);
+      return v as string;
+    } catch (e) {
+      return result;
+    }
   }
 
   /** 快捷栏命令：读取选区/全文 → 领域变换 → 写回 */

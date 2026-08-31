@@ -116,17 +116,22 @@ struct SpikeLibraryPage {
     this.validateOrLog('');
   }
 
-  /** ③ 重命名（含重名冲突拒绝） */
+  /** ③ 重命名（含重名冲突拒绝：renameSync 在 POSIX 下会静默覆盖，必须先查目标） */
   renameDoc(oldName: string, newName: string): void {
     if (!this.validateOrLog(newName)) {
       return;
     }
     this.ensureDirs();
     try {
+      const targetExists = fs.accessSync(this.docPath(newName)) === true;
+      if (targetExists) {
+        this.append(`[重命名] 拒绝：目标已存在（${newName}），不覆盖`);
+        return;
+      }
       fs.renameSync(this.docPath(oldName), this.docPath(newName));
       this.append(`[重命名] ${oldName} → ${newName}`);
     } catch (e) {
-      this.append(`[重命名] 失败（可能重名/不存在）：${JSON.stringify(e)}`);
+      this.append(`[重命名] 失败：${JSON.stringify(e)}`);
     }
     this.refresh();
   }
