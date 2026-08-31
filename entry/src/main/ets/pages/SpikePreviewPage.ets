@@ -85,7 +85,7 @@ struct SpikePreviewPage {
   }
 
   /** ③ 大纲提取（领域层） */
-  outline(): void {
+  extractOutline(): void {
     const items = HeadingOutline.extract(SAMPLE_MD);
     let out = '';
     for (let i = 0; i < items.length; i++) {
@@ -118,7 +118,7 @@ struct SpikePreviewPage {
           .onClick(() => this.renderMalicious())
         Button('③ 大纲')
           .fontSize(13)
-          .onClick(() => this.outline())
+          .onClick(() => this.extractOutline())
         Button('④ 查找')
           .fontSize(13)
           .onClick(() => this.find())

@@ -15,11 +15,24 @@ export interface FindMatch {
   to: number;
 }
 
+export interface UndoRecord {
+  from: number;
+  to: number;
+  oldText: string;
+}
+
 export interface ReplaceAllResult {
   text: string;
   count: number;
   /** 撤销信息：每处替换的 [from,to) 与旧文本 */
-  undos: Array<{ from: number; to: number; oldText: string }>;
+  undos: Array<UndoRecord>;
+}
+
+export interface ReplaceCurrentResult {
+  text: string;
+  count: number;
+  newCursor: number;
+  replaced: boolean;
 }
 
 export class FindReplaceEngine {
@@ -58,7 +71,7 @@ export class FindReplaceEngine {
 
   static replaceAll(text: string, query: string, replacement: string, opts: FindOptions): ReplaceAllResult {
     const matches = FindReplaceEngine.findAll(text, query, opts);
-    const undos: Array<{ from: number; to: number; oldText: string }> = [];
+    const undos: Array<UndoRecord> = [];
     let result = '';
     let cursor = 0;
     for (const m of matches) {
@@ -67,32 +80,38 @@ export class FindReplaceEngine {
       cursor = m.to;
     }
     result += text.substring(cursor);
-    return { text: result, count: matches.length, undos: undos };
+    const out: ReplaceAllResult = { text: result, count: matches.length, undos: undos };
+    return out;
   }
 
   /** 替换当前匹配（从 position 之后搜索第一个），返回新文本与新的光标 */
   static replaceCurrent(
     text: string, query: string, replacement: string, from: number, opts: FindOptions,
-  ): { text: string; count: number; newCursor: number; replaced: boolean } {
+  ): ReplaceCurrentResult {
     const matches = FindReplaceEngine.findAll(text, query, opts);
     for (const m of matches) {
       if (m.from >= from) {
         const next = text.substring(0, m.from) + replacement + text.substring(m.to);
-        return {
+        const okResult: ReplaceCurrentResult = {
           text: next,
           count: matches.length,
           newCursor: m.from + replacement.length,
           replaced: true,
         };
+        return okResult;
       }
     }
     // 无后续匹配：回绕从 0 再找
     for (const m of matches) {
       if (m.from < from) {
         const next = text.substring(0, m.from) + replacement + text.substring(m.to);
-        return { text: next, count: matches.length, newCursor: m.from + replacement.length, replaced: true };
+        const wrapResult: ReplaceCurrentResult = {
+          text: next, count: matches.length, newCursor: m.from + replacement.length, replaced: true,
+        };
+        return wrapResult;
       }
     }
-    return { text: text, count: 0, newCursor: from, replaced: false };
+    const noResult: ReplaceCurrentResult = { text: text, count: 0, newCursor: from, replaced: false };
+    return noResult;
   }
 }
