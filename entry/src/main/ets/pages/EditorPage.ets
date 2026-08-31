@@ -72,6 +72,7 @@ struct EditorPage {
   @State saveLabel: string = '已保存';
   @State docLength: number = 0;
   @State docTitle: string = '未命名';
+  @State conflictVisible: boolean = false;
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private controller: webview.WebviewController = new webview.WebviewController();
   private bridge: EditorBridge = new EditorBridge();
@@ -139,6 +140,7 @@ struct EditorPage {
       c.tick(Date.now()).then((ran: boolean) => {
         if (ran) {
           this.saveLabel = SaveStateMachine.label(c.state);
+          this.conflictVisible = c.state === SaveState.CONFLICT;
           if (c.state === SaveState.ERROR) {
             this.append('[自动保存] 失败，保留未保存内容');
           }
@@ -337,7 +339,60 @@ struct EditorPage {
     }
     const ran = await c.saveNow(Date.now());
     this.saveLabel = SaveStateMachine.label(c.state);
+    this.conflictVisible = c.state === SaveState.CONFLICT;
     this.append(`[保存] ${ran ? '完成' : '未执行'} → ${this.saveLabel}`);
+  }
+
+  /** M4-03 冲突决策①：改用磁盘版本（编辑器内容放弃；草稿检查点保留本地，磁盘已读回） */
+  private conflictKeepDisk(): void {
+    const c = this.coordinator;
+    const target = this.docTarget;
+    if (c === undefined || target === undefined) {
+      return;
+    }
+    const src: DocumentFileAdapter = target.kind === 'internal' ? this.internal : this.external;
+    src.read(target).then((r) => {
+      this.expectedRevision = r.revision;
+      this.pendingLoad = r.content;
+      this.flushPendingLoad();
+      c.decideKeepDisk();
+      this.conflictVisible = false;
+      this.saveLabel = SaveStateMachine.label(c.state);
+      this.append('[冲突] 已加载磁盘版本');
+    }).catch((e: ESObject) => {
+      this.append(`[冲突] 读取磁盘版本失败：${JSON.stringify(e)}（保留本地编辑）`);
+      c.decideKeepLocal();
+      this.conflictVisible = false;
+      this.saveLabel = SaveStateMachine.label(c.state);
+    });
+  }
+
+  /** M4-03 冲突决策②：保留本地继续编辑（不再自动覆盖） */
+  private conflictKeepLocal(): void {
+    const c = this.coordinator;
+    if (c === undefined) {
+      return;
+    }
+    c.decideKeepLocal();
+    this.conflictVisible = false;
+    this.saveLabel = SaveStateMachine.label(c.state);
+    this.append('[冲突] 保留本地内容继续编辑');
+  }
+
+  /** M4-03 冲突决策③：本地内容另存副本到资料库 */
+  private async conflictSaveCopy(): Promise<void> {
+    const c = this.coordinator;
+    if (c === undefined) {
+      return;
+    }
+    const stamp = `${Date.now()}`;
+    const copy: InternalSource = { kind: 'internal', relativePath: `library/未命名-${stamp}.md` };
+    this.docTarget = copy;
+    c.decideKeepLocal();
+    this.conflictVisible = false;
+    const ran = await c.saveNow(Date.now());
+    this.saveLabel = SaveStateMachine.label(c.state);
+    this.append(`[冲突] 副本保存${ran && c.state !== SaveState.ERROR ? '完成' : '失败'} → ${copy.relativePath}`);
   }
 
   build() {
@@ -390,6 +445,27 @@ struct EditorPage {
         })
       }
       .width('100%')
+
+      // 冲突条（M4-03：外部修改检测后停止自动保存，等待用户决策）
+      if (this.conflictVisible) {
+        Row({ space: 8 }) {
+          Text('⚠ 磁盘版本已变化（自动保存已停止）')
+            .fontSize(12)
+            .fontColor('#B00020')
+          Button('用磁盘版')
+            .fontSize(12)
+            .onClick(() => this.conflictKeepDisk())
+          Button('保留本地')
+            .fontSize(12)
+            .onClick(() => this.conflictKeepLocal())
+          Button('另存副本')
+            .fontSize(12)
+            .onClick(() => this.conflictSaveCopy())
+        }
+        .width('100%')
+        .padding(4)
+        .backgroundColor('#FFF3E0')
+      }
 
       Web({ src: $rawfile('web/editor.html'), controller: this.controller })
         .javaScriptAccess(true)
