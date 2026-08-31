@@ -496,40 +496,45 @@ struct EditorPage {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Button('返回')
           .fontSize(13)
+          .borderRadius(8)
           .onClick(() => this.goBack())
         Text(this.docTitle)
-          .fontSize(13)
+          .fontSize(14)
           .fontWeight(FontWeight.Medium)
-          .constraintSize({ maxWidth: 120 })
-        Text(`保存：${this.saveLabel}`)
-          .fontSize(13)
-        Text(`长度：${this.docLength}`)
-          .fontSize(13)
+          .constraintSize({ maxWidth: 180 })
+        Text(this.saveLabel)
+          .fontSize(12)
+          .padding({ left: 6, right: 6, top: 2, bottom: 2 })
+          .fontColor(this.saveLabel === '已保存' ? '#1B6E20' : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? '#B00020' : '#B28704'))
+          .backgroundColor(this.saveLabel === '已保存' ? '#E8F5E9' : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? '#FDECEA' : '#FFF8E1'))
+          .borderRadius(6)
         Button('分享')
           .fontSize(13)
+          .borderRadius(8)
           .onClick(() => this.share())
         Button('保存')
           .fontSize(13)
+          .borderRadius(8)
           .onClick(() => this.save())
       }
       .width('100%')
 
       // 快捷栏（FR-EDIT-002 命令子集；M6-01：wrap 换行替代固定 Row，窄窗全部可达）
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        Button('加粗').fontSize(12).onClick(() => this.applyCommand('bold'))
-        Button('斜体').fontSize(12).onClick(() => this.applyCommand('italic'))
-        Button('删除线').fontSize(12).onClick(() => this.applyCommand('strike'))
-        Button('行内码').fontSize(12).onClick(() => this.applyCommand('inlineCode'))
-        Button('链接').fontSize(12).onClick(() => this.applyCommand('link'))
+        Button('加粗').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('bold'))
+        Button('斜体').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('italic'))
+        Button('删除线').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('strike'))
+        Button('行内码').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('inlineCode'))
+        Button('链接').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('link'))
       }
       .width('100%')
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        Button('·列表').fontSize(12).onClick(() => this.applyCommand('ul'))
-        Button('1.列表').fontSize(12).onClick(() => this.applyCommand('ol'))
-        Button('任务').fontSize(12).onClick(() => this.applyCommand('task'))
-        Button('引用').fontSize(12).onClick(() => this.applyCommand('quote'))
-        Button('代码块').fontSize(12).onClick(() => this.applyCommand('codeBlock'))
-        Button('示例').fontSize(12).onClick(() => {
+        Button('·列表').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('ul'))
+        Button('1.列表').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('ol'))
+        Button('任务').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('task'))
+        Button('引用').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('quote'))
+        Button('代码块').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('codeBlock'))
+        Button('示例').fontSize(13).borderRadius(8).onClick(() => {
           const md = '# 正式编辑器\n\n**M2** 快捷栏命令测试：\n\n- 列表 A\n\n> 引用\n';
           const js = `window.__editorApi.setDocument(${JSON.stringify(md)}, 0, 0);`;
           this.runJsValue(js).then(() => {
@@ -584,12 +589,6 @@ struct EditorPage {
           this.append(`页面错误：${JSON.stringify(event.request)}`);
         })
         .layoutWeight(1)
-        .width('100%')
-
-      Text(this.log)
-        .fontSize(11)
-        .fontColor('#66000000')
-        .maxLines(4)
         .width('100%')
     }
     .padding(8)
