@@ -41,6 +41,13 @@ struct HomePage {
         .onClick(() => {
           router.pushUrl({ url: 'pages/SpikeSavePage' });
         })
+      // 临时入口：M1-01 适配器契约验证页（M1 验收）
+      Button('M1-01 尖峰：适配器契约')
+        .fontSize(14)
+        .margin({ top: 8 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SpikeContractPage' });
+        })
     }
     .width('100%')
     .height('100%')

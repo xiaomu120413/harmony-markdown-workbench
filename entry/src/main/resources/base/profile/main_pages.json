@@ -3,6 +3,7 @@
     "pages/HomePage",
     "pages/SpikeUriPage",
     "pages/SpikeEditorPage",
-    "pages/SpikeSavePage"
+    "pages/SpikeSavePage",
+    "pages/SpikeContractPage"
   ]
 }
