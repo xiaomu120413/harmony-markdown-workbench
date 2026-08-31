@@ -17,7 +17,7 @@ console.log('HMWB_BOOT');
  * 资源必须全部本地打包（rawfile），离线可用（FR-PREVIEW-001 / SDD 6.3）。
  */
 import { basicSetup } from 'codemirror';
-import { EditorView, keymap } from '@codemirror/view';
+import { EditorView, keymap, placeholder } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { defaultKeymap, historyKeymap, undo, redo } from '@codemirror/commands';
@@ -79,6 +79,7 @@ try {
         basicSetup,
         markdown(),
         editExt,
+        placeholder('开始输入…'),
         fontC.of(EditorView.theme({ '&': { fontSize: '15px' } })),
         wrapC.of([]),
         gutterC.of(gutterShown),
