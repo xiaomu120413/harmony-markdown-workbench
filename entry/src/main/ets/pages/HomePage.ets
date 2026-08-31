@@ -79,6 +79,7 @@ struct HomePage {
         .fontWeight(FontWeight.Bold)
 
       Row({ space: 8 }) {
+      Row({ space: 8 }) {
         Button('新建文档')
           .fontSize(13)
           .onClick(() => this.goEditor())
@@ -89,7 +90,11 @@ struct HomePage {
           .fontSize(13)
           .onClick(() => this.refresh())
       }
-      .width('100%')
+      .layoutWeight(1)
+      Button('设置')
+        .fontSize(13)
+        .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
+    }
 
       Text('最近文件')
         .fontSize(15)

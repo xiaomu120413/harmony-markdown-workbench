@@ -2,6 +2,7 @@ import { webview } from '@kit.ArkWeb';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
+import { pasteboard } from '@kit.BasicServicesKit';
 import { SaveState, SaveStateMachine } from '../domain/recovery/SaveStateMachine';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../domain/editor/MarkdownCommands';
 import { EditorBridge } from '../services/EditorBridge';
@@ -10,6 +11,8 @@ import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, Fi
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { ExternalUriFileSource } from '../infrastructure/file/ExternalUriFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
+import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
+import { AppSettings, SettingsValidator, ThemeMode } from '../domain/settings/AppSettings';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-EDITOR';
@@ -79,6 +82,8 @@ struct EditorPage {
   private internal: InternalFileSource = new InternalFileSource(getContext(this) as common.UIAbilityContext);
   private external: ExternalUriFileSource = new ExternalUriFileSource();
   private drafts: DraftStore = new DraftStore(getContext(this) as common.UIAbilityContext);
+  private settings: SettingsStore = new SettingsStore(getContext(this) as common.UIAbilityContext);
+  private appSettings: AppSettings = SettingsValidator.defaults();
   private coordinator: SaveCoordinator | undefined = undefined;
   private docTarget: DocumentSource | undefined = undefined;
   private expectedRevision: FileRevisionContract = { size: 0, contentHash: '' };
@@ -131,10 +136,11 @@ struct EditorPage {
         }
       }
     }, 500);
-    // 自动保存检查（M4-01：防抖由 SaveScheduler 负责，轮询只触发到期保存）
+    // 自动保存检查（M4-01：防抖由 SaveScheduler 负责，轮询只触发到期保存；
+    // autoSave 设置关闭时跳过自动保存，手动保存仍可用——M5-03）
     this.saveTimer = setInterval(() => {
       const c = this.coordinator;
-      if (c === undefined) {
+      if (c === undefined || !this.appSettings.autoSave) {
         return;
       }
       c.tick(Date.now()).then((ran: boolean) => {
@@ -148,6 +154,22 @@ struct EditorPage {
       });
     }, 500);
     this.resolveRouteParams();
+    this.applyAppSettings();
+  }
+
+  /** M5-03：读取持久化设置并应用到编辑器（主题/字号/换行/行号即时生效，不重载文档） */
+  private applyAppSettings(): void {
+    this.settings.load().then((s: AppSettings) => {
+      this.appSettings = s;
+      const dark = s.theme === ThemeMode.DARK;
+      this.runJsValue(`window.__editorApi.setTheme(${dark});`);
+      this.runJsValue(`window.__editorApi.setFontSize(${s.fontSize});`);
+      this.runJsValue(`window.__editorApi.setWrap(${s.wrap});`);
+      this.runJsValue(`window.__editorApi.setLineNumbers(${s.lineNumbers});`);
+      this.append(`[设置] 主题=${s.theme} 字号=${s.fontSize} 换行=${s.wrap} 行号=${s.lineNumbers} 自动保存=${s.autoSave}`);
+    }).catch((e: ESObject) => {
+      this.append(`[设置] 读取失败：${JSON.stringify(e)}`);
+    });
   }
 
   aboutToDisappear(): void {
@@ -395,6 +417,36 @@ struct EditorPage {
     this.append(`[冲突] 副本保存${ran && c.state !== SaveState.ERROR ? '完成' : '失败'} → ${copy.relativePath}`);
   }
 
+  /** M5-02 分享：原始 Markdown → 剪贴板（API 26 Beta SDK 无 ShareKit，R-18 降级通道） */
+  private async share(): Promise<void> {
+    const c = this.coordinator;
+    if (c === undefined) {
+      return;
+    }
+    // dirty 文档分享前先落盘（SDD 9.2：确保最新内容已保存）
+    let saveOk: boolean = true;
+    if (c.state === SaveState.DIRTY || c.state === SaveState.ERROR) {
+      saveOk = await c.saveNow(Date.now());
+    }
+    this.saveLabel = SaveStateMachine.label(c.state);
+    if (c.state === SaveState.CONFLICT) {
+      this.conflictVisible = true;
+    }
+    if (!saveOk || c.state === SaveState.ERROR || c.state === SaveState.CONFLICT) {
+      this.append('[分享] 需要先解决保存状态（失败/冲突），避免分享过期内容');
+      return;
+    }
+    const text = await this.runJsValue('window.__editorApi.getSnapshot();');
+    try {
+      const record = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text);
+      await pasteboard.getSystemPasteboard().setData(record);
+      this.append(`[分享] Markdown 原文已复制（${text.length} 字符），请粘贴到目标应用`);
+    } catch (e) {
+      const err: ESObject = e as ESObject;
+      this.append(`[分享] 复制失败：${JSON.stringify(err)}`);
+    }
+  }
+
   build() {
     Column({ space: 6 }) {
       // 标题栏
@@ -411,6 +463,9 @@ struct EditorPage {
         Text(`长度：${this.docLength}`)
           .fontSize(13)
         Blank()
+        Button('分享')
+          .fontSize(13)
+          .onClick(() => this.share())
         Button('保存')
           .fontSize(13)
           .onClick(() => this.save())

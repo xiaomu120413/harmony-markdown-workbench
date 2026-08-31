@@ -13,6 +13,7 @@ import markdownCommandsTest from './MarkdownCommands.test';
 import findReplaceEngineTest from './FindReplaceEngine.test';
 import headingOutlineTest from './HeadingOutline.test';
 import htmlSafetyTest from './HtmlSafety.test';
+import appSettingsTest from './AppSettings.test';
 
 /**
  * 测试入口（hvigor 单测索引固定引用本文件，业务套件在此聚合注册）。
@@ -51,4 +52,5 @@ export default function listTest(): void {
   findReplaceEngineTest();
   headingOutlineTest();
   htmlSafetyTest();
+  appSettingsTest();
 }

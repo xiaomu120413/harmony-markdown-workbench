@@ -18,7 +18,7 @@ console.log('HMWB_BOOT');
  */
 import { basicSetup } from 'codemirror';
 import { EditorView, keymap } from '@codemirror/view';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { defaultKeymap, historyKeymap, undo, redo } from '@codemirror/commands';
 
@@ -41,8 +41,19 @@ const themeDark = EditorView.theme({
   '.cm-content': { caretColor: '#fff' },
 }, { dark: true });
 
+// M5-03 设置：字号/自动换行/行号以 Compartment 动态切换（reconfigure 不重载文档）
+const fontC = new Compartment();
+const wrapC = new Compartment();
+const gutterHidden = EditorView.theme({
+  '& .cm-gutters': { display: 'none' },
+});
+const gutterShown = EditorView.theme({
+  '& .cm-gutters': { display: 'block' },
+});
+const gutterC = new Compartment();
+
 const myTheme = EditorView.baseTheme({
-  '&': { fontSize: '15px', height: '100%' },
+  '&': { height: '100%' },
   '.cm-scroller': { fontFamily: 'monospace', overflow: 'auto' },
 });
 
@@ -68,6 +79,9 @@ try {
         basicSetup,
         markdown(),
         editExt,
+        fontC.of(EditorView.theme({ '&': { fontSize: '15px' } })),
+        wrapC.of([]),
+        gutterC.of(gutterShown),
       ],
     }),
   });
@@ -174,6 +188,21 @@ window.__editorApi = {
   },
   setTheme(dark) {
     view.dispatch({ effects: dark ? themeDark : [] });
+  },
+  setFontSize(px) {
+    view.dispatch({
+      effects: fontC.reconfigure(EditorView.theme({ '&': { fontSize: px + 'px' } })),
+    });
+  },
+  setWrap(wrap) {
+    view.dispatch({
+      effects: wrapC.reconfigure(wrap ? EditorView.lineWrapping : []),
+    });
+  },
+  setLineNumbers(show) {
+    view.dispatch({
+      effects: gutterC.reconfigure(show ? gutterShown : gutterHidden),
+    });
   },
   find(query) {
     // 尖峰：仅定位高亮首个匹配；正式 FindReplacePanel 属 M3-04。
