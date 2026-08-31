@@ -1,7 +1,7 @@
 # 风险清单
 
 > 依 SDD 17 章与阶段 1 输出要求。概率/影响：高 / 中 / 低。M0-01 实测新增风险编号 R-01 起。
-> 计划：SDD 原风险 | 实测风险。最后更新：2026-08-29（M0-01）。
+> 计划：SDD 原风险 | 实测风险。最后更新：2026-08-31（M0-03 真机矩阵完成）。
 
 ## SDD 已识别风险（转录）
 
@@ -32,5 +32,8 @@
 | R-10 | API 26 Beta（26.0.0.23）`uriPermissionManager` 类型为空，persistPermission 编译期不可调用；模块增强在 ArkTS 下不生效 | 已发生 | 高 | 真机实测重启后 URI 失效（13900001）证实持久化必要性；V0.1 按"临时访问+重新定位"降级交付（ADR-009 草案）；正式 SDK 复核后关闭 | 正式 SDK 发布后 |
 | R-11 | 本机设备（MateBook Pro，OpenHarmony 7.0 华为定制镜像）信任库不含 OpenHarmony Profile CA，第三方调试签名安装被拒（9568329） | ✅ **已解决** | — | 1) 官方 CA 体系签名（sign-local.sh：app/profile 证书由 Application CA 签发，subject 按信任源 DN）；2) Profile CA 补入设备 `trusted_root_ca.json`（/system overlay 可写）；3) profile 含 validity；4) deliveryWithInstall=false。**真机安装成功并运行** | 已闭环（2026-08-29） |
 | R-12 | 本镜像文件选择器（filemanager picker）UI 自动化"打开"按钮事件注入不生效（真实用户手动操作正常——有成功选择记录）；"最近"索引不收录新 push 文件 | 确定 | 低 | 自动化验证受限项如实标注；人工/标准镜像复测；选择器打开与选中已验证 | M0-02 复核 |
-| R-13 | 设备重启后进入锁屏（需用户密码），`aa start` 报 10106102；无命令行解锁途径 | 发生中 | 中 | M0-03 剩余 UI 必测项待设备解锁后执行（步骤见 editor-runtime.md 第 2 节）；不阻塞纯逻辑/单测/构建类工作 | 用户解锁后 |
+
 | R-14 | 锁屏显示方案不可行：`setShowOnLockScreen` 为 FA 模型废弃接口（deprecated since 9），指向的 `WindowStage#setShowOnLockScreen` 在 API 26 Beta 无类型声明 | 确认 | 低 | 放弃该路径；锁屏解除仅能由用户输入密码（安全机制） | 已闭环 |
+| R-16 | jsProxy 回调线程中组件方法 `this` 失效（onBridgeMessage 内 this.append 为 undefined）导致应用崩溃（Jscrash TypeError: undefined is not callable） | ✅ **已修复** | — | 桥→UI 采用模块级消息队列 + UI 定时器 flush 模式；真机重测全部通过 | 已闭环（2026-08-31） |
+| R-15 | 模拟器 ArkWeb（HarmonyOS 6.1.1 镜像）执行 CM bundle（0.20 与 6.x、minify 与 unminify 均实测）导致应用进程崩溃（613KB padding 稳定）；**真机 OpenHarmony 7.0 上同一 bundle 完全正常——R-15 仅限模拟器镜像环境** | ✅ 已闭环 | — | 真机验证通过（2026-08-31）；模拟器环境记录为镜像 ArkWeb 缺陷 | 已闭环（2026-08-31） |
+| R-13 | 设备重启后进入锁屏（需用户密码），`aa start` 报 10106102；无命令行解锁途径 | ✅ **已解除** | — | 用户解锁后 M0-03 全矩阵已通过 | 已闭环（2026-08-31） |

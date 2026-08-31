@@ -27,6 +27,13 @@ struct HomePage {
         .onClick(() => {
           router.pushUrl({ url: 'pages/SpikeUriPage' });
         })
+      // 临时入口：M0-03 尖峰验证页（M2 正式编辑器页替换）
+      Button('M0-03 尖峰：编辑器')
+        .fontSize(14)
+        .margin({ top: 8 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SpikeEditorPage' });
+        })
     }
     .width('100%')
     .height('100%')
