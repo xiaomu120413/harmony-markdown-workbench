@@ -48,6 +48,13 @@ struct HomePage {
         .onClick(() => {
           router.pushUrl({ url: 'pages/SpikeContractPage' });
         })
+      // 临时入口：M1-02 元数据与最近文件验证页
+      Button('M1-02 尖峰：元数据')
+        .fontSize(14)
+        .margin({ top: 8 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SpikeMetadataPage' });
+        })
     }
     .width('100%')
     .height('100%')
