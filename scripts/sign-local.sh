@@ -35,7 +35,7 @@ BUNDLE_NAME="${4:-com.markdownworkbench.app}"
 TOOLCHAINS='C:/Program Files/Huawei/DevEco Studio/sdk/default/openharmony/toolchains'
 HAP_SIGN_TOOL="${TOOLCHAINS}/lib/hap-sign-tool.jar"
 OH_P12="${TOOLCHAINS}/lib/OpenHarmony.p12"
-OH_P12_PASS='123456'
+: "${OH_P12_PASS:=123456}"  # OpenHarmony 官方模板默认密码（仅本地开发；可通过环境变量覆盖）
 
 KEYSTORE="${BASE_DIR}/hmwb-local.p12"
 KEY_ALIAS='hmwb-local'        # app 密钥
