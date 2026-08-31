@@ -486,8 +486,8 @@ struct EditorPage {
 
   build() {
     Column({ space: 6 }) {
-      // 标题栏
-      Row({ space: 8 }) {
+      // 标题栏（M6-01：Flex wrap 保证窄窗/自由窗口下分享/保存按钮不被挤出）
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Button('返回')
           .fontSize(13)
           .onClick(() => this.goBack())
@@ -499,7 +499,6 @@ struct EditorPage {
           .fontSize(13)
         Text(`长度：${this.docLength}`)
           .fontSize(13)
-        Blank()
         Button('分享')
           .fontSize(13)
           .onClick(() => this.share())
@@ -509,15 +508,16 @@ struct EditorPage {
       }
       .width('100%')
 
-      // 快捷栏（FR-EDIT-002 命令子集）
-      Row({ space: 6 }) {
+      // 快捷栏（FR-EDIT-002 命令子集；M6-01：wrap 换行替代固定 Row，窄窗全部可达）
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         Button('加粗').fontSize(12).onClick(() => this.applyCommand('bold'))
         Button('斜体').fontSize(12).onClick(() => this.applyCommand('italic'))
         Button('删除线').fontSize(12).onClick(() => this.applyCommand('strike'))
         Button('行内码').fontSize(12).onClick(() => this.applyCommand('inlineCode'))
         Button('链接').fontSize(12).onClick(() => this.applyCommand('link'))
       }
-      Row({ space: 6 }) {
+      .width('100%')
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
         Button('·列表').fontSize(12).onClick(() => this.applyCommand('ul'))
         Button('1.列表').fontSize(12).onClick(() => this.applyCommand('ol'))
         Button('任务').fontSize(12).onClick(() => this.applyCommand('task'))
@@ -538,9 +538,9 @@ struct EditorPage {
       }
       .width('100%')
 
-      // 冲突条（M4-03：外部修改检测后停止自动保存，等待用户决策）
+      // 冲突条（M4-03：外部修改检测后停止自动保存，等待用户决策；wrap 防溢出）
       if (this.conflictVisible) {
-        Row({ space: 8 }) {
+        Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
           Text('⚠ 磁盘版本已变化（自动保存已停止）')
             .fontSize(12)
             .fontColor('#B00020')

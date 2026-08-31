@@ -90,23 +90,21 @@ struct HomePage {
         .fontSize(22)
         .fontWeight(FontWeight.Bold)
 
-      Row({ space: 8 }) {
-      Row({ space: 8 }) {
-        Button('新建文档')
-          .fontSize(13)
-          .onClick(() => this.goEditor())
-        Button('打开文件')
-          .fontSize(13)
-          .onClick(() => this.goEditor())
-        Button('刷新')
-          .fontSize(13)
-          .onClick(() => this.refresh())
-      }
-      .layoutWeight(1)
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+      Button('新建文档')
+        .fontSize(13)
+        .onClick(() => this.goEditor())
+      Button('打开文件')
+        .fontSize(13)
+        .onClick(() => this.goEditor())
+      Button('刷新')
+        .fontSize(13)
+        .onClick(() => this.refresh())
       Button('设置')
         .fontSize(13)
         .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
     }
+    .width('100%')
 
       Text('最近文件')
         .fontSize(15)
@@ -149,13 +147,11 @@ struct HomePage {
         .fontSize(12)
         .fontColor('#666666')
 
-      Row({ space: 6 }) {
+      Flex({ wrap: FlexWrap.Wrap }) {
         Button('URI').fontSize(11).onClick(() => { router.pushUrl({ url: 'pages/SpikeUriPage' }); })
         Button('保存').fontSize(11).onClick(() => { router.pushUrl({ url: 'pages/SpikeSavePage' }); })
         Button('元数据').fontSize(11).onClick(() => { router.pushUrl({ url: 'pages/SpikeMetadataPage' }); })
         Button('资料库').fontSize(11).onClick(() => { router.pushUrl({ url: 'pages/SpikeLibraryPage' }); })
-      }
-      Row({ space: 6 }) {
         Button('预览').fontSize(11).onClick(() => { router.pushUrl({ url: 'pages/SpikePreviewPage' }); })
         Button('编辑器').fontSize(11).onClick(() => { router.pushUrl({ url: 'pages/SpikeEditorPage' }); })
         Button('契约').fontSize(11).onClick(() => { router.pushUrl({ url: 'pages/SpikeContractPage' }); })
