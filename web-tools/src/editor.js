@@ -20,7 +20,7 @@ import { basicSetup } from 'codemirror';
 import { EditorView, keymap } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
-import { defaultKeymap, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, historyKeymap, undo, redo } from '@codemirror/commands';
 
 // ---- 原生侧注入的桥对象（SpikeEditorPage 通过 JavaScriptProxy 注入）----
 function notify(type, payload) {
@@ -84,6 +84,54 @@ window.__editorApi = {
       len: cm ? cm.innerText.length : -1,
       head: cm ? cm.innerText.split('\n')[0] : '',
     });
+  },
+  insertChinese() {
+    const head = view.state.selection.main.head;
+    view.dispatch({ changes: { from: head, insert: '你好，鸿蒙Markdown工作台！中文输入测试。' } });
+    view.focus();
+    return view.state.doc.toString().length;
+  },
+  loadLarge(sizeKB) {
+    const total = sizeKB * 1024;
+    const lines = [
+      '# 长文性能测试',
+      '',
+      '这是一段用于验证长文档性能的中文内容。CodeMirror 6 运行于 ArkWeb。列表项：',
+      '- 项目一',
+      '- 项目二',
+      '',
+      '| a | b |',
+      '|---|---|',
+      '| 1 | 2 |',
+      '',
+      '```ts',
+      'const x = 1;',
+      '```',
+    ];
+    const chunk = lines.join('\n') + '\n';
+    let big = '';
+    while (big.length < total) {
+      big += chunk;
+    }
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: big } });
+    return view.state.doc.length;
+  },
+  undo() {
+    undo(view);
+    return view.state.doc.toString().length;
+  },
+  redo() {
+    redo(view);
+    return view.state.doc.toString().length;
+  },
+  copySelection() {
+    const sel = view.state.selection.main;
+    return view.state.doc.sliceString(sel.from, sel.to);
+  },
+  pasteText(text) {
+    view.dispatch({ changes: { from: view.state.selection.main.head, insert: text } });
+    view.focus();
+    return view.state.doc.toString().length;
   },
   setTheme(dark) {
     view.dispatch({ effects: dark ? themeDark : [] });

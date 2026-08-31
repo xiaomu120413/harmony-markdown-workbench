@@ -24,7 +24,22 @@
 | CM6.x 运行 | ❌ **进程崩溃（R-15）**：613KB CM6.x bundle 使 ArkWeb 进程崩溃；613KB padding 与 CM0.20（2.2MB）均不崩 → 内容相关性 |
 | CM 版本排障 | 0.20.x pre-release 与 6.x 混用导致 "Unrecognized extension value"；已统一 6.x（basic-setup 404 → codemirror 包） |
 
-## 3. 待验证矩阵（真机解锁后执行）
+## 3. 真机矩阵结果（2026-08-31 全项通过，OpenHarmony 7.0.0.28 / CM6.x）
+
+| 必测项 | 结果 | 证据 |
+|---|---|---|
+| 诊断/快照 | ✅ | `err=none;api=ok`；getSnapshot 往返完整内容 |
+| 中文输入（insertChinese 注入 + 快照） | ✅ | 插入返回 24；快照返回完整中文；编辑器渲染可见 |
+| 1MB 长文 | ✅ | 文档长度 1,048,625；加载无崩溃、快照正常 |
+| 5MB 长文 | ✅ | 文档长度 5,243,000；应用稳定（pid 保持） |
+| 剪贴板/撤销/重做 | ✅ | `paste=10>undo=0>redo=10`（长度链证明） |
+| 前后台切换 | ✅ | HOME 切换后快照内容保持 `"PASTE-MARK"` |
+| ArkWeb 进程异常恢复 | ✅ | jsProxy 桥回调 `this` 失效致崩溃 → 队列+UI flush 模式修复（R-16） |
+
+**结论**：CM6.x + ArkWeb 在真机（OpenHarmony 7.0）完整可用；桥与编辑器链路成立（ADR-001 建议接受）。
+真实 IME 拼音组合输入（键盘注入中文）需系统输入法人工环节，列为 M2-03 补充验证。
+
+## 4. 待验证矩阵（后续）
 
 | 必测项（SDD M0-03） | 验证方式 | 状态 |
 |---|---|---|

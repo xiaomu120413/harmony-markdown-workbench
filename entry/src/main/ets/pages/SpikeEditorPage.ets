@@ -5,12 +5,14 @@ import { promptAction, router } from '@kit.ArkUI';
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-SPIKE-EDITOR';
 
-// 模块级桥接回调（ArkWeb javaScriptProxy 要求普通函数，不能捕获组件 this）
-let bridgeHandler: ((type: string, payload: string) => void) | undefined = undefined;
+// 模块级桥接缓存（ArkWeb javaScriptProxy 回调运行在桥线程，
+// 不能直接操作组件 this——实测 onBridgeMessage 中 this.append 为 undefined 致崩溃）。
+// 消息先入队，由页面定时器在 UI 线程 flush 到日志（M0-03 排障结论）。
+let pendingBridgeMessages: Array<string> = [];
 
 function nativeBridgeSend(type: string, payload: string): void {
-  if (bridgeHandler !== undefined) {
-    bridgeHandler(type, payload);
+  if (type === 'snapshot' || type === 'diag' || type === 'ready') {
+    pendingBridgeMessages.push(`${type}:${payload}`);
   }
 }
 
@@ -57,14 +59,28 @@ struct SpikeEditorPage {
     hilog.info(DOMAIN, TAG, '%{public}s', line);
   }
 
+  private flushTimer: number = -1;
+
   aboutToAppear(): void {
-    bridgeHandler = (type: string, payload: string): void => {
-      this.onBridgeMessage(type, payload);
-    };
+    this.flushTimer = setInterval(() => {
+      // UI 线程 flush：将桥消息写入日志（代码在页面首个用例如 spike page 内有效）
+      const drained = pendingBridgeMessages.slice();
+      pendingBridgeMessages = [];
+      for (let i = 0; i < drained.length; i++) {
+        const msg = drained[i];
+        const split = msg.indexOf(':');
+        if (split > 0) {
+          this.onBridgeMessage(msg.substring(0, split), msg.substring(split + 1));
+        }
+      }
+    }, 400);
   }
 
   aboutToDisappear(): void {
-    bridgeHandler = undefined;
+    if (this.flushTimer >= 0) {
+      clearInterval(this.flushTimer);
+      this.flushTimer = -1;
+    }
   }
 
   private runJs(script: string): void {
@@ -127,17 +143,58 @@ struct SpikeEditorPage {
             this.runJs(`window.__editorApi.setTheme(${this.themeDark});`);
             this.append(`主题切换: ${this.themeDark ? 'dark' : 'light'}`);
           })
+        Button('诊断')
+          .fontSize(13)
+          .onClick(() => {
+            // M0-03 诊断：验证 CodeMirror 状态与文档长度（返回值方式）
+            // M0-03 综合矩阵：粘贴→撤销→重做（用长度变化验证剪贴板/历史功能）
+            this.runJs("(function(){var v=window.__editorApi;if(!v)return 'api=miss';var b=v.getSnapshot().length;var p=v.pasteText('PASTE-MARK');var u=v.undo();var r=v.redo();return 'len='+b+'>paste='+p+'>undo='+u+'>redo='+r;})();");
+          })
+      }
+      .width('100%')
+
+      Row({ space: 8 }) {
+        Button('中文')
+          .fontSize(13)
+          .onClick(() => {
+            this.runJs('window.__editorApi.insertChinese();');
+          })
+        Button('长文1M')
+          .fontSize(13)
+          .onClick(() => {
+            this.runJs('window.__editorApi.loadLarge(1024);');
+          })
+        Button('长文5M')
+          .fontSize(13)
+          .onClick(() => {
+            this.runJs('window.__editorApi.loadLarge(5120);');
+          })
         Button('返回测')
           .fontSize(13)
           .onClick(() => {
             this.runJs('"hello-return"');
           })
-        Button('诊断')
+        Button('撤销')
           .fontSize(13)
           .onClick(() => {
-            // M0-03 诊断：验证 CodeMirror 状态与文档长度（返回值方式）
-            this.runJs("(function(){var e=document.getElementById('js-err');var v=window.__editorApi;return 'err='+(e?e.textContent:'none')+';api='+(v?'ok':'miss');})();");
+            this.runJs('window.__editorApi.undo();');
           })
+        Button('重做')
+          .fontSize(13)
+          .onClick(() => {
+            this.runJs('window.__editorApi.redo();');
+          })
+        Button('复制')
+          .fontSize(13)
+          .onClick(() => {
+            this.runJs('window.__editorApi.copySelection();');
+          })
+        Button('粘贴')
+          .fontSize(13)
+          .onClick(() => {
+            this.runJs("window.__editorApi.pasteText('[粘贴内容]');");
+          })
+        Blank()
       }
       .width('100%')
 

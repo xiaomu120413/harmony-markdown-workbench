@@ -30443,6 +30443,7 @@
       init_dist2();
       init_dist();
       init_dist19();
+      init_dist6();
       window.addEventListener("error", function(e) {
         try {
           var d = document.createElement("div");
@@ -30509,6 +30510,54 @@
             len: cm ? cm.innerText.length : -1,
             head: cm ? cm.innerText.split("\n")[0] : ""
           });
+        },
+        insertChinese() {
+          const head = view.state.selection.main.head;
+          view.dispatch({ changes: { from: head, insert: "\u4F60\u597D\uFF0C\u9E3F\u8499Markdown\u5DE5\u4F5C\u53F0\uFF01\u4E2D\u6587\u8F93\u5165\u6D4B\u8BD5\u3002" } });
+          view.focus();
+          return view.state.doc.toString().length;
+        },
+        loadLarge(sizeKB) {
+          const total = sizeKB * 1024;
+          const lines = [
+            "# \u957F\u6587\u6027\u80FD\u6D4B\u8BD5",
+            "",
+            "\u8FD9\u662F\u4E00\u6BB5\u7528\u4E8E\u9A8C\u8BC1\u957F\u6587\u6863\u6027\u80FD\u7684\u4E2D\u6587\u5185\u5BB9\u3002CodeMirror 6 \u8FD0\u884C\u4E8E ArkWeb\u3002\u5217\u8868\u9879\uFF1A",
+            "- \u9879\u76EE\u4E00",
+            "- \u9879\u76EE\u4E8C",
+            "",
+            "| a | b |",
+            "|---|---|",
+            "| 1 | 2 |",
+            "",
+            "```ts",
+            "const x = 1;",
+            "```"
+          ];
+          const chunk = lines.join("\n") + "\n";
+          let big = "";
+          while (big.length < total) {
+            big += chunk;
+          }
+          view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: big } });
+          return view.state.doc.length;
+        },
+        undo() {
+          undo(view);
+          return view.state.doc.toString().length;
+        },
+        redo() {
+          redo(view);
+          return view.state.doc.toString().length;
+        },
+        copySelection() {
+          const sel = view.state.selection.main;
+          return view.state.doc.sliceString(sel.from, sel.to);
+        },
+        pasteText(text) {
+          view.dispatch({ changes: { from: view.state.selection.main.head, insert: text } });
+          view.focus();
+          return view.state.doc.toString().length;
         },
         setTheme(dark) {
           view.dispatch({ effects: dark ? themeDark : [] });
