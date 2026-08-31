@@ -8,6 +8,7 @@
     "pages/SpikeMetadataPage",
     "pages/SpikeLibraryPage",
     "pages/EditorPage",
+    "pages/RecoveryPage",
     "pages/SpikePreviewPage"
   ]
 }

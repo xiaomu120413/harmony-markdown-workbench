@@ -4,23 +4,27 @@ import { router } from '@kit.ArkUI';
 import { RecentFileList, RecentEntry } from '../domain/document/RecentFileList';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
+import { DraftStore } from '../infrastructure/metadata/DraftStore';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-HOME';
 
 /**
- * M5-01 正式首页：最近文件 + 固定文件 + 资料库入口。
- * 数据：MetadataStore（preferences）持久化最近列表；资料库文件由 InternalFileSource 枚举。
+ * M5-01 正式首页：最近文件 + 固定文件 + 资料库入口 + 崩溃恢复入口（M4-04）。
+ * 数据：MetadataStore（preferences）持久化最近列表；资料库文件由 InternalFileSource 枚举；
+ * 恢复入口由 DraftStore 检查点数量驱动。
  */
 @Entry
 @Component
 struct HomePage {
   @State recent: RecentEntry[] = [];
   @State libraryFiles: string[] = [];
+  @State draftCount: number = 0;
   @State log: string = '';
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private meta: MetadataStore = new MetadataStore(getContext(this) as common.UIAbilityContext);
   private fileSource: InternalFileSource = new InternalFileSource(getContext(this) as common.UIAbilityContext);
+  private draftStore: DraftStore = new DraftStore(getContext(this) as common.UIAbilityContext);
 
   private append(line: string): void {
     this.log = `${line}\n---\n${this.log}`;
@@ -29,6 +33,23 @@ struct HomePage {
 
   async aboutToAppear(): Promise<void> {
     await this.refresh();
+    await this.refreshRecovery();
+  }
+
+  /** M4-04 恢复入口：存在未处理检查点时提示（含损坏草稿的保守处理——整目录由用户决定） */
+  private async refreshRecovery(): Promise<void> {
+    try {
+      this.draftCount = this.draftStore.listAll().length;
+    } catch (e) {
+      this.draftCount = 0;
+    }
+    if (this.draftCount > 0) {
+      this.append(`[恢复] ${this.draftCount} 个检查点（保存/强杀后未落盘内容）`);
+    }
+  }
+
+  private goRecovery(): void {
+    router.pushUrl({ url: 'pages/RecoveryPage' });
   }
 
   private async refresh(): Promise<void> {
@@ -73,6 +94,13 @@ struct HomePage {
       Text('最近文件')
         .fontSize(15)
         .fontWeight(FontWeight.Medium)
+
+      if (this.draftCount > 0) {
+        Button(`找回未保存内容（${this.draftCount}）`)
+          .fontSize(13)
+          .backgroundColor('#B26A00')
+          .onClick(() => this.goRecovery())
+      }
 
       List({ space: 4 }) {
         ForEach(this.recent, (item: RecentEntry) => {

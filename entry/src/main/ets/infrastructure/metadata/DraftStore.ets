@@ -91,4 +91,63 @@ export class DraftStore {
       // 不存在即视为已清理
     }
   }
+
+  /** 枚举全部检查点（M4-04 恢复入口；损坏草稿返回唯一幸存字段以隔离展示） */
+  listAll(): Array<RecoveryDraft> {
+    const out: Array<RecoveryDraft> = [];
+    let names: string[] = [];
+    try {
+      names = fs.listFileSync(this.draftsDir);
+    } catch (e) {
+      return out;
+    }
+    for (let i = 0; i < names.length; i++) {
+      const n = names[i];
+      if (!n.endsWith('.json')) {
+        continue;
+      }
+      const id = n.substring(0, n.length - 5);
+      const draft = this.loadByHash(id);
+      if (draft !== undefined) {
+        out.push(draft);
+      }
+    }
+    return out;
+  }
+
+  private loadByHash(hash: string): RecoveryDraft | undefined {
+    const path = `${this.draftsDir}/${hash}.json`;
+    let raw: string = '';
+    try {
+      const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
+      const stat = fs.statSync(file.fd);
+      const buf = new ArrayBuffer(stat.size);
+      const len = fs.readSync(file.fd, buf);
+      fs.closeSync(file.fd);
+      const decoder = util.TextDecoder.create('utf-8');
+      raw = len > 0 ? decoder.decodeToString(new Uint8Array(buf).slice(0, len)) : '';
+    } catch (e) {
+      return undefined;
+    }
+    if (raw.length === 0) {
+      return undefined;
+    }
+    try {
+      let obj: ESObject = JSON.parse(raw);
+      const draft: RecoveryDraft = {
+        documentId: obj.documentId as string,
+        sourceFingerprint: obj.sourceFingerprint as string,
+        baseRevision: {
+          size: (obj.baseRevision as ESObject).size as number,
+          contentHash: (obj.baseRevision as ESObject).contentHash as string,
+        },
+        content: obj.content as string,
+        updatedAt: obj.updatedAt as number,
+        appVersion: obj.appVersion as string,
+      };
+      return draft;
+    } catch (e) {
+      return undefined;
+    }
+  }
 }
