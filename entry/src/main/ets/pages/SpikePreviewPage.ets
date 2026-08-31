@@ -58,15 +58,47 @@ struct SpikePreviewPage {
   }
 
   private renderMd(text: string): void {
+    const t0 = Date.now();
     this.controller.runJavaScript(
       `window.__previewApi.render(${JSON.stringify(text)});`,
       (err, result) => {
+        const dt = Date.now() - t0;
         if (err) {
-          this.append(`渲染失败：${JSON.stringify(err)}`);
+          this.append(`渲染失败（${dt}ms）：${JSON.stringify(err)}`);
           return;
         }
-        this.append(`渲染完成（${String(result).substring(0, 60)}）`);
+        this.append(`渲染完成（${dt}ms，${String(result).substring(0, 60)}）`);
       });
+  }
+
+  /** M6-02 样本构造：S2 = 1MB（500 标题 + 100 代码块）；S4 = 100 张本地图片引用 */
+  private static buildS2(): string {
+    let big = '';
+    for (let i = 0; i < 500; i++) {
+      big += `## 标题 ${i}\n\n段落 ${i} 的正文内容，包含 **加粗** 与 \`行内码\`。\n\n`;
+    }
+    for (let i = 0; i < 100; i++) {
+      big += `\`\`\`ts\nconst v${i} = ${i};\n\`\`\`\n\n`;
+    }
+    return big;
+  }
+
+  private static buildS4(): string {
+    let md = '# 图片文档\n\n';
+    for (let i = 0; i < 100; i++) {
+      md += `![图片 ${i}](file:///data/local/tmp/img-${i}.png)\n\n`;
+    }
+    return md;
+  }
+
+  /** ⑤ S2 样本渲染（1MB：首次预览性能基线） */
+  renderS2(): void {
+    this.renderMd(SpikePreviewPage.buildS2());
+  }
+
+  /** ⑥ S4 样本渲染（100 本地图引用：不崩溃） */
+  renderS4(): void {
+    this.renderMd(SpikePreviewPage.buildS4());
   }
 
   /** ① 渲染 GFM 示例 */
@@ -106,7 +138,7 @@ struct SpikePreviewPage {
 
   build() {
     Column({ space: 6 }) {
-      Row({ space: 6 }) {
+      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Button('返回')
           .fontSize(13)
           .onClick(() => router.back())
@@ -122,6 +154,12 @@ struct SpikePreviewPage {
         Button('④ 查找')
           .fontSize(13)
           .onClick(() => this.find())
+        Button('⑤ S2 渲染')
+          .fontSize(13)
+          .onClick(() => this.renderS2())
+        Button('⑥ S4 渲染')
+          .fontSize(13)
+          .onClick(() => this.renderS4())
       }
       .width('100%')
 

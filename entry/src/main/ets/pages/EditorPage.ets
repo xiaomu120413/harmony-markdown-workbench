@@ -91,6 +91,7 @@ struct EditorPage {
   private docTarget: DocumentSource | undefined = undefined;
   private expectedRevision: FileRevisionContract = { size: 0, contentHash: '' };
   private pendingLoad: string = '';
+  private pendingLoadAt: number = 0;
   private webReady: boolean = false;
   private flushTimer: number = -1;
   private saveTimer: number = -1;
@@ -209,12 +210,15 @@ struct EditorPage {
     }
   }
 
-  /** 打开已有文档：读内容（Web 就绪后注入），基线 revision 用于冲突检测 */
+  /** 打开已有文档：读内容（Web 就绪后注入），基线 revision 用于冲突检测；
+   * t0 记录请求时刻用于 M6-02 打开性能样本。 */
   private loadOpenedDoc(target: DocumentSource): void {
+    const t0 = Date.now();
     const src: DocumentFileAdapter = target.kind === 'internal' ? this.internal : this.external;
     src.read(target).then((r) => {
       this.expectedRevision = r.revision;
       this.pendingLoad = r.content;
+      this.pendingLoadAt = t0;
       this.trackRecent(target);
       if (this.webReady) {
         this.flushPendingLoad();
@@ -242,10 +246,12 @@ struct EditorPage {
   private flushPendingLoad(): void {
     const md = this.pendingLoad;
     this.pendingLoad = '';
+    const t0 = this.pendingLoadAt;
     const js = `window.__editorApi.loadDocument(${JSON.stringify(md)});`;
     this.runJsValue(js).then(() => {
       this.docLength = md.length;
-      this.append(`[打开] 文档 ${md.length} 字符`);
+      const dt = t0 > 0 ? Date.now() - t0 : -1;
+      this.append(`[打开] 文档 ${md.length} 字符（打开至可编辑 ${dt}ms）`);
     });
   }
 

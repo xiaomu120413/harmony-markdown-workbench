@@ -123,8 +123,9 @@ export class InternalFileSource implements DocumentFileAdapter {
   /** 枚举资料库文档（M5-01：排除回收站与隐藏项）。路径：filesDir/library/ */
   listLibrary(): string[] {
     const names: string[] = [];
+    const libDir = `${this.baseDir}/library`;
     try {
-      const all = fs.listFileSync(this.baseDir);
+      const all = fs.listFileSync(libDir);
       for (let i = 0; i < all.length; i++) {
         const n = all[i];
         if (!n.startsWith('.') && n !== '.trash') {

@@ -20,6 +20,7 @@ struct HomePage {
   @State recent: RecentEntry[] = [];
   @State libraryFiles: string[] = [];
   @State draftCount: number = 0;
+  @State pickingFile: boolean = false;
   @State log: string = '';
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private meta: MetadataStore = new MetadataStore(getContext(this) as common.UIAbilityContext);
@@ -84,6 +85,13 @@ struct HomePage {
     router.pushUrl({ url: 'pages/EditorPage', params: params });
   }
 
+  /** M5-01「打开文件」正式入口：枚举资料库选择（无外部 picker 依赖，V0.1 内部库） */
+  private openLibraryFile(): void {
+    this.refreshLibrary().then(() => {
+      this.pickingFile = true;
+    });
+  }
+
   build() {
     Column({ space: 8 }) {
       Text('Markdown Workbench')
@@ -96,7 +104,7 @@ struct HomePage {
         .onClick(() => this.goEditor())
       Button('打开文件')
         .fontSize(13)
-        .onClick(() => this.goEditor())
+        .onClick(() => this.openLibraryFile())
       Button('刷新')
         .fontSize(13)
         .onClick(() => this.refresh())
@@ -109,6 +117,44 @@ struct HomePage {
       Text('最近文件')
         .fontSize(15)
         .fontWeight(FontWeight.Medium)
+
+      // M5-01 打开文件：资料库文件选择（内联列表，空态提示）
+      if (this.pickingFile) {
+        Column({ space: 4 }) {
+          Text('选择资料库文档')
+            .fontSize(13)
+            .fontWeight(FontWeight.Medium)
+          if (this.libraryFiles.length === 0) {
+            Text('资料库为空。新建文档保存后，正文会存入应用私有目录（本机离线可用）。')
+              .fontSize(12)
+              .fontColor('#99000000')
+          }
+          Scroll() {
+            Column({ space: 2 }) {
+              ForEach(this.libraryFiles, (name: string) => {
+                Text(`📄 ${name}`)
+                  .fontSize(13)
+                  .width('100%')
+                  .padding(4)
+                  .onClick(() => {
+                    this.pickingFile = false;
+                    this.goEditorWith(name);
+                  })
+              }, (name: string) => name)
+            }
+            .width('100%')
+          }
+          .height(150)
+          .width('100%')
+          Button('取消')
+            .fontSize(12)
+            .onClick(() => { this.pickingFile = false; })
+        }
+        .width('100%')
+        .padding(8)
+        .backgroundColor('#F5F5F5')
+        .borderRadius(6)
+      }
 
       if (this.draftCount > 0) {
         Button(`找回未保存内容（${this.draftCount}）`)

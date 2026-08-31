@@ -99,6 +99,23 @@ struct SpikeEditorPage {
     }
   }
 
+  /** M6-02 计时执行：记录请求到回调完成毫秒数（打开/大文档注入性能样本） */
+  private runJsTimed(script: string, label: string): void {
+    const t0 = Date.now();
+    try {
+      this.controller.runJavaScript(script, (err, result) => {
+        const dt = Date.now() - t0;
+        if (err) {
+          this.append(`[计时] ${label} 失败（${dt}ms）：${JSON.stringify(err)}`);
+          return;
+        }
+        this.append(`[计时] ${label} 完成（${dt}ms），结果=${String(result).substring(0, 80)}`);
+      });
+    } catch (e) {
+      this.append(`[计时] ${label} 异常：${JSON.stringify(e)}`);
+    }
+  }
+
   private onBridgeMessage(type: string, payload: string): void {
     // Web → 原生事件（M2-02 将协议版本化）
     // runJavaScript 直接返回值在本环境不可靠（返回 null），
@@ -159,15 +176,20 @@ struct SpikeEditorPage {
           .onClick(() => {
             this.runJs('window.__editorApi.insertChinese();');
           })
+        Button('长文10K')
+          .fontSize(13)
+          .onClick(() => {
+            this.runJsTimed('window.__editorApi.loadLarge(10);', 'S1 10KB 注入');
+          })
         Button('长文1M')
           .fontSize(13)
           .onClick(() => {
-            this.runJs('window.__editorApi.loadLarge(1024);');
+            this.runJsTimed('window.__editorApi.loadLarge(1024);', 'S2 1MB 注入');
           })
         Button('长文5M')
           .fontSize(13)
           .onClick(() => {
-            this.runJs('window.__editorApi.loadLarge(5120);');
+            this.runJsTimed('window.__editorApi.loadLarge(5120);', 'S3 5MB 注入');
           })
         Button('返回测')
           .fontSize(13)
