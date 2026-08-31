@@ -37,7 +37,7 @@ export default function htmlSafetyTest(): void {
 
     it('object_and_embed_detected', 0, () => {
       const r = HtmlSafety.inspect('<object data="x"></object><embed src="y">');
-      expect(r.issues.filter((i) => i.kind === 'dangerous_tag').length).assertGreaterThan(0);
+      expect(r.issues.filter((i) => i.kind === 'dangerous_tag').length > 0).assertTrue();
     });
 
     it('css_expression_detected', 0, () => {
@@ -48,7 +48,7 @@ export default function htmlSafetyTest(): void {
     it('multiple_issues_aggregated', 0, () => {
       const r = HtmlSafety.inspect('<script>x</script><a onclick="y">');
       expect(r.safe).assertFalse();
-      expect(r.issues.length).assertGreaterThanOrEqual(2);
+      expect(r.issues.length >= 2).assertTrue();
     });
   });
 }

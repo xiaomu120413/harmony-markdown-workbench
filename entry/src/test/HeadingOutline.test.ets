@@ -55,10 +55,4 @@ export default function headingOutlineTest(): void {
       expect(items[0].text).assertEqual('padded');
     });
   });
-
-  // 类型引用（避免未使用导入告警）
-  function ref(): void {
-    const o: OutlineItem = { level: 1, text: '', id: '', line: 0 };
-    void o;
-  }
 }

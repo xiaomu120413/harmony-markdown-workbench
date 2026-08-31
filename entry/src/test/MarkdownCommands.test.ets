@@ -41,7 +41,8 @@ export default function markdownCommandsTest(): void {
     });
 
     it('ol_multi_line_numbered', 0, () => {
-      const r = MarkdownCommands.apply('a\nb\nc', { from: 0, to: 5 }, 'ol');
+      // 选区仅覆盖前两行（0..3），第三行保留 → 只前两行编号
+      const r = MarkdownCommands.apply('a\nb\nc', { from: 0, to: 3 }, 'ol');
       expect(r.text).assertEqual('1. a\n2. b\nc');
     });
 

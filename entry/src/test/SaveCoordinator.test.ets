@@ -9,6 +9,7 @@ class MemDeps implements SaveCoordinatorDeps {
   persisted: number = 0;
   checkpoints: number = 0;
   failNext: boolean = false;
+  conflictNext: boolean = false;
 
   async getSnapshot(): Promise<string> {
     return this.content;
@@ -20,11 +21,16 @@ class MemDeps implements SaveCoordinatorDeps {
   }
 
   async persist(content: string): Promise<WriteDocumentResult> {
-    this.content = content;
+    if (this.conflictNext) {
+      this.conflictNext = false;
+      // 模拟 revision 冲突：不落盘（磁盘内容保持原值）
+      return { ok: false, reason: 'conflict', message: 'simulated revision mismatch' };
+    }
     if (this.failNext) {
       this.failNext = false;
       return { ok: false, reason: 'io', message: 'simulated io failure' };
     }
+    this.content = content;
     this.persisted++;
     return { ok: true, revision: { size: content.length, contentHash: 'h' + content.length } };
   }
@@ -42,7 +48,7 @@ export default function saveCoordinatorTest(): void {
       expect(c.pending).assertTrue();
     });
 
-    it('tick_before_due_does_nothing', async () => {
+    it('tick_before_due_does_nothing', 0, async () => {
       const deps = new MemDeps();
       const c = new SaveCoordinator(deps);
       c.onEdit(0);
@@ -51,7 +57,7 @@ export default function saveCoordinatorTest(): void {
       expect(deps.persisted).assertEqual(0);
     });
 
-    it('tick_after_due_saves_and_clean', async () => {
+    it('tick_after_due_saves_and_clean', 0, async () => {
       const deps = new MemDeps();
       const c = new SaveCoordinator(deps);
       c.onEdit(0);
@@ -63,7 +69,7 @@ export default function saveCoordinatorTest(): void {
       expect(c.state).assertEqual(SaveState.CLEAN);
     });
 
-    it('save_failure_goes_error_retryable', async () => {
+    it('save_failure_goes_error_retryable', 0, async () => {
       const deps = new MemDeps();
       const c = new SaveCoordinator(deps);
       c.onEdit(0);
@@ -76,7 +82,7 @@ export default function saveCoordinatorTest(): void {
       expect(c.state).assertEqual(SaveState.CLEAN);
     });
 
-    it('external_change_conflict_and_autosave_stops', async () => {
+    it('external_change_conflict_and_autosave_stops', 0, async () => {
       const deps = new MemDeps();
       const c = new SaveCoordinator(deps);
       c.onEdit(0);
@@ -87,7 +93,7 @@ export default function saveCoordinatorTest(): void {
       expect(deps.persisted).assertEqual(0);
     });
 
-    it('conflict_decisions', async () => {
+    it('conflict_decisions', 0, async () => {
       const deps = new MemDeps();
       const c = new SaveCoordinator(deps);
       c.onEdit(0);
@@ -101,7 +107,7 @@ export default function saveCoordinatorTest(): void {
       expect(c.state).assertEqual(SaveState.DIRTY);
     });
 
-    it('save_now_forces_save', async () => {
+    it('save_now_forces_save', 0, async () => {
       const deps = new MemDeps();
       const c = new SaveCoordinator(deps);
       c.onEdit(100);
@@ -109,6 +115,21 @@ export default function saveCoordinatorTest(): void {
       await c.saveNow(200);
       expect(deps.persisted).assertEqual(1);
       expect(c.state).assertEqual(SaveState.CLEAN);
+    });
+
+    it('persist_conflict_enters_conflict_keeps_content', 0, async () => {
+      const deps = new MemDeps();
+      deps.content = 'mine';
+      const c = new SaveCoordinator(deps);
+      c.onEdit(0);
+      deps.conflictNext = true;
+      await c.tick(1600);
+      expect(c.state).assertEqual(SaveState.CONFLICT);
+      expect(deps.content).assertEqual('mine'); // 冲突时磁盘内容未被覆盖
+      // 冲突状态下自动保存停止
+      const ran = await c.tick(3000);
+      expect(ran).assertFalse();
+      expect(deps.persisted).assertEqual(0);
     });
   });
 }

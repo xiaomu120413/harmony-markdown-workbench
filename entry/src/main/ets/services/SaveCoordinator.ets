@@ -1,6 +1,6 @@
 import { SaveStateMachine, SaveState } from '../domain/recovery/SaveStateMachine';
 import { SaveScheduler } from '../domain/recovery/SaveScheduler';
-import { FileRevisionContract, WriteDocumentResult } from '../domain/document/DocumentFileAdapter';
+import { WriteDocumentResult, WriteFailResult } from '../domain/document/DocumentFileAdapter';
 
 /**
  * SaveCoordinator（M4-01，FR-SAVE-001/002/003 编排）。
@@ -17,8 +17,6 @@ export interface SaveCoordinatorDeps {
   persist(content: string): Promise<WriteDocumentResult>;
   saveCheckpoint(content: string): Promise<void>;
 }
-
-const EMPTY_REV: FileRevisionContract = { size: 0, contentHash: '' };
 
 export class SaveCoordinator {
   private readonly sm: SaveStateMachine;
@@ -69,40 +67,48 @@ export class SaveCoordinator {
     if (due === undefined || now < due) {
       return false;
     }
-    await this.runSave(now);
-    return true;
+    return this.runSave(now);
   }
 
   /** 立即保存（手动 Ctrl+S / 分享前） */
   async saveNow(now: number): Promise<boolean> {
-    await this.runSave(now);
-    this.sched.onSaveStarted(now);
-    return true;
+    return this.runSave(now);
   }
 
-  private async runSave(now: number): Promise<void> {
+  private async runSave(now: number): Promise<boolean> {
+    // 状态判定：DIRTY 进入 SAVING 后写；ERROR 直接重试（retry 已转移为 SAVING）；
+    // 其余（CLEAN/CONFLICT/SAVING）不写
     if (this.sm.state === SaveState.ERROR) {
       this.sm.retry();
+    } else {
+      if (this.sm.state !== SaveState.DIRTY) {
+        this.sched.onSaveStarted(now);
+        return false;
+      }
+      this.sm.beginSave();
     }
-    if (this.sm.state !== SaveState.DIRTY) {
-      this.sched.onSaveStarted(now);
-      return;
-    }
-    this.sm.beginSave();
     try {
       const content = await this.deps.getSnapshot();
       // 草稿检查点先落盘（FR-SAVE-003：写失败保留草稿）
       await this.deps.saveCheckpoint(content);
       const result = await this.deps.persist(content);
-      if ((result as { ok: boolean }).ok) {
+      if (result.ok) {
         this.sm.saveSuccess();
-      } else {
-        this.sm.saveFailure();
+        this.sched.onSaveStarted(now);
+        return true;
       }
+      if ((result as WriteFailResult).reason === 'conflict') {
+        // 外部已修改磁盘（FR-FILE-004）：进入 CONFLICT，自动保存停止（M4-03 用户决策）
+        this.sm.externalChange();
+        this.sched.onSaveStarted(now);
+        return true;
+      }
+      // 保存失败：保留待保存（pending），后续 tick 自动重试（ERROR 可 retry）
+      this.sm.saveFailure();
+      return true;
     } catch (e) {
       this.sm.saveFailure();
+      return true;
     }
-    this.sched.onSaveStarted(now);
-    void EMPTY_REV;
   }
 }

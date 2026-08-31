@@ -46,14 +46,16 @@ export default function findReplaceEngineTest(): void {
     });
 
     it('replace_current_next_match', 0, () => {
+      // 从 from 起（含）的第一个匹配被替换；光标落在替换文本之后
       const r = FindReplaceEngine.replaceCurrent('a a a', 'a', 'x', 2, ci);
       expect(r.text).assertEqual('a x a');
-      expect(r.newCursor).assertEqual(4);
+      expect(r.newCursor).assertEqual(3);
       expect(r.replaced).assertTrue();
     });
 
     it('replace_current_wraps_around', 0, () => {
-      const r = FindReplaceEngine.replaceCurrent('a a a', 'a', 'x', 4, ci);
+      // from 越过末尾（5 = 文本长度）→ 无"含起点"匹配 → 回绕替换第一个匹配
+      const r = FindReplaceEngine.replaceCurrent('a a a', 'a', 'x', 5, ci);
       expect(r.text).assertEqual('x a a');
       expect(r.replaced).assertTrue();
     });

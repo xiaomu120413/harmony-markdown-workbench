@@ -46,6 +46,18 @@ const myTheme = EditorView.baseTheme({
   '.cm-scroller': { fontFamily: 'monospace', overflow: 'auto' },
 });
 
+// ---- 编辑事件（M4-01 自动保存）：用户输入 → native 'edit'（程序化 setDocument/loadDocument 抑制）----
+let suppressEdit = false;
+const editExt = EditorView.updateListener.of(function (u) {
+  if (suppressEdit) {
+    suppressEdit = false;
+    return;
+  }
+  if (u.docChanged) {
+    notify('edit', { len: u.state.doc.length });
+  }
+});
+
 let view = null;
 try {
   view = new EditorView({
@@ -55,6 +67,7 @@ try {
       extensions: [
         basicSetup,
         markdown(),
+        editExt,
       ],
     }),
   });
@@ -66,6 +79,7 @@ try {
 // ---- 原生 → Web 命令入口（经 runJavaScript 调用）----
 window.__editorApi = {
   loadDocument(text) {
+    suppressEdit = true;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
     document.title = 'CM:len=' + view.state.doc.length + ':head=' + view.state.doc.toString().split('\n')[0];
     notify('dirtyChanged', { dirty: false });
@@ -152,6 +166,7 @@ window.__editorApi = {
     return { before: before, after: after };
   },
   setDocument(text, cursorFrom, cursorTo) {
+    suppressEdit = true;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
     view.dispatch({ selection: { anchor: cursorFrom, head: cursorTo } });
     view.focus();
