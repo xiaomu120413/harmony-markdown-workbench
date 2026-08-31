@@ -14,6 +14,7 @@ import { DraftStore } from '../infrastructure/metadata/DraftStore';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { RecentFileList } from '../domain/document/RecentFileList';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
+import { AppTheme } from '../common/AppTheme';
 import { AppSettings, SettingsValidator, ThemeMode } from '../domain/settings/AppSettings';
 
 const DOMAIN: number = 0x0000;
@@ -490,51 +491,79 @@ struct EditorPage {
     }
   }
 
+  /** 快捷栏统一按钮样式（图标化，浅底圆角） */
+  @Builder
+  toolBtn(label: string, cmd: MarkdownCommandName) {
+    Button(label)
+      .fontSize(15)
+      .fontColor(AppTheme.TEXT)
+      .backgroundColor(AppTheme.TOOLBAR_BG)
+      .borderRadius(8)
+      .width(46)
+      .height(38)
+      .onClick(() => this.applyCommand(cmd))
+  }
+
   build() {
-    Column({ space: 6 }) {
-      // 标题栏（M6-01：Flex wrap 保证窄窗/自由窗口下分享/保存按钮不被挤出）
+    Column({ space: 8 }) {
+      // 标题栏（M6-01：wrap 保证窄窗/自由窗口下按钮不被挤出）
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        Button('返回')
-          .fontSize(13)
-          .borderRadius(8)
+        Button('‹')
+          .fontSize(22)
+          .fontColor(AppTheme.TEXT)
+          .backgroundColor(AppTheme.TOOLBAR_BG)
+          .borderRadius(10)
+          .width(40)
+          .height(40)
           .onClick(() => this.goBack())
         Text(this.docTitle)
-          .fontSize(14)
+          .fontSize(15)
           .fontWeight(FontWeight.Medium)
-          .constraintSize({ maxWidth: 180 })
+          .fontColor(AppTheme.TEXT)
+          .constraintSize({ maxWidth: 200 })
         Text(this.saveLabel)
           .fontSize(12)
-          .padding({ left: 6, right: 6, top: 2, bottom: 2 })
-          .fontColor(this.saveLabel === '已保存' ? '#1B6E20' : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? '#B00020' : '#B28704'))
-          .backgroundColor(this.saveLabel === '已保存' ? '#E8F5E9' : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? '#FDECEA' : '#FFF8E1'))
-          .borderRadius(6)
+          .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+          .fontColor(this.saveLabel === '已保存' ? AppTheme.OK : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? AppTheme.DANGER : AppTheme.AMBER))
+          .backgroundColor(this.saveLabel === '已保存' ? AppTheme.OK_SOFT : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? AppTheme.DANGER_SOFT : AppTheme.AMBER_SOFT))
+          .borderRadius(8)
         Button('分享')
           .fontSize(13)
+          .backgroundColor(AppTheme.TOOLBAR_BG)
+          .fontColor(AppTheme.TEXT)
           .borderRadius(8)
           .onClick(() => this.share())
         Button('保存')
           .fontSize(13)
+          .fontColor(AppTheme.ON_PRIMARY)
+          .backgroundColor(AppTheme.PRIMARY)
           .borderRadius(8)
           .onClick(() => this.save())
       }
       .width('100%')
 
-      // 快捷栏（FR-EDIT-002 命令子集；M6-01：wrap 换行替代固定 Row，窄窗全部可达）
+      // 快捷栏（图标化；FR-EDIT-002 命令子集；wrap 防溢出）
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        Button('加粗').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('bold'))
-        Button('斜体').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('italic'))
-        Button('删除线').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('strike'))
-        Button('行内码').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('inlineCode'))
-        Button('链接').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('link'))
+        this.toolBtn('B', 'bold')
+        this.toolBtn('I', 'italic')
+        this.toolBtn('S̶', 'strike')
+        this.toolBtn('`', 'inlineCode')
+        this.toolBtn('🔗', 'link')
       }
       .width('100%')
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        Button('·列表').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('ul'))
-        Button('1.列表').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('ol'))
-        Button('任务').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('task'))
-        Button('引用').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('quote'))
-        Button('代码块').fontSize(13).borderRadius(8).onClick(() => this.applyCommand('codeBlock'))
-        Button('示例').fontSize(13).borderRadius(8).onClick(() => {
+        this.toolBtn('•', 'ul')
+        this.toolBtn('1.', 'ol')
+        this.toolBtn('☑', 'task')
+        this.toolBtn('❝', 'quote')
+        this.toolBtn('{}', 'codeBlock')
+        Button('✎ 示例')
+          .fontSize(13)
+          .fontColor(AppTheme.TEXT)
+          .backgroundColor(AppTheme.TOOLBAR_BG)
+          .borderRadius(8)
+          .height(38)
+          .onClick(() => {
           const md = '# 正式编辑器\n\n**M2** 快捷栏命令测试：\n\n- 列表 A\n\n> 引用\n';
           const js = `window.__editorApi.setDocument(${JSON.stringify(md)}, 0, 0);`;
           this.runJsValue(js).then(() => {
@@ -549,50 +578,55 @@ struct EditorPage {
       }
       .width('100%')
 
-      // 冲突条（M4-03：外部修改检测后停止自动保存，等待用户决策；wrap 防溢出）
+      // 冲突条（M4-03；wrap 防溢出）
       if (this.conflictVisible) {
         Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
           Text('⚠ 磁盘版本已变化（自动保存已停止）')
             .fontSize(12)
-            .fontColor('#B00020')
-          Button('用磁盘版')
-            .fontSize(12)
-            .onClick(() => this.conflictKeepDisk())
-          Button('保留本地')
-            .fontSize(12)
-            .onClick(() => this.conflictKeepLocal())
-          Button('另存副本')
-            .fontSize(12)
-            .onClick(() => this.conflictSaveCopy())
+            .fontColor(AppTheme.DANGER)
+          Button('用磁盘版').fontSize(12).fontColor(AppTheme.TEXT).backgroundColor(AppTheme.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictKeepDisk())
+          Button('保留本地').fontSize(12).fontColor(AppTheme.TEXT).backgroundColor(AppTheme.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictKeepLocal())
+          Button('另存副本').fontSize(12).fontColor(AppTheme.TEXT).backgroundColor(AppTheme.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictSaveCopy())
         }
         .width('100%')
-        .padding(4)
-        .backgroundColor('#FFF3E0')
+        .padding(6)
+        .backgroundColor(AppTheme.DANGER_SOFT)
+        .borderRadius(8)
       }
 
-      Web({ src: $rawfile('web/editor.html'), controller: this.controller })
-        .javaScriptAccess(true)
-        .javaScriptProxy({
-          object: { send: editorBridgeSend },
-          name: '__nativeBridge',
-          methodList: ['send'],
-          controller: this.controller,
-        })
-        .onPageEnd(() => {
-          this.webReady = true;
-          if (this.pendingLoad.length > 0 || this.docTarget !== undefined) {
-            this.flushPendingLoad();
-          }
-          this.append('编辑器就绪');
-        })
-        .onErrorReceive((event) => {
-          this.append(`页面错误：${JSON.stringify(event.request)}`);
-        })
-        .layoutWeight(1)
-        .width('100%')
+      // 编辑器容器（卡片式）
+      Column() {
+        Web({ src: $rawfile('web/editor.html'), controller: this.controller })
+          .javaScriptAccess(true)
+          .javaScriptProxy({
+            object: { send: editorBridgeSend },
+            name: '__nativeBridge',
+            methodList: ['send'],
+            controller: this.controller,
+          })
+          .onPageEnd(() => {
+            this.webReady = true;
+            if (this.pendingLoad.length > 0 || this.docTarget !== undefined) {
+              this.flushPendingLoad();
+            }
+            this.append('编辑器就绪');
+          })
+          .onErrorReceive((event) => {
+            this.append(`页面错误：${JSON.stringify(event.request)}`);
+          })
+          .layoutWeight(1)
+          .width('100%')
+      }
+      .layoutWeight(1)
+      .width('100%')
+      .backgroundColor(AppTheme.CARD)
+      .borderRadius(12)
+      .border({ width: 1, color: AppTheme.DIVIDER })
+      .clip(true)
     }
-    .padding(8)
+    .padding(12)
     .width('100%')
     .height('100%')
+    .backgroundColor(AppTheme.BG)
   }
 }

@@ -4,6 +4,7 @@ import { router } from '@kit.ArkUI';
 import { AppSettings, SettingsValidator, ThemeMode, DefaultView } from '../domain/settings/AppSettings';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
+import { AppTheme } from '../common/AppTheme';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-SETTINGS';
@@ -68,11 +69,15 @@ struct SettingsPage {
           .fontSize(13)
           .onClick(() => router.back())
         Text('设置')
-          .fontSize(18)
+          .fontSize(20)
           .fontWeight(FontWeight.Bold)
+          .fontColor(AppTheme.TEXT)
         Blank()
         Button('保存')
           .fontSize(13)
+          .fontColor(AppTheme.ON_PRIMARY)
+          .backgroundColor(AppTheme.PRIMARY)
+          .borderRadius(8)
           .onClick(() => this.persist())
       }
       .width('100%')
@@ -82,10 +87,10 @@ struct SettingsPage {
           Text('主题').fontSize(14)
           Row({ space: 8 }) {
             Button('浅色').fontSize(13)
-              .backgroundColor(this.themeMode === ThemeMode.LIGHT ? '#B28704' : '#33000000')
+              .backgroundColor(this.themeMode === ThemeMode.LIGHT ? AppTheme.PRIMARY : '#33000000')
               .onClick(() => { this.themeMode = ThemeMode.LIGHT; })
             Button('深色').fontSize(13)
-              .backgroundColor(this.themeMode === ThemeMode.DARK ? '#B28704' : '#33000000')
+              .backgroundColor(this.themeMode === ThemeMode.DARK ? AppTheme.PRIMARY : '#33000000')
               .onClick(() => { this.themeMode = ThemeMode.DARK; })
           }
 
@@ -123,13 +128,13 @@ struct SettingsPage {
           Text('默认视图').fontSize(14)
           Row({ space: 8 }) {
             Button('编辑').fontSize(13)
-              .backgroundColor(this.defaultView === DefaultView.EDIT ? '#B28704' : '#33000000')
+              .backgroundColor(this.defaultView === DefaultView.EDIT ? AppTheme.PRIMARY : '#33000000')
               .onClick(() => { this.defaultView = DefaultView.EDIT; })
             Button('预览').fontSize(13)
-              .backgroundColor(this.defaultView === DefaultView.PREVIEW ? '#B28704' : '#33000000')
+              .backgroundColor(this.defaultView === DefaultView.PREVIEW ? AppTheme.PRIMARY : '#33000000')
               .onClick(() => { this.defaultView = DefaultView.PREVIEW; })
             Button('分屏').fontSize(13)
-              .backgroundColor(this.defaultView === DefaultView.SPLIT ? '#B28704' : '#33000000')
+              .backgroundColor(this.defaultView === DefaultView.SPLIT ? AppTheme.PRIMARY : '#33000000')
               .onClick(() => { this.defaultView = DefaultView.SPLIT; })
           }
 
@@ -152,8 +157,9 @@ struct SettingsPage {
       .layoutWeight(1)
       .width('100%')
     }
-    .padding(12)
+    .padding(16)
     .width('100%')
     .height('100%')
+    .backgroundColor(AppTheme.BG)
   }
 }

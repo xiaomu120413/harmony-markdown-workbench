@@ -9,6 +9,7 @@ import { DraftDecisionEvaluator, RecoveryDecision, RecoveryDraft } from '../doma
 import { FileRevisionContract, InternalSource, WriteFailResult } from '../domain/document/DocumentFileAdapter';
 import { FileRevision } from '../domain/document/FileRevision';
 import { HashUtil } from '../domain/document/HashUtil';
+import { AppTheme } from '../common/AppTheme';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-RECOVERY';
@@ -208,7 +209,7 @@ struct RecoveryPage {
 
               Text(row.decisionName)
                 .fontSize(11)
-                .fontColor(row.decision === RecoveryDecision.CONFLICT ? '#B00020' : '#1B6E20')
+                .fontColor(row.decision === RecoveryDecision.CONFLICT ? AppTheme.DANGER : AppTheme.OK)
 
               Text(row.draft.content.substring(0, 100).replace(/\n/g, '⏎'))
                 .fontSize(11)
@@ -230,9 +231,10 @@ struct RecoveryPage {
               }
               .width('100%')
             }
-            .padding(8)
-            .backgroundColor('#FFF8E1')
-            .borderRadius(6)
+            .padding(10)
+            .backgroundColor(AppTheme.CARD)
+            .borderRadius(10)
+            .border({ width: 1, color: AppTheme.DIVIDER })
             .width('100%')
           }
         }, (row: DraftRow) => row.draft.documentId)
@@ -246,8 +248,9 @@ struct RecoveryPage {
         .maxLines(3)
         .width('100%')
     }
-    .padding(12)
+    .padding(16)
     .width('100%')
     .height('100%')
+    .backgroundColor(AppTheme.BG)
   }
 }

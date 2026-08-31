@@ -5,14 +5,15 @@ import { RecentFileList, RecentEntry } from '../domain/document/RecentFileList';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
+import { AppTheme } from '../common/AppTheme';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-HOME';
 
 /**
- * M5-01 正式首页（产品化）：最近文件 + 资料库 + 崩溃恢复入口。
- * 多端：MediaQuery 宽屏（≥840vp，平板横屏/PC 自由窗口）双栏，手机竖屏单栏。
- * 日志仅写入 hilog，不再占用界面（调试痕迹移出）。
+ * 正式首页（产品化）：品牌顶栏 + 主操作卡片 + 最近列表（卡片行）。
+ * 多端：宽屏（≥840vp）双栏（最近 | 资料库/恢复），手机竖屏单栏。
+ * 日志仅 hilog；无调试痕迹。
  */
 @Entry
 @Component
@@ -40,6 +41,7 @@ struct HomePage {
     this.isWide = this.media.matches;
     this.refresh();
     this.refreshRecovery();
+    this.refreshLibrary();
   }
 
   aboutToDisappear(): void {
@@ -49,16 +51,16 @@ struct HomePage {
     }
   }
 
-  /** 页面每次显示（含从编辑器返回）时刷新最近列表与恢复入口 */
+  /** 页面每次显示（含从编辑器返回）时刷新 */
   onPageShow(): void {
     if (this.media !== undefined) {
       this.isWide = this.media.matches;
     }
     this.refresh();
     this.refreshRecovery();
+    this.refreshLibrary();
   }
 
-  /** M4-04 恢复入口：存在未处理检查点时提示 */
   private async refreshRecovery(): Promise<void> {
     try {
       this.draftCount = this.draftStore.listAll().length;
@@ -114,48 +116,106 @@ struct HomePage {
     return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
   }
 
-  /** 最近列表（单栏/双栏共用） */
+  /** 主操作卡片（新建/打开） */
+  @Builder
+  actionCards() {
+    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+      Column({ space: 6 }) {
+        Text('＋')
+          .fontSize(26)
+          .fontColor(AppTheme.ON_PRIMARY)
+        Text('新建文档')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(AppTheme.ON_PRIMARY)
+        Text('空白 Markdown，自动保存')
+          .fontSize(11)
+          .fontColor('#D9E6FF')
+      }
+      .width(150)
+      .height(110)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(AppTheme.PRIMARY)
+      .borderRadius(14)
+      .onClick(() => this.goEditor())
+
+      Column({ space: 6 }) {
+        Text('📂')
+          .fontSize(24)
+        Text('打开文件')
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+        Text('从资料库选择文档')
+          .fontSize(11)
+          .fontColor(AppTheme.TEXT_SUB)
+      }
+      .width(150)
+      .height(110)
+      .justifyContent(FlexAlign.Center)
+      .backgroundColor(AppTheme.CARD)
+      .borderRadius(14)
+      .border({ width: 1, color: AppTheme.DIVIDER })
+      .onClick(() => this.openLibraryFile())
+    }
+    .width('100%')
+  }
+
+  /** 最近文件列表（卡片行） */
   @Builder
   recentPanel() {
-    Column({ space: 6 }) {
-      Text('最近文件')
-        .fontSize(15)
-        .fontWeight(FontWeight.Medium)
+    Column({ space: 8 }) {
+      Row() {
+        Text('最近')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+        Blank()
+        if (this.recent.length > 0) {
+          Text(`查看全部 · ${this.recent.length}`)
+            .fontSize(12)
+            .fontColor(AppTheme.TEXT_SUB)
+        }
+      }
+      .width('100%')
 
       if (this.recent.length === 0) {
-        Column({ space: 4 }) {
+        Column({ space: 6 }) {
           Text('还没有打开过文档')
-            .fontSize(13)
-            .fontColor('#99000000')
-          Text('新建文档或打开文件后，最近使用的文档会显示在这里。正文保存在应用私有目录，完全离线可用。')
+            .fontSize(14)
+            .fontColor(AppTheme.TEXT_SUB)
+          Text('点击「新建文档」开始写作，正文保存在应用私有目录，完全离线可用。')
             .fontSize(12)
-            .fontColor('#B0B0B0')
+            .fontColor(AppTheme.TEXT_FAINT)
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
+        .padding(16)
+        .backgroundColor(AppTheme.CARD)
+        .borderRadius(12)
       }
 
-      List({ space: 6 }) {
+      List({ space: 8 }) {
         ForEach(this.recent, (item: RecentEntry) => {
           ListItem() {
-            Row({ space: 10 }) {
+            Row({ space: 12 }) {
               Text(item.pinned ? '📌' : '📄')
-                .fontSize(15)
-              Column({ space: 2 }) {
+                .fontSize(16)
+              Column({ space: 3 }) {
                 Text(item.documentId)
                   .fontSize(14)
                   .fontWeight(FontWeight.Medium)
+                  .fontColor(AppTheme.TEXT)
                 Text(this.fmtTime(item.lastOpenedAt))
                   .fontSize(11)
-                  .fontColor('#99000000')
+                  .fontColor(AppTheme.TEXT_SUB)
               }
               .alignItems(HorizontalAlign.Start)
               .layoutWeight(1)
             }
-            .padding({ left: 12, right: 12, top: 10, bottom: 10 })
+            .padding({ left: 14, right: 14, top: 12, bottom: 12 })
             .width('100%')
-            .backgroundColor('#F7F7F7')
-            .borderRadius(10)
+            .backgroundColor(AppTheme.CARD)
+            .borderRadius(12)
+            .shadow(AppTheme.SHADOW)
             .onClick(() => this.goEditorWith(item.documentId))
           }
         }, (item: RecentEntry) => item.documentId)
@@ -168,6 +228,7 @@ struct HomePage {
     .height('100%')
   }
 
+  /** 资料库/恢复侧栏（宽屏右列；窄屏置于列表下方） */
   @Builder
   sidePanel() {
     Column({ space: 10 }) {
@@ -176,42 +237,32 @@ struct HomePage {
         .fontWeight(FontWeight.Medium)
 
       if (this.libraryFiles.length === 0) {
-        Text('保存的文档会出现在资料库中')
+        Text('保存的文档会出现在这里')
           .fontSize(12)
-          .fontColor('#B0B0B0')
-      } else {
-        List({ space: 4 }) {
-          ForEach(this.libraryFiles, (name: string) => {
-            ListItem() {
-              Text(`📄 ${name}`)
-                .fontSize(13)
-                .padding(6)
-                .width('100%')
-                .onClick(() => this.goEditorWith(name))
-            }
-          }, (name: string) => name)
-        }
-        .height(180)
-        .width('100%')
-        .scrollBar(BarState.Off)
+          .fontColor(AppTheme.TEXT_FAINT)
       }
 
       if (this.draftCount > 0) {
         Button(`找回未保存内容（${this.draftCount}）`)
           .fontSize(13)
-          .backgroundColor('#B26A00')
+          .backgroundColor(AppTheme.AMBER)
+          .borderRadius(8)
           .onClick(() => this.goRecovery())
       }
 
-      Text('完全离线 · 应用私有目录存储')
+      Divider().color(AppTheme.DIVIDER)
+
+      Text('完全离线\n正文仅存于应用私有目录，不联网、不上传。')
         .fontSize(11)
-        .fontColor('#B0B0B0')
+        .fontColor(AppTheme.TEXT_SUB)
+        .lineHeight(17)
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(12)
-    .backgroundColor('#FBFBFB')
+    .padding(14)
+    .backgroundColor(AppTheme.CARD)
     .borderRadius(12)
+    .border({ width: 1, color: AppTheme.DIVIDER })
   }
 
   build() {
@@ -219,38 +270,22 @@ struct HomePage {
       // 顶栏
       Row() {
         Text('Markdown 工作台')
-          .fontSize(22)
+          .fontSize(20)
           .fontWeight(FontWeight.Bold)
+          .fontColor(AppTheme.TEXT)
         Blank()
-        Button('设置')
+        Button('⚙ 设置')
           .fontSize(13)
+          .backgroundColor(AppTheme.TOOLBAR_BG)
+          .fontColor(AppTheme.TEXT)
           .borderRadius(8)
           .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
       }
       .width('100%')
 
-      // 主操作
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        Button('＋ 新建文档')
-          .fontSize(14)
-          .fontWeight(FontWeight.Medium)
-          .borderRadius(8)
-          .onClick(() => this.goEditor())
-        Button('打开文件')
-          .fontSize(14)
-          .borderRadius(8)
-          .onClick(() => this.openLibraryFile())
-        Button('刷新')
-          .fontSize(13)
-          .borderRadius(8)
-          .backgroundColor('#33000000')
-          .onClick(() => {
-            this.refresh();
-            this.refreshLibrary();
-          })
-      }
-      .width('100%')
+      this.actionCards()
 
+      // 打开文件选择面板
       if (this.pickingFile) {
         Column({ space: 4 }) {
           Text(`选择资料库文档（${this.libraryFiles.length}）`)
@@ -262,7 +297,7 @@ struct HomePage {
                 Text(`📄 ${name}`)
                   .fontSize(13)
                   .width('100%')
-                  .padding(6)
+                  .padding(8)
                   .onClick(() => {
                     this.pickingFile = false;
                     this.goEditorWith(name);
@@ -280,11 +315,11 @@ struct HomePage {
         }
         .width('100%')
         .padding(10)
-        .backgroundColor('#F5F5F5')
+        .backgroundColor(AppTheme.TOOLBAR_BG)
         .borderRadius(10)
       }
 
-      // 多端布局：宽屏（平板横屏/PC 自由窗口）双栏，手机竖屏单栏
+      // 多端布局：宽屏双栏（最近 | 资料库），手机竖屏单栏
       if (this.isWide) {
         Row({ space: 12 }) {
           Column() {
@@ -302,16 +337,16 @@ struct HomePage {
       } else {
         Column({ space: 10 }) {
           this.recentPanel()
-          Divider()
           this.sidePanel()
         }
         .width('100%')
         .layoutWeight(1)
       }
     }
-    .padding(16)
+    .padding(20)
     .width('100%')
     .height('100%')
+    .backgroundColor(AppTheme.BG)
     .alignItems(HorizontalAlign.Start)
   }
 }
