@@ -55,6 +55,13 @@ struct HomePage {
         .onClick(() => {
           router.pushUrl({ url: 'pages/SpikeMetadataPage' });
         })
+      // 临时入口：M1-03 内部资料库验证页
+      Button('M1-03 尖峰：资料库')
+        .fontSize(14)
+        .margin({ top: 8 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SpikeLibraryPage' });
+        })
     }
     .width('100%')
     .height('100%')
