@@ -2,6 +2,7 @@
   "src": [
     "pages/HomePage",
     "pages/SpikeUriPage",
-    "pages/SpikeEditorPage"
+    "pages/SpikeEditorPage",
+    "pages/SpikeSavePage"
   ]
 }

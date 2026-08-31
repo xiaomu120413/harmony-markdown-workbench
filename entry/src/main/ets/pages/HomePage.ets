@@ -34,6 +34,13 @@ struct HomePage {
         .onClick(() => {
           router.pushUrl({ url: 'pages/SpikeEditorPage' });
         })
+      // 临时入口：M0-04 尖峰验证页（M4 正式实现替换）
+      Button('M0-04 尖峰：保存恢复')
+        .fontSize(14)
+        .margin({ top: 8 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SpikeSavePage' });
+        })
     }
     .width('100%')
     .height('100%')
