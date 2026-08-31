@@ -9,15 +9,23 @@ const fs = require('fs');
 
 const outDir = path.resolve(__dirname, '../entry/src/main/resources/rawfile/web');
 
-esbuild.buildSync({
-  entryPoints: [path.resolve(__dirname, 'src/editor.js')],
-  bundle: true,
-  format: 'iife',
-  minify: false,
-  target: ['chrome80'],
-  outfile: path.join(outDir, 'editor.bundle.js'),
-  logLevel: 'info',
-});
+/** 多入口打包：editor（编辑运行时）+ preview（预览渲染） */
+const entries = [
+  { src: 'src/editor.js', out: 'editor.bundle.js' },
+  { src: 'src/preview.js', out: 'preview.bundle.js' },
+];
+
+for (const e of entries) {
+  esbuild.buildSync({
+    entryPoints: [path.resolve(__dirname, e.src)],
+    bundle: true,
+    format: 'iife',
+    minify: true,
+    target: ['chrome80'],
+    outfile: path.join(outDir, e.out),
+    logLevel: 'info',
+  });
+}
 
 const html = `<!DOCTYPE html>
 <html lang="zh-CN">

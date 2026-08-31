@@ -69,6 +69,13 @@ struct HomePage {
         .onClick(() => {
           router.pushUrl({ url: 'pages/EditorPage' });
         })
+      // 临时入口：M3 预览验证页
+      Button('M3-01 尖峰：预览')
+        .fontSize(14)
+        .margin({ top: 8 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/SpikePreviewPage' });
+        })
     }
     .width('100%')
     .height('100%')
