@@ -6,6 +6,7 @@
     "pages/SpikeSavePage",
     "pages/SpikeContractPage",
     "pages/SpikeMetadataPage",
-    "pages/SpikeLibraryPage"
+    "pages/SpikeLibraryPage",
+    "pages/EditorPage"
   ]
 }

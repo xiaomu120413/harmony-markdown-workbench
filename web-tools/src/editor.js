@@ -133,6 +133,30 @@ window.__editorApi = {
     view.focus();
     return view.state.doc.toString().length;
   },
+  getSelectionRange() {
+    const sel = view.state.selection.main;
+    return { from: sel.from, to: sel.to };
+  },
+  replaceRange(from, to, text) {
+    view.dispatch({ changes: { from: from, to: to, insert: text } });
+    // 光标移到插入内容末尾
+    const pos = from + text.length;
+    view.dispatch({ selection: { anchor: pos, head: pos } });
+    view.focus();
+    return view.state.doc.toString().length;
+  },
+  getCharsAround() {
+    const sel = view.state.selection.main;
+    const before = view.state.doc.sliceString(Math.max(0, sel.from - 30), sel.from);
+    const after = view.state.doc.sliceString(sel.to, sel.to + 30);
+    return { before: before, after: after };
+  },
+  setDocument(text, cursorFrom, cursorTo) {
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+    view.dispatch({ selection: { anchor: cursorFrom, head: cursorTo } });
+    view.focus();
+    return text.length;
+  },
   setTheme(dark) {
     view.dispatch({ effects: dark ? themeDark : [] });
   },

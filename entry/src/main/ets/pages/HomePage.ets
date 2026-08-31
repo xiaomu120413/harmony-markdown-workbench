@@ -62,6 +62,13 @@ struct HomePage {
         .onClick(() => {
           router.pushUrl({ url: 'pages/SpikeLibraryPage' });
         })
+      // M2 正式入口：编辑器（M5 首页替换为正式首页时保留）
+      Button('编辑器（M2）')
+        .fontSize(14)
+        .margin({ top: 8 })
+        .onClick(() => {
+          router.pushUrl({ url: 'pages/EditorPage' });
+        })
     }
     .width('100%')
     .height('100%')
