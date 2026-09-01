@@ -6,7 +6,7 @@ import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
 import { AppTheme } from '../common/AppTheme';
-import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../common/Breakpoints';
+import { Breakpoint, watchBreakpoints, unwatchBreakpoints, bpOf } from '../common/Breakpoints';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-HOME';
@@ -35,6 +35,7 @@ struct HomePage {
   }
 
   aboutToAppear(): void {
+    this.bp = bpOf();
     this.bpListeners = watchBreakpoints((bp: Breakpoint) => {
       this.bp = bp;
     });
@@ -48,8 +49,9 @@ struct HomePage {
     this.bpListeners = [];
   }
 
-  /** 页面每次显示（含从编辑器返回）时刷新 */
+  /** 页面每次显示（含从编辑器返回、自由窗口 resize）时刷新 */
   onPageShow(): void {
+    this.bp = bpOf();
     this.refresh();
     this.refreshRecovery();
     this.refreshLibrary();

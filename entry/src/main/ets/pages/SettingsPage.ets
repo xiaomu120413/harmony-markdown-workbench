@@ -62,6 +62,8 @@ struct SettingsPage {
     this.append('[设置] 已保存（恢复草稿数 ' + this.draftCount + '）');
   }
 
+
+
   build() {
     Stack({ alignContent: Alignment.Top }) {
       Column({ space: 10 }) {
@@ -145,6 +147,8 @@ struct SettingsPage {
           Button('打开恢复页')
             .fontSize(13)
             .onClick(() => router.pushUrl({ url: 'pages/RecoveryPage' }))
+
+
 
           Text(this.log)
             .fontSize(10)
