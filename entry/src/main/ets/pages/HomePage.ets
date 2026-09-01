@@ -112,106 +112,84 @@ struct HomePage {
     return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
   }
 
-  /** 主操作卡片（新建/打开） */
+  /** 主操作行（极简文字按钮，非大卡片） */
   @Builder
   actionCards() {
-    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-      Column({ space: 6 }) {
-        Text('＋')
-          .fontSize(26)
-          .fontColor(AppTheme.ON_PRIMARY)
-        Text('新建文档')
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(AppTheme.ON_PRIMARY)
-        Text('空白 Markdown，自动保存')
-          .fontSize(11)
-          .fontColor('#D9E6FF')
-      }
-      .width(150)
-      .height(110)
-      .justifyContent(FlexAlign.Center)
-      .backgroundColor(AppTheme.PRIMARY)
-      .borderRadius(14)
-      .onClick(() => this.goEditor())
-
-      Column({ space: 6 }) {
-        Text('📂')
-          .fontSize(24)
-        Text('打开文件')
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-        Text('从资料库选择文档')
-          .fontSize(11)
-          .fontColor(AppTheme.TEXT_SUB)
-      }
-      .width(150)
-      .height(110)
-      .justifyContent(FlexAlign.Center)
-      .backgroundColor(AppTheme.CARD)
-      .borderRadius(14)
-      .border({ width: 1, color: AppTheme.DIVIDER })
-      .onClick(() => this.openLibraryFile())
+    Row({ space: 20 }) {
+      Text('＋ 新建文档')
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(AppTheme.PRIMARY)
+        .onClick(() => this.goEditor())
+      Text('打开文件')
+        .fontSize(16)
+        .fontColor(AppTheme.TEXT_SUB)
+        .onClick(() => this.openLibraryFile())
+      Blank()
+      Button('刷新')
+        .fontSize(12)
+        .backgroundColor(AppTheme.TOOLBAR_BG)
+        .fontColor(AppTheme.TEXT_SUB)
+        .borderRadius(6)
+        .height(32)
+        .onClick(() => {
+          this.refresh();
+          this.refreshLibrary();
+        })
     }
     .width('100%')
+    .height(48)
   }
 
-  /** 最近文件列表（卡片行） */
+  /** 最近文件列表（极简线条行，无卡片/阴影） */
   @Builder
   recentPanel() {
-    Column({ space: 8 }) {
+    Column({ space: 0 }) {
       Row() {
         Text('最近')
-          .fontSize(16)
-          .fontWeight(FontWeight.Medium)
+          .fontSize(14)
+          .fontColor(AppTheme.TEXT_SUB)
         Blank()
         if (this.recent.length > 0) {
-          Text(`查看全部 · ${this.recent.length}`)
+          Text(`${this.recent.length} 个文档`)
             .fontSize(12)
-            .fontColor(AppTheme.TEXT_SUB)
+            .fontColor(AppTheme.TEXT_FAINT)
         }
       }
       .width('100%')
+      .height(40)
 
       if (this.recent.length === 0) {
         Column({ space: 6 }) {
           Text('还没有打开过文档')
-            .fontSize(14)
+            .fontSize(15)
             .fontColor(AppTheme.TEXT_SUB)
-          Text('点击「新建文档」开始写作，正文保存在应用私有目录，完全离线可用。')
+          Text('新建文档或打开文件后，最近使用的文档会显示在这里。')
             .fontSize(12)
             .fontColor(AppTheme.TEXT_FAINT)
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
-        .padding(16)
-        .backgroundColor(AppTheme.CARD)
-        .borderRadius(12)
+        .padding({ top: 40, bottom: 40 })
       }
 
-      List({ space: 8 }) {
+      List({ space: 0 }) {
         ForEach(this.recent, (item: RecentEntry) => {
           ListItem() {
-            Row({ space: 12 }) {
-              Text(item.pinned ? '📌' : '📄')
+            Column({ space: 4 }) {
+              Text(item.documentId)
                 .fontSize(16)
-              Column({ space: 3 }) {
-                Text(item.documentId)
-                  .fontSize(14)
-                  .fontWeight(FontWeight.Medium)
-                  .fontColor(AppTheme.TEXT)
-                Text(this.fmtTime(item.lastOpenedAt))
-                  .fontSize(11)
-                  .fontColor(AppTheme.TEXT_SUB)
-              }
-              .alignItems(HorizontalAlign.Start)
-              .layoutWeight(1)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(AppTheme.TEXT)
+                .maxLines(1)
+              Text(this.fmtTime(item.lastOpenedAt))
+                .fontSize(11)
+                .fontColor(AppTheme.TEXT_FAINT)
             }
-            .padding({ left: 14, right: 14, top: 12, bottom: 12 })
+            .alignItems(HorizontalAlign.Start)
             .width('100%')
-            .backgroundColor(AppTheme.CARD)
-            .borderRadius(12)
-            .shadow(AppTheme.SHADOW)
+            .padding({ top: 16, bottom: 16, left: 0, right: 0 })
+            .border({ width: { bottom: 1 }, color: AppTheme.DIVIDER })
             .onClick(() => this.goEditorWith(item.documentId))
           }
         }, (item: RecentEntry) => item.documentId)
@@ -224,41 +202,37 @@ struct HomePage {
     .height('100%')
   }
 
-  /** 资料库/恢复侧栏（宽屏右列；窄屏置于列表下方） */
+  /** 资料库/恢复侧栏（极简） */
   @Builder
   sidePanel() {
-    Column({ space: 10 }) {
-      Text(`资料库 · ${this.libraryFiles.length} 个文档`)
+    Column({ space: 12 }) {
+      Text(`资料库`)
         .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-
-      if (this.libraryFiles.length === 0) {
-        Text('保存的文档会出现在这里')
-          .fontSize(12)
-          .fontColor(AppTheme.TEXT_FAINT)
-      }
+        .fontColor(AppTheme.TEXT_SUB)
+      Text(`${this.libraryFiles.length} 个文档`)
+        .fontSize(28)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(AppTheme.TEXT)
 
       if (this.draftCount > 0) {
-        Button(`找回未保存内容（${this.draftCount}）`)
+        Text(`找回未保存内容（${this.draftCount}）`)
           .fontSize(13)
-          .backgroundColor(AppTheme.AMBER)
-          .borderRadius(8)
+          .fontColor(AppTheme.AMBER)
           .onClick(() => this.goRecovery())
       }
 
-      Divider().color(AppTheme.DIVIDER)
+      Divider().color(AppTheme.DIVIDER).margin({ top: 8, bottom: 8 })
 
-      Text('完全离线\n正文仅存于应用私有目录，不联网、不上传。')
-        .fontSize(11)
-        .fontColor(AppTheme.TEXT_SUB)
-        .lineHeight(17)
+      Text('完全离线 · 应用私有目录')
+        .fontSize(12)
+        .fontColor(AppTheme.TEXT_FAINT)
+      Text('不联网 · 不上传 · 不跟踪')
+        .fontSize(12)
+        .fontColor(AppTheme.TEXT_FAINT)
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(14)
-    .backgroundColor(AppTheme.CARD)
-    .borderRadius(12)
-    .border({ width: 1, color: AppTheme.DIVIDER })
+    .padding(20)
   }
 
   /** 信息卡（pc 档第三列） */
@@ -267,41 +241,40 @@ struct HomePage {
     Column({ space: 10 }) {
       Text('关于')
         .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-      Text('Markdown 工作台 V0.1')
-        .fontSize(13)
-      Text('正面打开的是原文件，保存后仍是原文件。')
-        .fontSize(12)
         .fontColor(AppTheme.TEXT_SUB)
-        .lineHeight(18)
-      Divider().color(AppTheme.DIVIDER)
-      Text('离线优先：正文仅存于应用私有目录与草稿检查点，不联网、不上传。自动保存每秒检查，1.5 秒防抖落盘；外部修改会进入冲突保护。')
-        .fontSize(11)
+      Text('Markdown 工作台')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+      Text('V0.1')
+        .fontSize(13)
         .fontColor(AppTheme.TEXT_FAINT)
-        .lineHeight(17)
+      Divider().color(AppTheme.DIVIDER).margin({ top: 8, bottom: 8 })
+      Text('打开的是原文件，保存后仍是原文件。')
+        .fontSize(13)
+        .fontColor(AppTheme.TEXT_SUB)
+        .lineHeight(20)
+      Text('自动保存 1.5 秒防抖落盘；外部修改进入冲突保护；崩溃后草稿可恢复。')
+        .fontSize(12)
+        .fontColor(AppTheme.TEXT_FAINT)
+        .lineHeight(18)
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding(14)
-    .backgroundColor(AppTheme.CARD)
-    .borderRadius(12)
-    .border({ width: 1, color: AppTheme.DIVIDER })
+    .padding(20)
   }
 
   build() {
-    Column({ space: 12 }) {
-      // 顶栏
+    Column({ space: 16 }) {
+      // 顶栏（极简）
       Row() {
         Text('Markdown 工作台')
-          .fontSize(20)
+          .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor(AppTheme.TEXT)
         Blank()
-        Button('⚙ 设置')
-          .fontSize(13)
-          .backgroundColor(AppTheme.TOOLBAR_BG)
-          .fontColor(AppTheme.TEXT)
-          .borderRadius(8)
+        Text('设置')
+          .fontSize(14)
+          .fontColor(AppTheme.TEXT_SUB)
           .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
       }
       .width('100%')
@@ -389,7 +362,7 @@ struct HomePage {
         .layoutWeight(1)
       }
     }
-    .padding(20)
+.padding(24)
     .width('100%')
     .height('100%')
     .backgroundColor(AppTheme.BG)
