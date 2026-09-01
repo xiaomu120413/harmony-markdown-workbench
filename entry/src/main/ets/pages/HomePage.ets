@@ -315,7 +315,7 @@ struct HomePage {
         .borderRadius(10)
       }
 
-      // 断点布局：phone 单栏；tablet 双栏（最近 | 资料库）；pc 三栏 + 限宽居中
+      // 断点布局：phone 单栏 + 底部 Tab Bar；tablet 双栏；pc 三栏 + 限宽居中
       if (this.bp === 'pc') {
         Row({ space: 12 }) {
           Column() {
@@ -349,20 +349,53 @@ struct HomePage {
         .width('100%')
         .layoutWeight(1)
       } else {
-        Column({ space: 10 }) {
+        // Phone：内容区 + 底部 Tab Bar（产品级导航）
+        Column({ space: 0 }) {
           Column() {
             this.recentPanel()
           }
           .layoutWeight(1)
           .width('100%')
 
-          this.sidePanel()
+          // 底部 Tab Bar（自定义 Flex，3 个 tab：首页/编辑/我的）
+          Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.SpaceAround, alignItems: ItemAlign.Center }) {
+            Column({ space: 2 }) {
+              Text('🏠').fontSize(20)
+              Text('首页').fontSize(10).fontColor(AppTheme.PRIMARY)
+            }
+            .justifyContent(FlexAlign.Center)
+            .onClick(() => {})
+            .layoutWeight(1)
+            .height(56)
+
+            Column({ space: 2 }) {
+              Text('✏️').fontSize(20)
+              Text('编辑').fontSize(10).fontColor(AppTheme.TEXT_FAINT)
+            }
+            .justifyContent(FlexAlign.Center)
+            .onClick(() => this.goEditor())
+            .layoutWeight(1)
+            .height(56)
+
+            Column({ space: 2 }) {
+              Text('⚙').fontSize(20)
+              Text('我的').fontSize(10).fontColor(AppTheme.TEXT_FAINT)
+            }
+            .justifyContent(FlexAlign.Center)
+            .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
+            .layoutWeight(1)
+            .height(56)
+          }
+          .width('100%')
+          .height(56)
+          .backgroundColor('#FFFFFF')
+          .border({ width: { top: 1 }, color: AppTheme.DIVIDER })
         }
         .width('100%')
         .layoutWeight(1)
       }
     }
-.padding(24)
+    .padding(this.bp === 'phone' ? { left: 20, right: 20, top: 20, bottom: 0 } : 24)
     .width('100%')
     .height('100%')
     .backgroundColor(AppTheme.BG)

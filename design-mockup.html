@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown Workbench - Design</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, 'Segoe UI', 'Noto Sans SC', 'PingFang SC', sans-serif; background: #f0f0f3; display: flex; gap: 32px; padding: 32px; flex-wrap: wrap; }
+  .device { background: #fff; border-radius: 32px; overflow: hidden; box-shadow: 0 8px 40px rgba(0,0,0,0.12); }
+  .label { text-align: center; font-size: 14px; color: #888; margin-bottom: 10px; font-weight: 600; }
+
+  /* Phone */
+  .phone { width: 390px; height: 844px; border-radius: 40px; border: 8px solid #1a1a1a; }
+  /* Tablet */
+  .tablet { width: 834px; height: 844px; border-radius: 20px; }
+  /* PC */
+  .pc { width: 1280px; height: 844px; border-radius: 12px; }
+
+  /* === Phone Design === */
+  .phone .app { width: 100%; height: 100%; background: #FAFAFB; display: flex; flex-direction: column; }
+  .phone .header { padding: 48px 24px 12px; display: flex; align-items: center; justify-content: space-between; }
+  .phone .header h1 { font-size: 22px; font-weight: 800; color: #111; letter-spacing: -0.5px; }
+  .phone .header .gear { width: 32px; height: 32px; border-radius: 50%; background: #F0F0F2; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #888; cursor: pointer; }
+  .phone .actions { padding: 8px 24px 20px; display: flex; gap: 12px; }
+  .phone .action-card { flex: 1; border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; transition: transform 0.15s; }
+  .phone .action-card:active { transform: scale(0.97); }
+  .phone .action-card.primary { background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #fff; }
+  .phone .action-card.secondary { background: #fff; border: 1.5px solid #E8E8EC; }
+  .phone .action-card .icon { font-size: 22px; font-weight: 700; margin-bottom: 2px; }
+  .phone .action-card .title { font-size: 16px; font-weight: 700; }
+  .phone .action-card .sub { font-size: 11px; opacity: 0.7; }
+  .phone .section { padding: 0 24px; flex: 1; overflow-y: auto; }
+  .phone .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .phone .section-header .label { font-size: 13px; color: #999; font-weight: 600; margin: 0; }
+  .phone .section-header .count { font-size: 12px; color: #ccc; }
+  .phone .file-item { padding: 14px 0; border-bottom: 1px solid #F0F0F2; cursor: pointer; }
+  .phone .file-name { font-size: 15px; font-weight: 600; color: #111; margin-bottom: 2px; }
+  .phone .file-time { font-size: 12px; color: #bbb; }
+  /* Tab Bar */
+  .phone .tabbar { display: flex; height: 64px; background: #fff; border-top: 1px solid #F0F0F2; }
+  .phone .tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; }
+  .phone .tab .tab-icon { font-size: 20px; }
+  .phone .tab .tab-label { font-size: 10px; color: #999; }
+  .phone .tab.active .tab-icon { color: #2563EB; }
+  .phone .tab.active .tab-label { color: #2563EB; font-weight: 600; }
+
+  /* === Tablet/PC Design === */
+  .tablet .app, .pc .app { width: 100%; height: 100%; display: flex; background: #FAFAFB; }
+  /* Sidebar */
+  .sidebar { width: 240px; background: #fff; border-right: 1px solid #F0F0F2; display: flex; flex-direction: column; padding: 24px 16px; }
+  .sidebar .brand { font-size: 18px; font-weight: 800; color: #111; margin-bottom: 24px; padding: 0 8px; }
+  .sidebar .nav-item { padding: 10px 12px; border-radius: 10px; font-size: 14px; color: #666; cursor: pointer; margin-bottom: 2px; display: flex; align-items: center; gap: 8px; }
+  .sidebar .nav-item.active { background: #EEF4FF; color: #2563EB; font-weight: 600; }
+  .sidebar .nav-spacer { flex: 1; }
+  .sidebar .nav-stat { padding: 12px 8px; font-size: 12px; color: #aaa; border-top: 1px solid #F0F0F2; }
+  /* Main */
+  .main { flex: 1; padding: 28px; display: flex; flex-direction: column; overflow-y: auto; }
+  .main .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .main .topbar h2 { font-size: 22px; font-weight: 800; color: #111; }
+  .main .actions { display: flex; gap: 12px; margin-bottom: 20px; }
+  .main .btn-primary { background: linear-gradient(135deg, #2563EB, #1D4ED8); color: #fff; padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+  .main .btn-secondary { background: #fff; border: 1.5px solid #E8E8EC; padding: 10px 20px; border-radius: 10px; font-size: 14px; color: #666; cursor: pointer; }
+  .main .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .main .section-header .label { font-size: 13px; color: #999; font-weight: 600; }
+  .main .section-header .count { font-size: 12px; color: #ccc; }
+  .main .file-list { flex: 1; }
+  .main .file-item { padding: 14px 0; border-bottom: 1px solid #F0F0F2; cursor: pointer; }
+  .main .file-name { font-size: 15px; font-weight: 600; color: #111; margin-bottom: 2px; }
+  .main .file-time { font-size: 12px; color: #bbb; }
+  /* PC third column */
+  .pc .info-panel { width: 280px; padding: 28px; border-left: 1px solid #F0F0F2; background: #fff; }
+  .pc .info-panel h3 { font-size: 13px; color: #999; font-weight: 600; margin-bottom: 12px; }
+  .pc .info-panel .stat { font-size: 32px; font-weight: 800; color: #111; margin-bottom: 4px; }
+  .pc .info-panel .stat-label { font-size: 13px; color: #aaa; margin-bottom: 20px; }
+  .pc .info-panel .desc { font-size: 13px; color: #888; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<!-- Phone with Tab Bar -->
+<div>
+  <div class="label">Phone 390vp</div>
+  <div class="phone">
+    <div class="app">
+      <div class="header">
+        <h1>工作台</h1>
+        <div class="gear">⚙</div>
+      </div>
+      <div class="actions">
+        <div class="action-card primary">
+          <div class="icon">＋</div>
+          <div class="title">新建</div>
+          <div class="sub">空白 Markdown</div>
+        </div>
+        <div class="action-card secondary">
+          <div class="icon">📂</div>
+          <div class="title">打开</div>
+          <div class="sub">资料库选择</div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-header">
+          <span class="label">最近</span>
+          <span class="count">30 个</span>
+        </div>
+        <div class="file-item"><div class="file-name">doc-a</div><div class="file-time">8/31 15:23</div></div>
+        <div class="file-item"><div class="file-name">doc-b</div><div class="file-time">8/31 14:50</div></div>
+        <div class="file-item"><div class="file-name">doc-c</div><div class="file-time">8/31 10:20</div></div>
+        <div class="file-item"><div class="file-name">batch-8</div><div class="file-time">8/30 18:00</div></div>
+        <div class="file-item"><div class="file-name">batch-7</div><div class="file-time">8/30 12:00</div></div>
+      </div>
+      <div class="tabbar">
+        <div class="tab active"><div class="tab-icon">📁</div><div class="tab-label">首页</div></div>
+        <div class="tab"><div class="tab-icon">✏️</div><div class="tab-label">编辑</div></div>
+        <div class="tab"><div class="tab-icon">👤</div><div class="tab-label">我的</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tablet with Sidebar -->
+<div>
+  <div class="label">Tablet 834vp</div>
+  <div class="tablet">
+    <div class="app">
+      <div class="sidebar">
+        <div class="brand">Markdown</div>
+        <div class="nav-item active">📁 最近</div>
+        <div class="nav-item">📂 资料库</div>
+        <div class="nav-item">🔍 搜索</div>
+        <div class="nav-spacer"></div>
+        <div class="nav-stat">10 个文档 · 离线</div>
+      </div>
+      <div class="main">
+        <div class="topbar"><h2>最近</h2></div>
+        <div class="actions">
+          <div class="btn-primary">＋ 新建文档</div>
+          <div class="btn-secondary">打开文件</div>
+        </div>
+        <div class="section-header">
+          <span class="label">文件</span>
+          <span class="count">30 个</span>
+        </div>
+        <div class="file-list">
+          <div class="file-item"><div class="file-name">doc-a</div><div class="file-time">8/31 15:23</div></div>
+          <div class="file-item"><div class="file-name">doc-b</div><div class="file-time">8/31 14:50</div></div>
+          <div class="file-item"><div class="file-name">doc-c</div><div class="file-time">8/31 10:20</div></div>
+          <div class="file-item"><div class="file-name">batch-8</div><div class="file-time">8/30 18:00</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PC with Sidebar + Info Panel -->
+<div>
+  <div class="label">PC 1280vp</div>
+  <div class="pc">
+    <div class="app">
+      <div class="sidebar">
+        <div class="brand">Markdown</div>
+        <div class="nav-item active">📁 最近</div>
+        <div class="nav-item">📂 资料库</div>
+        <div class="nav-item">🔍 搜索</div>
+        <div class="nav-item">⚙ 设置</div>
+        <div class="nav-spacer"></div>
+        <div class="nav-stat">10 个文档 · 完全离线</div>
+      </div>
+      <div class="main">
+        <div class="topbar"><h2>最近</h2></div>
+        <div class="actions">
+          <div class="btn-primary">＋ 新建文档</div>
+          <div class="btn-secondary">打开文件</div>
+        </div>
+        <div class="section-header">
+          <span class="label">文件</span>
+          <span class="count">30 个</span>
+        </div>
+        <div class="file-list">
+          <div class="file-item"><div class="file-name">doc-a</div><div class="file-time">8/31 15:23</div></div>
+          <div class="file-item"><div class="file-name">doc-b</div><div class="file-time">8/31 14:50</div></div>
+          <div class="file-item"><div class="file-name">doc-c</div><div class="file-time">8/31 10:20</div></div>
+        </div>
+      </div>
+      <div class="info-panel">
+        <h3>资料库</h3>
+        <div class="stat">10</div>
+        <div class="stat-label">个文档</div>
+        <div class="desc">完全离线 · 应用私有目录<br>不联网 · 不上传<br>自动保存 · 冲突保护 · 草稿恢复</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

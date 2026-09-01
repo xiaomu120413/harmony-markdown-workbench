@@ -1,26 +1,26 @@
 /**
  * 应用统一视觉基调（产品化，V0.1）。
- * 单一颜色来源：页面组件直接引用，避免散落字面量。
+ * 色板来源：HarmonyOS 官方设计规范（dososo/HarmonyOS-Design 参考）。
  */
 export class AppTheme {
   /** 页面背景 */
-  static readonly BG: string = '#FAFAFC';
+  static readonly BG: string = '#F4F4F5';
   /** 卡片背景 */
   static readonly CARD: string = '#FFFFFF';
-  /** 主色（操作/强调） */
-  static readonly PRIMARY: string = '#2F6FED';
+  /** 主色（HarmonyOS 官方蓝 #007DFF） */
+  static readonly PRIMARY: string = '#007DFF';
   /** 主色浅底（选中/标签） */
-  static readonly PRIMARY_SOFT: string = '#EEF4FF';
+  static readonly PRIMARY_SOFT: string = '#E6F0FF';
   /** 主按钮文字 */
   static readonly ON_PRIMARY: string = '#FFFFFF';
-  /** 正文 */
-  static readonly TEXT: string = '#1F2329';
+  /** 正文（墨色 #182431） */
+  static readonly TEXT: string = '#182431';
   /** 次要文字 */
   static readonly TEXT_SUB: string = '#8A8F99';
   /** 弱文字 */
   static readonly TEXT_FAINT: string = '#B7BCC4';
   /** 分隔线 */
-  static readonly DIVIDER: string = '#EDEFF3';
+  static readonly DIVIDER: string = '#EDEDED';
   /** 工具条底色 */
   static readonly TOOLBAR_BG: string = '#F4F5F7';
   /** 成功（已保存） */
