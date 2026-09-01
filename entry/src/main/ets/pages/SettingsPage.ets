@@ -63,7 +63,8 @@ struct SettingsPage {
   }
 
   build() {
-    Column({ space: 10 }) {
+    Stack({ alignContent: Alignment.Top }) {
+      Column({ space: 10 }) {
       Row({ space: 8 }) {
         Button('返回')
           .fontSize(13)
@@ -156,10 +157,12 @@ struct SettingsPage {
       }
       .layoutWeight(1)
       .width('100%')
+      }
+      .padding(16)
+      .width('100%')
+      .constraintSize({ maxWidth: 760 })
+      .height('100%')
+      .backgroundColor(AppTheme.BG)
     }
-    .padding(16)
-    .width('100%')
-    .height('100%')
-    .backgroundColor(AppTheme.BG)
   }
 }

@@ -1,7 +1,7 @@
 import { webview } from '@kit.ArkWeb';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { router } from '@kit.ArkUI';
+import { router, mediaquery } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { SaveState, SaveStateMachine } from '../domain/recovery/SaveStateMachine';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../domain/editor/MarkdownCommands';
@@ -15,6 +15,7 @@ import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { RecentFileList } from '../domain/document/RecentFileList';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { AppTheme } from '../common/AppTheme';
+import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../common/Breakpoints';
 import { AppSettings, SettingsValidator, ThemeMode } from '../domain/settings/AppSettings';
 
 const DOMAIN: number = 0x0000;
@@ -88,6 +89,8 @@ struct EditorPage {
   private settings: SettingsStore = new SettingsStore(getContext(this) as common.UIAbilityContext);
   private meta: MetadataStore = new MetadataStore(getContext(this) as common.UIAbilityContext);
   private appSettings: AppSettings = SettingsValidator.defaults();
+  @State bp: Breakpoint = 'phone';
+  private bpListeners: mediaquery.MediaQueryListener[] = [];
   private coordinator: SaveCoordinator | undefined = undefined;
   private docTarget: DocumentSource | undefined = undefined;
   private expectedRevision: FileRevisionContract = { size: 0, contentHash: '' };
@@ -103,6 +106,9 @@ struct EditorPage {
   }
 
   aboutToAppear(): void {
+    this.bpListeners = watchBreakpoints((bp: Breakpoint) => {
+      this.bp = bp;
+    });
     // 编排器延迟创建：deps 闭包依赖组件方法（字段初始化器内不能引用 this）
     this.coordinator = new SaveCoordinator(new EditorPageDeps(
       () => this.runJsValue('window.__editorApi.getSnapshot();'),
@@ -178,6 +184,8 @@ struct EditorPage {
   }
 
   aboutToDisappear(): void {
+    unwatchBreakpoints(this.bpListeners);
+    this.bpListeners = [];
     if (this.flushTimer >= 0) {
       clearInterval(this.flushTimer);
       this.flushTimer = -1;
@@ -628,5 +636,7 @@ struct EditorPage {
     .width('100%')
     .height('100%')
     .backgroundColor(AppTheme.BG)
+    .alignSelf(ItemAlign.Center)
+    .constraintSize({ maxWidth: this.bp === 'pc' ? 1200 : 10000 })
   }
 }

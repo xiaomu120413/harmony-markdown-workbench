@@ -57,6 +57,11 @@ const myTheme = EditorView.baseTheme({
   '.cm-scroller': { fontFamily: 'monospace', overflow: 'auto' },
 });
 
+// 桌面/平板上编辑内容限宽居中（手机上视口 < 860px 时自然全宽）
+const contentWide = EditorView.theme({
+  '.cm-content': { maxWidth: '860px', margin: '0 auto' },
+});
+
 // ---- 编辑事件（M4-01 自动保存）：用户输入 → native 'edit'（程序化 setDocument/loadDocument 抑制）----
 let suppressEdit = false;
 const editExt = EditorView.updateListener.of(function (u) {
@@ -81,6 +86,7 @@ try {
         editExt,
         placeholder('开始输入…'),
         fontC.of(EditorView.theme({ '&': { fontSize: '15px' } })),
+        contentWide,
         wrapC.of([]),
         gutterC.of(gutterShown),
       ],

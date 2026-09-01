@@ -6,13 +6,14 @@ import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
 import { AppTheme } from '../common/AppTheme';
+import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../common/Breakpoints';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-HOME';
 
 /**
  * 正式首页（产品化）：品牌顶栏 + 主操作卡片 + 最近列表（卡片行）。
- * 多端：宽屏（≥840vp）双栏（最近 | 资料库/恢复），手机竖屏单栏。
+ * 断点（common/Breakpoints）：phone 单栏；tablet 双栏；pc 三栏 + 内容限宽居中。
  * 日志仅 hilog；无调试痕迹。
  */
 @Entry
@@ -22,40 +23,33 @@ struct HomePage {
   @State libraryFiles: string[] = [];
   @State draftCount: number = 0;
   @State pickingFile: boolean = false;
-  @State isWide: boolean = false;
+  @State bp: Breakpoint = 'phone';
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private meta: MetadataStore = new MetadataStore(getContext(this) as common.UIAbilityContext);
   private fileSource: InternalFileSource = new InternalFileSource(getContext(this) as common.UIAbilityContext);
   private draftStore: DraftStore = new DraftStore(getContext(this) as common.UIAbilityContext);
-  private media: mediaquery.MediaQueryListener | undefined = undefined;
+  private bpListeners: mediaquery.MediaQueryListener[] = [];
 
   private note(line: string): void {
     hilog.info(DOMAIN, TAG, '%{public}s', line);
   }
 
   aboutToAppear(): void {
-    this.media = mediaquery.matchMediaSync('(min-width: 840px)');
-    this.media.on('change', (e: mediaquery.MediaQueryResult) => {
-      this.isWide = e.matches;
+    this.bpListeners = watchBreakpoints((bp: Breakpoint) => {
+      this.bp = bp;
     });
-    this.isWide = this.media.matches;
     this.refresh();
     this.refreshRecovery();
     this.refreshLibrary();
   }
 
   aboutToDisappear(): void {
-    if (this.media !== undefined) {
-      this.media.off('change');
-      this.media = undefined;
-    }
+    unwatchBreakpoints(this.bpListeners);
+    this.bpListeners = [];
   }
 
   /** 页面每次显示（含从编辑器返回）时刷新 */
   onPageShow(): void {
-    if (this.media !== undefined) {
-      this.isWide = this.media.matches;
-    }
     this.refresh();
     this.refreshRecovery();
     this.refreshLibrary();
@@ -265,6 +259,33 @@ struct HomePage {
     .border({ width: 1, color: AppTheme.DIVIDER })
   }
 
+  /** 信息卡（pc 档第三列） */
+  @Builder
+  infoPanel() {
+    Column({ space: 10 }) {
+      Text('关于')
+        .fontSize(14)
+        .fontWeight(FontWeight.Medium)
+      Text('Markdown 工作台 V0.1')
+        .fontSize(13)
+      Text('正面打开的是原文件，保存后仍是原文件。')
+        .fontSize(12)
+        .fontColor(AppTheme.TEXT_SUB)
+        .lineHeight(18)
+      Divider().color(AppTheme.DIVIDER)
+      Text('离线优先：正文仅存于应用私有目录与草稿检查点，不联网、不上传。自动保存每秒检查，1.5 秒防抖落盘；外部修改会进入冲突保护。')
+        .fontSize(11)
+        .fontColor(AppTheme.TEXT_FAINT)
+        .lineHeight(17)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .width('100%')
+    .padding(14)
+    .backgroundColor(AppTheme.CARD)
+    .borderRadius(12)
+    .border({ width: 1, color: AppTheme.DIVIDER })
+  }
+
   build() {
     Column({ space: 12 }) {
       // 顶栏
@@ -319,8 +340,26 @@ struct HomePage {
         .borderRadius(10)
       }
 
-      // 多端布局：宽屏双栏（最近 | 资料库），手机竖屏单栏
-      if (this.isWide) {
+      // 断点布局：phone 单栏；tablet 双栏（最近 | 资料库）；pc 三栏 + 限宽居中
+      if (this.bp === 'pc') {
+        Row({ space: 12 }) {
+          Column() {
+            this.recentPanel()
+          }
+          .layoutWeight(3)
+
+          Column() {
+            this.sidePanel()
+            Blank().height(12)
+            this.infoPanel()
+          }
+          .layoutWeight(1)
+        }
+        .width('100%')
+        .alignSelf(ItemAlign.Center)
+        .constraintSize({ maxWidth: 1280 })
+        .layoutWeight(1)
+      } else if (this.bp === 'tablet') {
         Row({ space: 12 }) {
           Column() {
             this.recentPanel()
@@ -336,7 +375,12 @@ struct HomePage {
         .layoutWeight(1)
       } else {
         Column({ space: 10 }) {
-          this.recentPanel()
+          Column() {
+            this.recentPanel()
+          }
+          .layoutWeight(1)
+          .width('100%')
+
           this.sidePanel()
         }
         .width('100%')
