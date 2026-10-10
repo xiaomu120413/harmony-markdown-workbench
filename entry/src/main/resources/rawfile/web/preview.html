@@ -5,13 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>HMWB Preview</title>
 <style>
-  html, body { margin: 0; padding: 8px; }
-  body { font-family: -apple-system, 'HarmonyOS Sans', 'Microsoft YaHei', sans-serif; }
-  #out { line-height: 1.6; }
-  #out pre { background: #f4f4f4; padding: 8px; overflow: auto; }
+  :root { --pre-bg: #f4f4f4; --border: #ccc; --inline-code-bg: #f0f0f0; }
+  html, body { margin: 0; padding: 12px 14px; }
+  body {
+    font-family: -apple-system, 'HarmonyOS Sans', 'Microsoft YaHei', sans-serif;
+    font-size: 15px; line-height: 1.7;
+    color: #182431; background: #ffffff;
+  }
+  #out { max-width: 860px; margin: 0 auto; }
+  #out h1, #out h2 { border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  #out h1 { font-size: 1.7em; } #out h2 { font-size: 1.4em; } #out h3 { font-size: 1.2em; }
+  #out pre { background: var(--pre-bg); padding: 10px; border-radius: 8px; overflow: auto; }
+  #out code { background: var(--inline-code-bg); border-radius: 4px; padding: 1px 5px; }
+  #out pre code { background: none; padding: 0; }
   #out table { border-collapse: collapse; }
-  #out td, #out th { border: 1px solid #ccc; padding: 4px 8px; }
+  #out td, #out th { border: 1px solid var(--border); padding: 4px 10px; }
+  #out blockquote { margin: 0; padding: 4px 14px; border-left: 3px solid var(--border); color: #8a8f99; }
+  #out img { max-width: 100%; }
   #out .task-list-item { list-style: none; }
+  #out a { color: #007dff; }
+  #out hr { border: none; border-top: 1px solid var(--border); }
+  /* 深色主题（跟随编辑器设置，body.dark 切换） */
+  body.dark { color: #d4d4d4; background: #1e1e1e; }
+  body.dark { --pre-bg: #2a2a2a; --border: #484848; --inline-code-bg: #333333; }
 </style>
 </head>
 <body>

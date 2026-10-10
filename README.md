@@ -15,6 +15,7 @@ HarmonyOS 原生 Markdown 文件工作台（V0.1 MVP）。规格与执行合同�
 | M4 保存链 | ✅ 完成 | SaveCoordinator 编排、自动保存防抖、外部冲突三决策、崩溃恢复入口，真机验证 |
 | M5 工作台 | ✅ 完成 | 首页（最近/打开/恢复入口）、分享（剪贴板降级，API 26 无 ShareKit）、设置持久化，真机验证 |
 | M6 质量 | ✅ 完成 | 窄窗响应式、性能样本 S1–S4 实测、隐私扫描零权限、Release 构建装机，真机验证 |
+| V0.2 三端总装 | ✅ 完成（2026-10-10） | **预览/分屏接入生产编辑器**（phone 切换、tablet/PC 分屏）、**查找替换面板**、**桥协议修复**（打字→自动保存链路）、撤销重做、defaultView 消费、deviceTypes 补 2in1、Spike 页面清出发布包；三端断点真机逐档验证（详见 acceptance.md V0.2 节） |
 
 验收追踪：`docs/spec/acceptance.md`；性能报告：`docs/spec/performance.md`；风险与决策：`docs/risks.md`、`docs/adr/`。
 

@@ -11,6 +11,8 @@ import bridgeProtocolTest from './BridgeProtocol.test';
 import saveCoordinatorTest from './SaveCoordinator.test';
 import markdownCommandsTest from './MarkdownCommands.test';
 import findReplaceEngineTest from './FindReplaceEngine.test';
+import findSessionTest from './FindSession.test';
+import viewModePolicyTest from './ViewModePolicy.test';
 import headingOutlineTest from './HeadingOutline.test';
 import htmlSafetyTest from './HtmlSafety.test';
 import appSettingsTest from './AppSettings.test';
@@ -50,6 +52,8 @@ export default function listTest(): void {
   saveCoordinatorTest();
   markdownCommandsTest();
   findReplaceEngineTest();
+  findSessionTest();
+  viewModePolicyTest();
   headingOutlineTest();
   htmlSafetyTest();
   appSettingsTest();

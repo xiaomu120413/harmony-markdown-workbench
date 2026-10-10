@@ -1,15 +1,8 @@
 {
   "src": [
     "pages/HomePage",
-    "pages/SpikeUriPage",
-    "pages/SpikeEditorPage",
-    "pages/SpikeSavePage",
-    "pages/SpikeContractPage",
-    "pages/SpikeMetadataPage",
-    "pages/SpikeLibraryPage",
     "pages/EditorPage",
     "pages/RecoveryPage",
-    "pages/SettingsPage",
-    "pages/SpikePreviewPage"
+    "pages/SettingsPage"
   ]
 }

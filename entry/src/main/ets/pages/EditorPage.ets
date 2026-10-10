@@ -5,6 +5,9 @@ import { router, mediaquery } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { SaveState, SaveStateMachine } from '../domain/recovery/SaveStateMachine';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../domain/editor/MarkdownCommands';
+import { FindReplaceEngine, FindOptions, FindMatch } from '../domain/editor/FindReplaceEngine';
+import { FindSession } from '../domain/editor/FindSession';
+import { ViewModePolicy } from '../domain/editor/ViewModePolicy';
 import { EditorBridge } from '../services/EditorBridge';
 import { SaveCoordinator, SaveCoordinatorDeps } from '../services/SaveCoordinator';
 import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult } from '../domain/document/DocumentFileAdapter';
@@ -16,10 +19,13 @@ import { RecentFileList } from '../domain/document/RecentFileList';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { AppTheme } from '../common/AppTheme';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../common/Breakpoints';
-import { AppSettings, SettingsValidator, ThemeMode } from '../domain/settings/AppSettings';
+import { AppSettings, SettingsValidator, ThemeMode, DefaultView } from '../domain/settings/AppSettings';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-EDITOR';
+
+/** 预览同步防抖（ms）：连续输入时预览不逐键重渲 */
+const PREVIEW_SYNC_DEBOUNCE_MS: number = 300;
 
 /** 桥消息队列（ArkWeb jsProxy 回调线程不能操作组件 this——M0-03 R-16 结论） */
 let pendingBridge: Array<string> = [];
@@ -68,20 +74,30 @@ class EditorPageDeps implements SaveCoordinatorDeps {
 }
 
 /**
- * M2/M4 正式编辑器页（CM6.x 运行时 + 桥模式 + SaveCoordinator 持久化）。
- * 组件：编辑器 + Markdown 快捷栏（领域命令变换）+ 手动/自动保存状态。
- * 路由参数（M5-01）：name=内部相对路径（library/..）或 uri=外部文档 URI。
+ * 正式编辑器页：CM6 编辑运行时 + 预览运行时（三端视图）+ 快捷栏 + 查找替换 + SaveCoordinator。
+ * 视图模式（SDD 4.2 三端）：
+ *   phone：编辑 ⇄ 预览 单栏切换；
+ *   tablet/pc：编辑 / 预览 / 左右分屏（编辑+预览同屏，预览随输入防抖同步）。
+ * 入口视图消费设置 defaultView（M5-03；phone 上 split 自动降级为 edit）。
  */
 @Entry
 @Component
 struct EditorPage {
-  @State log: string = '';
   @State saveLabel: string = '已保存';
   @State docLength: number = 0;
   @State docTitle: string = '未命名';
   @State conflictVisible: boolean = false;
+  @State viewMode: DefaultView = DefaultView.EDIT;
+  @State findVisible: boolean = false;
+  @State findQuery: string = '';
+  @State replaceText: string = '';
+  @State findCase: boolean = false;
+  @State findWord: boolean = false;
+  @State matchCount: number = 0;
+  @State matchIndex: number = -1;
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private controller: webview.WebviewController = new webview.WebviewController();
+  private previewController: webview.WebviewController = new webview.WebviewController();
   private bridge: EditorBridge = new EditorBridge();
   private internal: InternalFileSource = new InternalFileSource(getContext(this) as common.UIAbilityContext);
   private external: ExternalUriFileSource = new ExternalUriFileSource();
@@ -97,17 +113,22 @@ struct EditorPage {
   private pendingLoad: string = '';
   private pendingLoadAt: number = 0;
   private webReady: boolean = false;
+  private previewReady: boolean = false;
+  private lastPreviewedMd: string = '\u0000';
+  private previewTimer: number = -1;
+  private findMatches: FindMatch[] = [];
   private flushTimer: number = -1;
   private saveTimer: number = -1;
 
   private append(line: string): void {
-    this.log = `${line}\n---\n${this.log}`;
     hilog.info(DOMAIN, TAG, '%{public}s', line);
   }
 
   aboutToAppear(): void {
     this.bpListeners = watchBreakpoints((bp: Breakpoint) => {
       this.bp = bp;
+      // 断点变化归一化：phone 档无分屏（ViewModePolicy）
+      this.viewMode = ViewModePolicy.normalize(this.viewMode, bp);
     });
     // 编排器延迟创建：deps 闭包依赖组件方法（字段初始化器内不能引用 this）
     this.coordinator = new SaveCoordinator(new EditorPageDeps(
@@ -121,7 +142,7 @@ struct EditorPage {
         return;
       }
       if (env.type === 'edit') {
-        // 用户输入（打字/粘贴/IME）：进入 DIRTY 并调度防抖保存
+        // 用户输入（打字/粘贴/IME/撤销重做）：进入 DIRTY 并调度防抖保存与预览同步
         const len = env.payload.len as number | undefined;
         if (len !== undefined) {
           this.docLength = len;
@@ -131,6 +152,7 @@ struct EditorPage {
           c.onEdit(Date.now());
           this.saveLabel = SaveStateMachine.label(c.state);
         }
+        this.schedulePreviewSync();
         return;
       }
       if (!this.bridge.isFirstResponse(env.id)) {
@@ -168,19 +190,31 @@ struct EditorPage {
     this.applyAppSettings();
   }
 
-  /** M5-03：读取持久化设置并应用到编辑器（主题/字号/换行/行号即时生效，不重载文档） */
+  /** M5-03：读取持久化设置并应用（主题/字号/换行/行号即时生效；defaultView 决定入口视图） */
   private applyAppSettings(): void {
     this.settings.load().then((s: AppSettings) => {
       this.appSettings = s;
+      this.viewMode = ViewModePolicy.resolveInitial(this.bp, s.defaultView);
       const dark = s.theme === ThemeMode.DARK;
       this.runJsValue(`window.__editorApi.setTheme(${dark});`);
       this.runJsValue(`window.__editorApi.setFontSize(${s.fontSize});`);
       this.runJsValue(`window.__editorApi.setWrap(${s.wrap});`);
       this.runJsValue(`window.__editorApi.setLineNumbers(${s.lineNumbers});`);
-      this.append(`[设置] 主题=${s.theme} 字号=${s.fontSize} 换行=${s.wrap} 行号=${s.lineNumbers} 自动保存=${s.autoSave}`);
+      this.applyPreviewStyle();
+      this.append(`[设置] 主题=${s.theme} 字号=${s.fontSize} 换行=${s.wrap} 行号=${s.lineNumbers} 自动保存=${s.autoSave} 入口视图=${this.viewMode}`);
     }).catch((e: ESObject) => {
       this.append(`[设置] 读取失败：${JSON.stringify(e)}`);
     });
+  }
+
+  /** 预览样式跟随设置（就绪前跳过，onPageEnd 时补发） */
+  private applyPreviewStyle(): void {
+    if (!this.previewReady) {
+      return;
+    }
+    const dark = this.appSettings.theme === ThemeMode.DARK;
+    this.previewController.runJavaScript(`window.__previewApi.setDark(${dark});`);
+    this.previewController.runJavaScript(`window.__previewApi.setFontSize(${this.appSettings.fontSize});`);
   }
 
   aboutToDisappear(): void {
@@ -193,6 +227,10 @@ struct EditorPage {
     if (this.saveTimer >= 0) {
       clearInterval(this.saveTimer);
       this.saveTimer = -1;
+    }
+    if (this.previewTimer >= 0) {
+      clearTimeout(this.previewTimer);
+      this.previewTimer = -1;
     }
     bridgeSink = undefined;
   }
@@ -261,8 +299,169 @@ struct EditorPage {
       this.docLength = md.length;
       const dt = t0 > 0 ? Date.now() - t0 : -1;
       this.append(`[打开] 文档 ${md.length} 字符（打开至可编辑 ${dt}ms）`);
+      this.syncPreviewNow();
     });
   }
+
+  // ---- 预览同步（编辑 → 预览，防抖 + 内容去重）----
+
+  private schedulePreviewSync(): void {
+    if (this.viewMode === DefaultView.EDIT) {
+      return;
+    }
+    if (this.previewTimer >= 0) {
+      clearTimeout(this.previewTimer);
+    }
+    this.previewTimer = setTimeout(() => {
+      this.previewTimer = -1;
+      this.syncPreviewNow();
+    }, PREVIEW_SYNC_DEBOUNCE_MS);
+  }
+
+  private syncPreviewNow(): void {
+    if (!this.previewReady || this.viewMode === DefaultView.EDIT) {
+      return;
+    }
+    this.runJsValue('window.__editorApi.getSnapshot();').then((md: string) => {
+      if (md === this.lastPreviewedMd) {
+        return;
+      }
+      this.lastPreviewedMd = md;
+      const js = `window.__previewApi.render(${JSON.stringify(md)});`;
+      this.previewController.runJavaScript(js, (err) => {
+        if (err) {
+          this.append(`[预览] 渲染失败：${JSON.stringify(err)}`);
+        }
+      });
+    });
+  }
+
+  /** 视图切换：进入预览/分屏立即同步一次（不等防抖） */
+  private setViewMode(mode: DefaultView): void {
+    if (mode === this.viewMode) {
+      return;
+    }
+    if (mode === DefaultView.SPLIT && !ViewModePolicy.allowsSplit(this.bp)) {
+      return;
+    }
+    this.viewMode = mode;
+    if (mode !== DefaultView.EDIT) {
+      this.syncPreviewNow();
+    }
+  }
+
+  // ---- 查找替换（FR-EDIT-04 面板；引擎与导航为领域层）----
+
+  private findOpts(): FindOptions {
+    const opts: FindOptions = { caseSensitive: this.findCase, wholeWord: this.findWord };
+    return opts;
+  }
+
+  private openFind(): void {
+    this.findVisible = true;
+    // 预览态查找无选区可标：切回编辑视图
+    if (this.viewMode === DefaultView.PREVIEW) {
+      this.setViewMode(DefaultView.EDIT);
+    }
+    this.refreshFind().then(() => this.jumpNext());
+  }
+
+  /** 重算命中集合（正文或选项变化后调用） */
+  private async refreshFind(): Promise<void> {
+    if (this.findQuery.length === 0) {
+      this.findMatches = [];
+      this.matchCount = 0;
+      this.matchIndex = -1;
+      return;
+    }
+    const text = await this.runJsValue('window.__editorApi.getSnapshot();');
+    this.findMatches = FindReplaceEngine.findAll(text, this.findQuery, this.findOpts());
+    this.matchCount = this.findMatches.length;
+    if (this.matchIndex >= this.matchCount) {
+      this.matchIndex = this.matchCount - 1;
+    }
+  }
+
+  private jumpNext(): void {
+    this.matchIndex = FindSession.next(this.matchCount, this.matchIndex);
+    this.selectCurrentMatch();
+  }
+
+  /** 查询词/选项变化后：尚未定位且有命中时自动选中第一处（主流编辑器行为） */
+  private locateFirstMatch(): void {
+    if (this.matchIndex < 0 && this.matchCount > 0) {
+      this.matchIndex = 0;
+      this.selectCurrentMatch();
+    }
+  }
+
+  private jumpPrev(): void {
+    this.matchIndex = FindSession.prev(this.matchCount, this.matchIndex);
+    this.selectCurrentMatch();
+  }
+
+  private selectCurrentMatch(): void {
+    if (this.matchIndex < 0 || this.matchIndex >= this.findMatches.length) {
+      return;
+    }
+    const m = this.findMatches[this.matchIndex];
+    this.runJsValue(`window.__editorApi.setSelectionRange(${m.from}, ${m.to});`);
+  }
+
+  private async replaceCurrent(): Promise<void> {
+    if (this.findQuery.length === 0) {
+      return;
+    }
+    const text = await this.runJsValue('window.__editorApi.getSnapshot();');
+    const from = this.matchIndex >= 0 && this.matchIndex < this.findMatches.length
+      ? this.findMatches[this.matchIndex].from
+      : 0;
+    const r = FindReplaceEngine.replaceCurrent(text, this.findQuery, this.replaceText, from, this.findOpts());
+    if (!r.replaced) {
+      return;
+    }
+    await this.runJsValue(`window.__editorApi.setDocument(${JSON.stringify(r.text)}, ${r.newCursor}, ${r.newCursor});`);
+    this.docLength = r.text.length;
+    this.markEdited();
+    // 替换改变了正文：同步重算命中（替换处已消失，从锚点前进到下一处）
+    const anchor = this.matchIndex;
+    this.findMatches = FindReplaceEngine.findAll(r.text, this.findQuery, this.findOpts());
+    this.matchCount = this.findMatches.length;
+    this.matchIndex = FindSession.next(this.matchCount, Math.min(anchor, this.matchCount - 1));
+    this.selectCurrentMatch();
+  }
+
+  private async replaceAllMatches(): Promise<void> {
+    if (this.findQuery.length === 0) {
+      return;
+    }
+    const text = await this.runJsValue('window.__editorApi.getSnapshot();');
+    const r = FindReplaceEngine.replaceAll(text, this.findQuery, this.replaceText, this.findOpts());
+    if (r.count === 0) {
+      return;
+    }
+    const pos = r.undos.length > 0 ? r.undos[0].from : 0;
+    await this.runJsValue(`window.__editorApi.setDocument(${JSON.stringify(r.text)}, ${pos}, ${pos});`);
+    this.docLength = r.text.length;
+    this.markEdited();
+    // 全部替换后命中归零
+    this.findMatches = [];
+    this.matchCount = 0;
+    this.matchIndex = -1;
+    this.append(`[替换] 全部替换 ${r.count} 处`);
+  }
+
+  /** 程序化正文变更后的统一收口：置脏 + 预览同步 */
+  private markEdited(): void {
+    const c = this.coordinator;
+    if (c !== undefined) {
+      c.onEdit(Date.now());
+      this.saveLabel = SaveStateMachine.label(c.state);
+    }
+    this.schedulePreviewSync();
+  }
+
+  // ---- 保存 / 冲突 / 分享 ----
 
   /** 草稿检查点（FR-SAVE-003） */
   private doSaveCheckpoint(content: string): Promise<void> {
@@ -392,13 +591,20 @@ struct EditorPage {
       const js = `window.__editorApi.setDocument(${JSON.stringify(payload.text)}, ${payload.cursorFrom}, ${payload.cursorTo});`;
       await this.runJsValue(js);
       this.docLength = result.text.length;
-      const c = this.coordinator;
-      if (c !== undefined) {
-        c.onEdit(Date.now());
-        this.saveLabel = SaveStateMachine.label(c.state);
-      }
+      this.markEdited();
     } catch (e) {
       this.append(`[命令] ${cmd} 失败：${JSON.stringify(e)}`);
+    }
+  }
+
+  /** 撤销/重做：CM 内建历史；dispatch 触发 edit 事件 → 置脏与预览同步自动生效 */
+  private async applyHistory(kind: 'undo' | 'redo'): Promise<void> {
+    const len = await this.runJsValue(`window.__editorApi.${kind}();`);
+    if (len.length > 0) {
+      const n = Number(len);
+      if (!Number.isNaN(n)) {
+        this.docLength = n;
+      }
     }
   }
 
@@ -499,6 +705,8 @@ struct EditorPage {
     }
   }
 
+  // ---- 视图构建 ----
+
   /** 快捷栏统一按钮样式（图标化，浅底圆角） */
   @Builder
   toolBtn(label: string, cmd: MarkdownCommandName) {
@@ -512,9 +720,33 @@ struct EditorPage {
       .onClick(() => this.applyCommand(cmd))
   }
 
+  /** 视图模式分段按钮 */
+  @Builder
+  viewTab(label: string, mode: DefaultView) {
+    Text(label)
+      .fontSize(13)
+      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
+      .fontColor(this.viewMode === mode ? AppTheme.ON_PRIMARY : AppTheme.TEXT)
+      .backgroundColor(this.viewMode === mode ? AppTheme.PRIMARY : AppTheme.TOOLBAR_BG)
+      .borderRadius(8)
+      .onClick(() => this.setViewMode(mode))
+  }
+
+  /** 面板小按钮 */
+  @Builder
+  panelBtn(label: string, action: () => void) {
+    Button(label)
+      .fontSize(12)
+      .fontColor(AppTheme.TEXT)
+      .backgroundColor(AppTheme.TOOLBAR_BG)
+      .borderRadius(6)
+      .height(30)
+      .onClick(() => action())
+  }
+
   build() {
     Column({ space: 8 }) {
-      // 标题栏（M6-01：wrap 保证窄窗/自由窗口下按钮不被挤出）
+      // 标题栏（wrap 保证窄窗/自由窗口下按钮不被挤出）
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Button('‹')
           .fontSize(22)
@@ -535,6 +767,30 @@ struct EditorPage {
           .fontColor(this.saveLabel === '已保存' ? AppTheme.OK : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? AppTheme.DANGER : AppTheme.AMBER))
           .backgroundColor(this.saveLabel === '已保存' ? AppTheme.OK_SOFT : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? AppTheme.DANGER_SOFT : AppTheme.AMBER_SOFT))
           .borderRadius(8)
+
+        // 视图模式分段（三端核心交互；phone 无分屏档）
+        Row({ space: 4 }) {
+          this.viewTab('编辑', DefaultView.EDIT)
+          this.viewTab('预览', DefaultView.PREVIEW)
+          if (ViewModePolicy.allowsSplit(this.bp)) {
+            this.viewTab('分屏', DefaultView.SPLIT)
+          }
+        }
+
+        Button('🔍')
+          .fontSize(15)
+          .fontColor(AppTheme.TEXT)
+          .backgroundColor(AppTheme.TOOLBAR_BG)
+          .borderRadius(8)
+          .width(40)
+          .height(40)
+          .onClick(() => {
+            if (this.findVisible) {
+              this.findVisible = false;
+            } else {
+              this.openFind();
+            }
+          })
         Button('分享')
           .fontSize(13)
           .backgroundColor(AppTheme.TOOLBAR_BG)
@@ -550,41 +806,74 @@ struct EditorPage {
       }
       .width('100%')
 
-      // 快捷栏（图标化；FR-EDIT-002 命令子集；wrap 防溢出）
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        this.toolBtn('B', 'bold')
-        this.toolBtn('I', 'italic')
-        this.toolBtn('S̶', 'strike')
-        this.toolBtn('`', 'inlineCode')
-        this.toolBtn('🔗', 'link')
+      // 查找替换面板（FR-EDIT-004；wrap 适配窄屏）
+      if (this.findVisible) {
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+          TextInput({ placeholder: '查找', text: this.findQuery })
+            .fontSize(13)
+            .height(32)
+            .padding({ left: 8, right: 8 })
+            .backgroundColor(AppTheme.CARD)
+            .borderRadius(6)
+            .constraintSize({ minWidth: 120, maxWidth: 220 })
+            .onChange((v: string) => {
+              this.findQuery = v;
+              this.refreshFind().then(() => this.locateFirstMatch());
+            })
+            .onSubmit(() => this.jumpNext())
+          TextInput({ placeholder: '替换为', text: this.replaceText })
+            .fontSize(13)
+            .height(32)
+            .padding({ left: 8, right: 8 })
+            .backgroundColor(AppTheme.CARD)
+            .borderRadius(6)
+            .constraintSize({ minWidth: 120, maxWidth: 220 })
+            .onChange((v: string) => {
+              this.replaceText = v;
+            })
+          Text(this.matchCount > 0 ? `${this.matchIndex + 1}/${this.matchCount}` : '0 命中')
+            .fontSize(12)
+            .fontColor(this.matchCount > 0 ? AppTheme.PRIMARY : AppTheme.TEXT_FAINT)
+            .padding({ left: 6, right: 6 })
+          this.panelBtn('上一个', () => this.jumpPrev())
+          this.panelBtn('下一个', () => this.jumpNext())
+          this.panelBtn('替换', () => this.replaceCurrent())
+          this.panelBtn('全部替换', () => this.replaceAllMatches())
+          Row({ space: 4 }) {
+            Text('Aa').fontSize(12)
+              .fontColor(this.findCase ? AppTheme.ON_PRIMARY : AppTheme.TEXT)
+              .backgroundColor(this.findCase ? AppTheme.PRIMARY : AppTheme.TOOLBAR_BG)
+              .borderRadius(6)
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .onClick(() => {
+                this.findCase = !this.findCase;
+                this.refreshFind();
+              })
+            Text('全词').fontSize(12)
+              .fontColor(this.findWord ? AppTheme.ON_PRIMARY : AppTheme.TEXT)
+              .backgroundColor(this.findWord ? AppTheme.PRIMARY : AppTheme.TOOLBAR_BG)
+              .borderRadius(6)
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .onClick(() => {
+                this.findWord = !this.findWord;
+                this.refreshFind();
+              })
+            Text('✕').fontSize(12)
+              .fontColor(AppTheme.TEXT_SUB)
+              .backgroundColor(AppTheme.TOOLBAR_BG)
+              .borderRadius(6)
+              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+              .onClick(() => {
+                this.findVisible = false;
+              })
+          }
+        }
+        .width('100%')
+        .padding(6)
+        .backgroundColor(AppTheme.CARD)
+        .borderRadius(8)
+        .border({ width: 1, color: AppTheme.DIVIDER })
       }
-      .width('100%')
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-        this.toolBtn('•', 'ul')
-        this.toolBtn('1.', 'ol')
-        this.toolBtn('☑', 'task')
-        this.toolBtn('❝', 'quote')
-        this.toolBtn('{}', 'codeBlock')
-        Button('✎ 示例')
-          .fontSize(13)
-          .fontColor(AppTheme.TEXT)
-          .backgroundColor(AppTheme.TOOLBAR_BG)
-          .borderRadius(8)
-          .height(38)
-          .onClick(() => {
-          const md = '# 正式编辑器\n\n**M2** 快捷栏命令测试：\n\n- 列表 A\n\n> 引用\n';
-          const js = `window.__editorApi.setDocument(${JSON.stringify(md)}, 0, 0);`;
-          this.runJsValue(js).then(() => {
-            this.docLength = md.length;
-            const c = this.coordinator;
-            if (c !== undefined) {
-              c.onEdit(Date.now());
-              this.saveLabel = SaveStateMachine.label(c.state);
-            }
-          });
-        })
-      }
-      .width('100%')
 
       // 冲突条（M4-03；wrap 防溢出）
       if (this.conflictVisible) {
@@ -602,41 +891,125 @@ struct EditorPage {
         .borderRadius(8)
       }
 
-      // 编辑器容器（卡片式）
-      Column() {
-        Web({ src: $rawfile('web/editor.html'), controller: this.controller })
-          .javaScriptAccess(true)
-          .javaScriptProxy({
-            object: { send: editorBridgeSend },
-            name: '__nativeBridge',
-            methodList: ['send'],
-            controller: this.controller,
-          })
-          .onPageEnd(() => {
-            this.webReady = true;
-            if (this.pendingLoad.length > 0 || this.docTarget !== undefined) {
-              this.flushPendingLoad();
-            }
-            this.append('编辑器就绪');
-          })
-          .onErrorReceive((event) => {
-            this.append(`页面错误：${JSON.stringify(event.request)}`);
-          })
-          .layoutWeight(1)
-          .width('100%')
+      // 快捷栏（仅编辑/分屏可见；FR-EDIT-002 命令子集；wrap 防溢出）
+      if (this.viewMode !== DefaultView.PREVIEW) {
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+          this.toolBtn('B', 'bold')
+          this.toolBtn('I', 'italic')
+          this.toolBtn('S̶', 'strike')
+          this.toolBtn('`', 'inlineCode')
+          this.toolBtn('🔗', 'link')
+          this.toolBtn('•', 'ul')
+          this.toolBtn('1.', 'ol')
+          this.toolBtn('☑', 'task')
+          this.toolBtn('❝', 'quote')
+          this.toolBtn('{}', 'codeBlock')
+          Button('⤺')
+            .fontSize(15)
+            .fontColor(AppTheme.TEXT)
+            .backgroundColor(AppTheme.TOOLBAR_BG)
+            .borderRadius(8)
+            .width(46)
+            .height(38)
+            .onClick(() => this.applyHistory('undo'))
+          Button('⤿')
+            .fontSize(15)
+            .fontColor(AppTheme.TEXT)
+            .backgroundColor(AppTheme.TOOLBAR_BG)
+            .borderRadius(8)
+            .width(46)
+            .height(38)
+            .onClick(() => this.applyHistory('redo'))
+          Button('✎ 示例')
+            .fontSize(13)
+            .fontColor(AppTheme.TEXT)
+            .backgroundColor(AppTheme.TOOLBAR_BG)
+            .borderRadius(8)
+            .height(38)
+            .onClick(() => {
+              const md = '# 正式编辑器\n\n**M2** 快捷栏命令测试：\n\n- 列表 A\n\n> 引用\n';
+              const js = `window.__editorApi.setDocument(${JSON.stringify(md)}, 0, 0);`;
+              this.runJsValue(js).then(() => {
+                this.docLength = md.length;
+                this.markEdited();
+              });
+            })
+        }
+        .width('100%')
+      }
+
+      // 工作区：编辑器 + 预览（三端同一布局路径——
+      // phone：单栏互斥切换；tablet/pc 分屏：双 Web 并排；隐藏侧 Visibility.None 不占位）
+      Row({ space: 8 }) {
+        Column() {
+          Web({ src: $rawfile('web/editor.html'), controller: this.controller })
+            .javaScriptAccess(true)
+            .javaScriptProxy({
+              object: { send: editorBridgeSend },
+              name: '__nativeBridge',
+              methodList: ['send'],
+              controller: this.controller,
+            })
+            .onPageEnd(() => {
+              this.webReady = true;
+              if (this.pendingLoad.length > 0 || this.docTarget !== undefined) {
+                this.flushPendingLoad();
+              }
+              this.append('编辑器就绪');
+            })
+            .onErrorReceive((event) => {
+              this.append(`页面错误：${JSON.stringify(event.request)}`);
+            })
+            .layoutWeight(1)
+            .width('100%')
+        }
+        .visibility(this.viewMode === DefaultView.PREVIEW ? Visibility.None : Visibility.Visible)
+        .layoutWeight(1)
+        .width('100%')
+        .backgroundColor(AppTheme.CARD)
+        .borderRadius(12)
+        .border({ width: 1, color: AppTheme.DIVIDER })
+        .clip(true)
+
+        if (this.viewMode === DefaultView.SPLIT) {
+          Divider()
+            .vertical(true)
+            .height('92%')
+            .color(AppTheme.DIVIDER)
+        }
+
+        Column() {
+          Web({ src: $rawfile('web/preview.html'), controller: this.previewController })
+            .javaScriptAccess(true)
+            .onPageEnd(() => {
+              this.previewReady = true;
+              this.applyPreviewStyle();
+              this.syncPreviewNow();
+              this.append('预览就绪');
+            })
+            .onErrorReceive((event) => {
+              this.append(`预览页面错误：${JSON.stringify(event.request)}`);
+            })
+            .layoutWeight(1)
+            .width('100%')
+        }
+        .visibility(this.viewMode === DefaultView.EDIT ? Visibility.None : Visibility.Visible)
+        .layoutWeight(1)
+        .width('100%')
+        .backgroundColor(AppTheme.CARD)
+        .borderRadius(12)
+        .border({ width: 1, color: AppTheme.DIVIDER })
+        .clip(true)
       }
       .layoutWeight(1)
       .width('100%')
-      .backgroundColor(AppTheme.CARD)
-      .borderRadius(12)
-      .border({ width: 1, color: AppTheme.DIVIDER })
-      .clip(true)
+      .alignItems(VerticalAlign.Center)
     }
     .padding(12)
     .width('100%')
     .height('100%')
     .backgroundColor(AppTheme.BG)
     .alignSelf(ItemAlign.Center)
-    .constraintSize({ maxWidth: this.bp === 'pc' ? 1200 : 10000 })
+    .constraintSize({ maxWidth: this.bp === 'pc' ? 1440 : 10000 })
   }
 }

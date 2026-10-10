@@ -65,12 +65,20 @@ window.__previewApi = {
     document.getElementById('out').innerHTML = safe;
     return { length: safe.length, html: safe };
   },
+  /** 主题跟随编辑器（M5-03 设置：dark） */
+  setDark(dark) {
+    document.body.classList.toggle('dark', !!dark);
+  },
+  /** 字号跟随编辑器（M5-03 设置） */
+  setFontSize(px) {
+    document.body.style.fontSize = px + 'px';
+  },
 };
 
-// 就绪通知（原生命令通道：__nativeBridge 存在则调用）
+// 就绪通知（原生命令通道：__nativeBridge 存在则发送 JSON 信封）
 if (window.__nativeBridge && typeof window.__nativeBridge.send === 'function') {
   try {
-    window.__nativeBridge.send('previewReady', JSON.stringify({ version: 1 }));
+    window.__nativeBridge.send(JSON.stringify({ version: 1, id: 'ready-' + Date.now(), type: 'previewReady', payload: { version: 1 } }));
   } catch (e) {
     // 忽略
   }
