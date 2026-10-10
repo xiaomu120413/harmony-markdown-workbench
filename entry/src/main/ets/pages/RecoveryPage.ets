@@ -9,6 +9,9 @@ import { DraftDecisionEvaluator, RecoveryDecision, RecoveryDraft } from '../doma
 import { FileRevisionContract, InternalSource, WriteFailResult } from '../domain/document/DocumentFileAdapter';
 import { FileRevision } from '../domain/document/FileRevision';
 import { HashUtil } from '../domain/document/HashUtil';
+import { DocumentNamer } from '../domain/document/DocumentNamer';
+import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
+import { ThemeMode } from '../domain/settings/AppSettings';
 import { AppTheme } from '../common/AppTheme';
 
 const DOMAIN: number = 0x0000;
@@ -35,7 +38,7 @@ interface DraftRow {
 @Component
 struct RecoveryPage {
   @State rows: Array<DraftRow> = [];
-  @State log: string = '';
+  @State pal: AppTheme = AppTheme.light();
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private store: DraftStore = new DraftStore(getContext(this) as common.UIAbilityContext);
   private internal: InternalFileSource = new InternalFileSource(getContext(this) as common.UIAbilityContext);
@@ -53,12 +56,17 @@ struct RecoveryPage {
     }
   }
 
-  private append(line: string): void {
-    this.log = `${line}\n---\n${this.log}`;
+  private note(line: string): void {
     hilog.info(DOMAIN, TAG, '%{public}s', line);
   }
 
   async aboutToAppear(): Promise<void> {
+    try {
+      const st = await new SettingsStore(this.ctx).load();
+      this.pal = AppTheme.of(st.theme === ThemeMode.DARK);
+    } catch (e) {
+      // 主题读取失败按浅色
+    }
     await this.reload();
   }
 
@@ -85,7 +93,7 @@ struct RecoveryPage {
       out.push({ draft: d, decisionName: name, decision: decision, diskChanged: diskRev !== undefined && (diskRev as FileRevision).contentHash !== d.baseRevision.contentHash });
     }
     this.rows = out;
-    this.append(`[恢复] ${out.length} 个检查点`);
+    this.note(`[恢复] ${out.length} 个检查点`);
   }
 
   /** 磁盘 revision：internal 可 stat；external（临时授权可能已失效）→ undefined */
@@ -112,12 +120,12 @@ struct RecoveryPage {
   /** 恢复：草稿内容写回源文档（磁盘==基线才写，写前复核决策） */
   private async restoreRow(row: DraftRow): Promise<void> {
     if (row.decision !== RecoveryDecision.RESTORE_DRAFT) {
-      this.append(`[恢复] 决策为 ${row.decisionName}，跳过自动覆盖`);
+      this.note(`[恢复] 决策为 ${row.decisionName}，跳过自动覆盖`);
       return;
     }
     const d = row.draft;
     if (!d.sourceFingerprint.startsWith('internal:')) {
-      this.append('[恢复] 仅内部文档支持自动写回；外部文档请用另存副本');
+      this.note('[恢复] 仅内部文档支持自动写回；外部文档请用另存副本');
       return;
     }
     const rel = d.sourceFingerprint.substring('internal:'.length);
@@ -132,12 +140,12 @@ struct RecoveryPage {
       if (result.ok) {
         this.store.remove(d.documentId);
         this.trackRecent(rel);
-        this.append(`[恢复] 已写回 ${rel} 并清除草稿`);
+        this.note(`[恢复] 已写回 ${rel} 并清除草稿`);
       } else {
-        this.append(`[恢复] 写回冲突/失败：${(result as WriteFailResult).message}（请改用另存副本）`);
+        this.note(`[恢复] 写回冲突/失败：${(result as WriteFailResult).message}（请改用另存副本）`);
       }
     } catch (e) {
-      this.append(`[恢复] 写回异常：${JSON.stringify(e)}`);
+      this.note(`[恢复] 写回异常：${JSON.stringify(e)}`);
     }
     await this.reload();
   }
@@ -145,20 +153,20 @@ struct RecoveryPage {
   /** 另存副本：草稿 → 资料库新文档，随后清除草稿（内容已有可靠副本） */
   private async saveCopy(row: DraftRow): Promise<void> {
     const d = row.draft;
-    const stamp = `${Date.now()}`;
-    const rel = `library/恢复-未命名-${stamp}.md`;
+    const name = DocumentNamer.derive(d.content, this.internal.listLibrary());
+    const rel = `library/${name}`;
     const src: InternalSource = { kind: 'internal', relativePath: rel };
     try {
       const result = await this.internal.write(src, d.content, { size: 0, contentHash: '' });
       if (result.ok) {
         this.store.remove(d.documentId);
         this.trackRecent(rel);
-        this.append(`[副本] 已保存 ${rel} 并清除草稿`);
+        this.note(`[副本] 已保存 ${rel} 并清除草稿`);
       } else {
-        this.append(`[副本] 失败：${(result as WriteFailResult).message}`);
+        this.note(`[副本] 失败：${(result as WriteFailResult).message}`);
       }
     } catch (e) {
-      this.append(`[副本] 异常：${JSON.stringify(e)}`);
+      this.note(`[副本] 异常：${JSON.stringify(e)}`);
     }
     await this.reload();
   }
@@ -166,7 +174,7 @@ struct RecoveryPage {
   /** 清理冗余/放弃草稿（操作有明确两次意图：行内按钮文本即确认） */
   private discardRow(row: DraftRow): void {
     this.store.remove(row.draft.documentId);
-    this.append(`[清理] 已删除草稿 ${row.draft.documentId}`);
+    this.note(`[清理] 已删除草稿 ${row.draft.documentId}`);
     this.reload();
   }
 
@@ -174,23 +182,26 @@ struct RecoveryPage {
     Stack({ alignContent: Alignment.Top }) {
       Column({ space: 8 }) {
       Row({ space: 8 }) {
-        Button('返回')
-          .fontSize(13)
+        Button('‹')
+          .fontSize(22)
+          .fontColor(this.pal.TEXT)
+          .backgroundColor(this.pal.TOOLBAR_BG)
+          .borderRadius(10)
+          .width(40)
+          .height(40)
           .onClick(() => router.back())
-        Text('崩溃恢复')
+        Text('找回未保存内容')
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
+          .fontColor(this.pal.TEXT)
         Blank()
-        Button('刷新')
-          .fontSize(13)
-          .onClick(() => this.reload())
       }
       .width('100%')
 
       if (this.rows.length === 0) {
-        Text('没有需要恢复的内容。\n保存失败或强杀时，未落盘内容会以草稿保留在此。')
+        Text('没有需要恢复的内容。\n应用意外退出时，未保存的内容会自动保留在这里。')
           .fontSize(13)
-          .fontColor('#99000000')
+          .fontColor(this.pal.TEXT_SUB)
           .width('100%')
       }
 
@@ -202,58 +213,63 @@ struct RecoveryPage {
                 Text(row.draft.sourceFingerprint)
                   .fontSize(12)
                   .fontWeight(FontWeight.Medium)
+                  .fontColor(this.pal.TEXT)
+                  .layoutWeight(1)
                 Text(this.fmtTime(row.draft.updatedAt))
                   .fontSize(10)
-                  .fontColor('#99000000')
+                  .fontColor(this.pal.TEXT_SUB)
               }
               .width('100%')
 
               Text(row.decisionName)
                 .fontSize(11)
-                .fontColor(row.decision === RecoveryDecision.CONFLICT ? AppTheme.DANGER : AppTheme.OK)
+                .fontColor(row.decision === RecoveryDecision.CONFLICT ? this.pal.DANGER : this.pal.OK)
 
               Text(row.draft.content.substring(0, 100).replace(/\n/g, '⏎'))
                 .fontSize(11)
-                .fontColor('#66000000')
+                .fontColor(this.pal.TEXT_FAINT)
                 .maxLines(2)
 
               Row({ space: 8 }) {
                 if (row.decision === RecoveryDecision.RESTORE_DRAFT) {
                   Button('恢复')
                     .fontSize(12)
+                    .fontColor(this.pal.ON_PRIMARY)
+                    .backgroundColor(this.pal.PRIMARY)
+                    .borderRadius(8)
                     .onClick(() => this.restoreRow(row))
                 }
                 Button('另存副本')
                   .fontSize(12)
+                  .fontColor(this.pal.TEXT)
+                  .backgroundColor(this.pal.TOOLBAR_BG)
+                  .borderRadius(8)
                   .onClick(() => this.saveCopy(row))
                 Button(row.decision === RecoveryDecision.DISCARD_REDUNDANT ? '确认清理' : '放弃草稿')
                   .fontSize(12)
+                  .fontColor(this.pal.TEXT)
+                  .backgroundColor(this.pal.TOOLBAR_BG)
+                  .borderRadius(8)
                   .onClick(() => this.discardRow(row))
               }
               .width('100%')
             }
             .padding(10)
-            .backgroundColor(AppTheme.CARD)
+            .backgroundColor(this.pal.CARD)
             .borderRadius(10)
-            .border({ width: 1, color: AppTheme.DIVIDER })
+            .border({ width: 1, color: this.pal.DIVIDER })
             .width('100%')
           }
         }, (row: DraftRow) => row.draft.documentId)
       }
       .layoutWeight(1)
       .width('100%')
-
-      Text(this.log)
-        .fontSize(10)
-        .fontColor('#99000000')
-        .maxLines(3)
-        .width('100%')
       }
       .padding(16)
       .width('100%')
       .constraintSize({ maxWidth: 760 })
       .height('100%')
-      .backgroundColor(AppTheme.BG)
+      .backgroundColor(this.pal.BG)
     }
   }
 }

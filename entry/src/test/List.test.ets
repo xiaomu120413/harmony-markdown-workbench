@@ -13,6 +13,7 @@ import markdownCommandsTest from './MarkdownCommands.test';
 import findReplaceEngineTest from './FindReplaceEngine.test';
 import findSessionTest from './FindSession.test';
 import viewModePolicyTest from './ViewModePolicy.test';
+import documentNamerTest from './DocumentNamer.test';
 import headingOutlineTest from './HeadingOutline.test';
 import htmlSafetyTest from './HtmlSafety.test';
 import appSettingsTest from './AppSettings.test';
@@ -54,6 +55,7 @@ export default function listTest(): void {
   findReplaceEngineTest();
   findSessionTest();
   viewModePolicyTest();
+  documentNamerTest();
   headingOutlineTest();
   htmlSafetyTest();
   appSettingsTest();

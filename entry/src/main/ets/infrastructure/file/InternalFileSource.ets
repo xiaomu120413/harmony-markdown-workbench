@@ -137,4 +137,16 @@ export class InternalFileSource implements DocumentFileAdapter {
     }
     return names;
   }
+
+  /** 删除资料库文件（自动名升级后清理旧文件；仅内部源，失败静默——旧文件残留不阻塞重命名） */
+  remove(source: DocumentSource): void {
+    if (source.kind !== 'internal') {
+      return;
+    }
+    try {
+      fs.unlinkSync(this.pathOf(source));
+    } catch (e) {
+      // 已不存在/IO 失败：忽略
+    }
+  }
 }

@@ -17,8 +17,10 @@ import { ExternalUriFileSource } from '../infrastructure/file/ExternalUriFileSou
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { RecentFileList } from '../domain/document/RecentFileList';
+import { DocumentNamer } from '../domain/document/DocumentNamer';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { AppTheme } from '../common/AppTheme';
+import { SegBtn } from '../common/SegBtn';
 import { beginWindowMove } from '../common/WindowDrag';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../common/Breakpoints';
 import { AppSettings, SettingsValidator, ThemeMode, DefaultView } from '../domain/settings/AppSettings';
@@ -117,6 +119,7 @@ struct EditorPage {
   private settings: SettingsStore = new SettingsStore(getContext(this) as common.UIAbilityContext);
   private meta: MetadataStore = new MetadataStore(getContext(this) as common.UIAbilityContext);
   private appSettings: AppSettings = SettingsValidator.defaults();
+  @State pal: AppTheme = AppTheme.light();
   @State bp: Breakpoint = 'phone';
   private bpListeners: mediaquery.MediaQueryListener[] = [];
   private coordinator: SaveCoordinator | undefined = undefined;
@@ -208,12 +211,12 @@ struct EditorPage {
       this.appSettings = s;
       this.viewMode = ViewModePolicy.resolveInitial(this.bp, s.defaultView);
       const dark = s.theme === ThemeMode.DARK;
+      this.pal = AppTheme.of(dark);
       this.runJsValue(`window.__editorApi.setTheme(${dark});`);
       this.runJsValue(`window.__editorApi.setFontSize(${s.fontSize});`);
       this.runJsValue(`window.__editorApi.setWrap(${s.wrap});`);
       this.runJsValue(`window.__editorApi.setLineNumbers(${s.lineNumbers});`);
       this.applyPreviewStyle();
-      this.append(`[设置] 主题=${s.theme} 字号=${s.fontSize} 换行=${s.wrap} 行号=${s.lineNumbers} 自动保存=${s.autoSave} 入口视图=${this.viewMode}`);
     }).catch((e: ESObject) => {
       this.append(`[设置] 读取失败：${JSON.stringify(e)}`);
     });
@@ -533,16 +536,35 @@ struct EditorPage {
     return Promise.resolve();
   }
 
-  /** 持久化：内部原子写 / 外部 URI 写；新建文档首次保存自动命名到资料库 */
+  /** 持久化：内部原子写 / 外部 URI 写；新建按首行智能命名，自动名随标题补全升级重命名 */
   private async doPersist(content: string): Promise<WriteDocumentResult> {
     let target = this.docTarget;
     if (target === undefined) {
-      const stamp = `${Date.now()}`;
-      const src: InternalSource = { kind: 'internal', relativePath: `library/未命名-${stamp}.md` };
+      const name = DocumentNamer.derive(content, this.internal.listLibrary());
+      const src: InternalSource = { kind: 'internal', relativePath: `library/${name}` };
       target = src;
       this.docTarget = src;
-      this.docTitle = `未命名-${stamp}.md`;
-      this.append(`[保存] 新建文档 → 资料库/未命名-${stamp}.md`);
+      this.docTitle = name;
+      this.append(`[保存] 新建文档 → 资料库/${name}`);
+    } else if (target.kind === 'internal') {
+      // 自动名升级：首次自动保存常发生在标题输入完成前，标题可用时重命名
+      const currentName = (target as InternalSource).relativePath.substring('library/'.length);
+      const better = DocumentNamer.upgrade(currentName, content, this.internal.listLibrary());
+      if (better !== undefined) {
+        const renamed: InternalSource = { kind: 'internal', relativePath: `library/${better}` };
+        const w = await this.internal.write(renamed, content, this.expectedRevision);
+        if (w.ok) {
+          this.internal.remove(target);
+          this.docTarget = renamed;
+          this.docTitle = better;
+          this.expectedRevision = w.revision;
+          this.drafts.remove(this.draftIdOf(renamed));
+          this.trackRecent(renamed);
+          this.append(`[保存] 自动名升级 → 资料库/${better}`);
+          return w;
+        }
+        // 升级写入失败：按原名继续保存
+      }
     }
     const result = target.kind === 'internal'
       ? await this.internal.write(target, content, this.expectedRevision)
@@ -713,19 +735,21 @@ struct EditorPage {
     this.append('[冲突] 保留本地内容继续编辑');
   }
 
-  /** M4-03 冲突决策③：本地内容另存副本到资料库 */
+  /** M4-03 冲突决策③：本地内容另存副本到资料库（智能命名自动避让重名） */
   private async conflictSaveCopy(): Promise<void> {
     const c = this.coordinator;
     if (c === undefined) {
       return;
     }
-    const stamp = `${Date.now()}`;
-    const copy: InternalSource = { kind: 'internal', relativePath: `library/未命名-${stamp}.md` };
+    const content = await this.runJsValue('window.__editorApi.getSnapshot();');
+    const name = DocumentNamer.derive(content, this.internal.listLibrary());
+    const copy: InternalSource = { kind: 'internal', relativePath: `library/${name}` };
     this.docTarget = copy;
     c.decideKeepLocal();
     this.conflictVisible = false;
     const ran = await c.saveNow(Date.now());
     this.saveLabel = SaveStateMachine.label(c.state);
+    this.docTitle = name;
     this.append(`[冲突] 副本保存${ran && c.state !== SaveState.ERROR ? '完成' : '失败'} → ${copy.relativePath}`);
   }
 
@@ -766,24 +790,35 @@ struct EditorPage {
   toolBtn(label: string, cmd: MarkdownCommandName) {
     Button(label)
       .fontSize(15)
-      .fontColor(AppTheme.TEXT)
-      .backgroundColor(AppTheme.TOOLBAR_BG)
+      .fontColor(this.pal.TEXT)
+      .backgroundColor(this.pal.TOOLBAR_BG)
       .borderRadius(8)
       .width(46)
       .height(38)
       .onClick(() => this.applyCommand(cmd))
   }
 
-  /** 视图模式分段按钮 */
+  /** 快捷栏分组竖分隔线 */
   @Builder
-  viewTab(label: string, mode: DefaultView) {
-    Text(label)
+  toolSep() {
+    Divider()
+      .vertical(true)
+      .height(22)
+      .color(this.pal.DIVIDER)
+      .margin({ left: 4, right: 4 })
+  }
+
+  /** 历史按钮（撤销/重做，文字标签） */
+  @Builder
+  histBtn(label: string, kind: 'undo' | 'redo') {
+    Button(label)
       .fontSize(13)
-      .padding({ left: 12, right: 12, top: 6, bottom: 6 })
-      .fontColor(this.viewMode === mode ? AppTheme.ON_PRIMARY : AppTheme.TEXT)
-      .backgroundColor(this.viewMode === mode ? AppTheme.PRIMARY : AppTheme.TOOLBAR_BG)
+      .fontColor(this.pal.TEXT)
+      .backgroundColor(this.pal.TOOLBAR_BG)
       .borderRadius(8)
-      .onClick(() => this.setViewMode(mode))
+      .height(38)
+      .padding({ left: 10, right: 10 })
+      .onClick(() => this.applyHistory(kind))
   }
 
   /** 面板小按钮 */
@@ -791,8 +826,8 @@ struct EditorPage {
   panelBtn(label: string, action: () => void) {
     Button(label)
       .fontSize(12)
-      .fontColor(AppTheme.TEXT)
-      .backgroundColor(AppTheme.TOOLBAR_BG)
+      .fontColor(this.pal.TEXT)
+      .backgroundColor(this.pal.TOOLBAR_BG)
       .borderRadius(6)
       .height(30)
       .onClick(() => action())
@@ -804,8 +839,8 @@ struct EditorPage {
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Button('‹')
           .fontSize(22)
-          .fontColor(AppTheme.TEXT)
-          .backgroundColor(AppTheme.TOOLBAR_BG)
+          .fontColor(this.pal.TEXT)
+          .backgroundColor(this.pal.TOOLBAR_BG)
           .borderRadius(10)
           .width(40)
           .height(40)
@@ -813,7 +848,7 @@ struct EditorPage {
         Text(this.docTitle)
           .fontSize(15)
           .fontWeight(FontWeight.Medium)
-          .fontColor(AppTheme.TEXT)
+          .fontColor(this.pal.TEXT)
           .constraintSize({ maxWidth: 200 })
           .padding({ top: 8, bottom: 8 })
           .onTouch((e: TouchEvent) => {
@@ -825,31 +860,31 @@ struct EditorPage {
         Text(this.saveLabel)
           .fontSize(12)
           .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-          .fontColor(this.saveLabel === '已保存' ? AppTheme.OK : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? AppTheme.DANGER : AppTheme.AMBER))
-          .backgroundColor(this.saveLabel === '已保存' ? AppTheme.OK_SOFT : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? AppTheme.DANGER_SOFT : AppTheme.AMBER_SOFT))
+          .fontColor(this.saveLabel === '已保存' ? this.pal.OK : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER : this.pal.AMBER))
+          .backgroundColor(this.saveLabel === '已保存' ? this.pal.OK_SOFT : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER_SOFT : this.pal.AMBER_SOFT))
           .borderRadius(8)
 
-        // 视图模式分段（三端核心交互；phone 无分屏档）
+        // 视图模式分段（三端核心交互；phone 无分屏档；SegBtn 保证 active/palette 动态刷新）
         Row({ space: 4 }) {
-          this.viewTab('编辑', DefaultView.EDIT)
-          this.viewTab('预览', DefaultView.PREVIEW)
+          SegBtn({ label: '编辑', active: this.viewMode === DefaultView.EDIT, pal: this.pal, action: () => this.setViewMode(DefaultView.EDIT) })
+          SegBtn({ label: '预览', active: this.viewMode === DefaultView.PREVIEW, pal: this.pal, action: () => this.setViewMode(DefaultView.PREVIEW) })
           if (ViewModePolicy.allowsSplit(this.bp)) {
-            this.viewTab('分屏', DefaultView.SPLIT)
+            SegBtn({ label: '分屏', active: this.viewMode === DefaultView.SPLIT, pal: this.pal, action: () => this.setViewMode(DefaultView.SPLIT) })
           }
         }
 
         Button('📑')
           .fontSize(15)
-          .fontColor(this.outlineVisible ? AppTheme.ON_PRIMARY : AppTheme.TEXT)
-          .backgroundColor(this.outlineVisible ? AppTheme.PRIMARY : AppTheme.TOOLBAR_BG)
+          .fontColor(this.outlineVisible ? this.pal.ON_PRIMARY : this.pal.TEXT)
+          .backgroundColor(this.outlineVisible ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
           .borderRadius(8)
           .width(40)
           .height(40)
           .onClick(() => this.toggleOutline())
         Button('🔍')
           .fontSize(15)
-          .fontColor(AppTheme.TEXT)
-          .backgroundColor(AppTheme.TOOLBAR_BG)
+          .fontColor(this.pal.TEXT)
+          .backgroundColor(this.pal.TOOLBAR_BG)
           .borderRadius(8)
           .width(40)
           .height(40)
@@ -862,14 +897,14 @@ struct EditorPage {
           })
         Button('分享')
           .fontSize(13)
-          .backgroundColor(AppTheme.TOOLBAR_BG)
-          .fontColor(AppTheme.TEXT)
+          .backgroundColor(this.pal.TOOLBAR_BG)
+          .fontColor(this.pal.TEXT)
           .borderRadius(8)
           .onClick(() => this.share())
         Button('保存')
           .fontSize(13)
-          .fontColor(AppTheme.ON_PRIMARY)
-          .backgroundColor(AppTheme.PRIMARY)
+          .fontColor(this.pal.ON_PRIMARY)
+          .backgroundColor(this.pal.PRIMARY)
           .borderRadius(8)
           .onClick(() => this.save())
       }
@@ -882,7 +917,7 @@ struct EditorPage {
             .fontSize(13)
             .height(32)
             .padding({ left: 8, right: 8 })
-            .backgroundColor(AppTheme.CARD)
+            .backgroundColor(this.pal.CARD)
             .borderRadius(6)
             .constraintSize({ minWidth: 120, maxWidth: 220 })
             .onChange((v: string) => {
@@ -894,7 +929,7 @@ struct EditorPage {
             .fontSize(13)
             .height(32)
             .padding({ left: 8, right: 8 })
-            .backgroundColor(AppTheme.CARD)
+            .backgroundColor(this.pal.CARD)
             .borderRadius(6)
             .constraintSize({ minWidth: 120, maxWidth: 220 })
             .onChange((v: string) => {
@@ -902,7 +937,7 @@ struct EditorPage {
             })
           Text(this.matchCount > 0 ? `${this.matchIndex + 1}/${this.matchCount}` : '0 命中')
             .fontSize(12)
-            .fontColor(this.matchCount > 0 ? AppTheme.PRIMARY : AppTheme.TEXT_FAINT)
+            .fontColor(this.matchCount > 0 ? this.pal.PRIMARY : this.pal.TEXT_FAINT)
             .padding({ left: 6, right: 6 })
           this.panelBtn('上一个', () => this.jumpPrev())
           this.panelBtn('下一个', () => this.jumpNext())
@@ -910,8 +945,8 @@ struct EditorPage {
           this.panelBtn('全部替换', () => this.replaceAllMatches())
           Row({ space: 4 }) {
             Text('Aa').fontSize(12)
-              .fontColor(this.findCase ? AppTheme.ON_PRIMARY : AppTheme.TEXT)
-              .backgroundColor(this.findCase ? AppTheme.PRIMARY : AppTheme.TOOLBAR_BG)
+              .fontColor(this.findCase ? this.pal.ON_PRIMARY : this.pal.TEXT)
+              .backgroundColor(this.findCase ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 4, bottom: 4 })
               .onClick(() => {
@@ -919,8 +954,8 @@ struct EditorPage {
                 this.refreshFind();
               })
             Text('全词').fontSize(12)
-              .fontColor(this.findWord ? AppTheme.ON_PRIMARY : AppTheme.TEXT)
-              .backgroundColor(this.findWord ? AppTheme.PRIMARY : AppTheme.TOOLBAR_BG)
+              .fontColor(this.findWord ? this.pal.ON_PRIMARY : this.pal.TEXT)
+              .backgroundColor(this.findWord ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 4, bottom: 4 })
               .onClick(() => {
@@ -928,8 +963,8 @@ struct EditorPage {
                 this.refreshFind();
               })
             Text('✕').fontSize(12)
-              .fontColor(AppTheme.TEXT_SUB)
-              .backgroundColor(AppTheme.TOOLBAR_BG)
+              .fontColor(this.pal.TEXT_SUB)
+              .backgroundColor(this.pal.TOOLBAR_BG)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 4, bottom: 4 })
               .onClick(() => {
@@ -939,9 +974,9 @@ struct EditorPage {
         }
         .width('100%')
         .padding(6)
-        .backgroundColor(AppTheme.CARD)
+        .backgroundColor(this.pal.CARD)
         .borderRadius(8)
-        .border({ width: 1, color: AppTheme.DIVIDER })
+        .border({ width: 1, color: this.pal.DIVIDER })
       }
 
       // 冲突条（M4-03；wrap 防溢出）
@@ -949,30 +984,34 @@ struct EditorPage {
         Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
           Text('⚠ 磁盘版本已变化（自动保存已停止）')
             .fontSize(12)
-            .fontColor(AppTheme.DANGER)
-          Button('用磁盘版').fontSize(12).fontColor(AppTheme.TEXT).backgroundColor(AppTheme.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictKeepDisk())
-          Button('保留本地').fontSize(12).fontColor(AppTheme.TEXT).backgroundColor(AppTheme.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictKeepLocal())
-          Button('另存副本').fontSize(12).fontColor(AppTheme.TEXT).backgroundColor(AppTheme.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictSaveCopy())
+            .fontColor(this.pal.DANGER)
+          Button('用磁盘版').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictKeepDisk())
+          Button('保留本地').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictKeepLocal())
+          Button('另存副本').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictSaveCopy())
         }
         .width('100%')
         .padding(6)
-        .backgroundColor(AppTheme.DANGER_SOFT)
+        .backgroundColor(this.pal.DANGER_SOFT)
         .borderRadius(8)
       }
 
-      // 快捷栏（仅编辑/分屏可见；FR-EDIT-002；wrap 防溢出）
+      // 快捷栏（仅编辑/分屏可见；FR-EDIT-002；分组：标题 | 行内 | 块级 | 历史；wrap 防溢出）
       if (this.viewMode !== DefaultView.PREVIEW) {
-        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
-          // 标题等级（V0.2.1：h1–h6 命令，工具栏暴露常用三级）
+        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
+          // 标题等级（h1–h6 命令，工具栏暴露常用三级）
           this.toolBtn('H1', 'h1')
           this.toolBtn('H2', 'h2')
           this.toolBtn('H3', 'h3')
+          this.toolSep()
+          // 行内样式
           this.toolBtn('B', 'bold')
           this.toolBtn('I', 'italic')
           this.toolBtn('S̶', 'strike')
           this.toolBtn('`', 'inlineCode')
           this.toolBtn('🔗', 'link')
           this.toolBtn('🖼', 'image')
+          this.toolSep()
+          // 块级
           this.toolBtn('•', 'ul')
           this.toolBtn('1.', 'ol')
           this.toolBtn('☑', 'task')
@@ -980,36 +1019,9 @@ struct EditorPage {
           this.toolBtn('{}', 'codeBlock')
           this.toolBtn('―', 'hr')
           this.toolBtn('▦', 'table')
-          Button('⤺')
-            .fontSize(15)
-            .fontColor(AppTheme.TEXT)
-            .backgroundColor(AppTheme.TOOLBAR_BG)
-            .borderRadius(8)
-            .width(46)
-            .height(38)
-            .onClick(() => this.applyHistory('undo'))
-          Button('⤿')
-            .fontSize(15)
-            .fontColor(AppTheme.TEXT)
-            .backgroundColor(AppTheme.TOOLBAR_BG)
-            .borderRadius(8)
-            .width(46)
-            .height(38)
-            .onClick(() => this.applyHistory('redo'))
-          Button('✎ 示例')
-            .fontSize(13)
-            .fontColor(AppTheme.TEXT)
-            .backgroundColor(AppTheme.TOOLBAR_BG)
-            .borderRadius(8)
-            .height(38)
-            .onClick(() => {
-              const md = '# 正式编辑器\n\n**M2** 快捷栏命令测试：\n\n- 列表 A\n\n> 引用\n';
-              const js = `window.__editorApi.setDocument(${JSON.stringify(md)}, 0, 0);`;
-              this.runJsValue(js).then(() => {
-                this.docLength = md.length;
-                this.markEdited();
-              });
-            })
+          this.toolSep()
+          this.histBtn('撤销', 'undo')
+          this.histBtn('重做', 'redo')
         }
         .width('100%')
       }
@@ -1022,13 +1034,13 @@ struct EditorPage {
           Column() {
             Text('大纲')
               .fontSize(12)
-              .fontColor(AppTheme.TEXT_SUB)
+              .fontColor(this.pal.TEXT_SUB)
               .padding({ left: 8, top: 8, bottom: 4 })
               .width('100%')
             if (this.outlineEntries.length === 0) {
               Text('暂无标题（用 H1–H3 或输入 # 添加）')
                 .fontSize(12)
-                .fontColor(AppTheme.TEXT_FAINT)
+                .fontColor(this.pal.TEXT_FAINT)
                 .padding(8)
             }
             List() {
@@ -1036,7 +1048,7 @@ struct EditorPage {
                 ListItem() {
                   Text(e.text)
                     .fontSize(13)
-                    .fontColor(e.level === 1 ? AppTheme.TEXT : AppTheme.TEXT_SUB)
+                    .fontColor(e.level === 1 ? this.pal.TEXT : this.pal.TEXT_SUB)
                     .fontWeight(e.level === 1 ? FontWeight.Medium : FontWeight.Normal)
                     .maxLines(1)
                     .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -1052,9 +1064,9 @@ struct EditorPage {
           }
           .width(200)
           .height('100%')
-          .backgroundColor(AppTheme.CARD)
+          .backgroundColor(this.pal.CARD)
           .borderRadius(12)
-          .border({ width: 1, color: AppTheme.DIVIDER })
+          .border({ width: 1, color: this.pal.DIVIDER })
           .clip(true)
         }
 
@@ -1083,16 +1095,16 @@ struct EditorPage {
         .visibility(this.viewMode === DefaultView.PREVIEW ? Visibility.None : Visibility.Visible)
         .layoutWeight(1)
         .width('100%')
-        .backgroundColor(AppTheme.CARD)
+        .backgroundColor(this.pal.CARD)
         .borderRadius(12)
-        .border({ width: 1, color: AppTheme.DIVIDER })
+        .border({ width: 1, color: this.pal.DIVIDER })
         .clip(true)
 
         if (this.viewMode === DefaultView.SPLIT) {
           Divider()
             .vertical(true)
             .height('92%')
-            .color(AppTheme.DIVIDER)
+            .color(this.pal.DIVIDER)
         }
 
         Column() {
@@ -1113,9 +1125,9 @@ struct EditorPage {
         .visibility(this.viewMode === DefaultView.EDIT ? Visibility.None : Visibility.Visible)
         .layoutWeight(1)
         .width('100%')
-        .backgroundColor(AppTheme.CARD)
+        .backgroundColor(this.pal.CARD)
         .borderRadius(12)
-        .border({ width: 1, color: AppTheme.DIVIDER })
+        .border({ width: 1, color: this.pal.DIVIDER })
         .clip(true)
       }
       .layoutWeight(1)
@@ -1125,7 +1137,7 @@ struct EditorPage {
     .padding(12)
     .width('100%')
     .height('100%')
-    .backgroundColor(AppTheme.BG)
+    .backgroundColor(this.pal.BG)
     .alignSelf(ItemAlign.Center)
     .constraintSize({ maxWidth: this.bp === 'pc' ? 1440 : 10000 })
   }

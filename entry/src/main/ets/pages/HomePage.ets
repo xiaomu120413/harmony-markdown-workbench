@@ -5,6 +5,8 @@ import { RecentFileList, RecentEntry } from '../domain/document/RecentFileList';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
+import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
+import { ThemeMode } from '../domain/settings/AppSettings';
 import { AppTheme } from '../common/AppTheme';
 import { beginWindowMove } from '../common/WindowDrag';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints, bpOf } from '../common/Breakpoints';
@@ -25,10 +27,12 @@ struct HomePage {
   @State draftCount: number = 0;
   @State pickingFile: boolean = false;
   @State bp: Breakpoint = 'phone';
+  @State pal: AppTheme = AppTheme.light();
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private meta: MetadataStore = new MetadataStore(getContext(this) as common.UIAbilityContext);
   private fileSource: InternalFileSource = new InternalFileSource(getContext(this) as common.UIAbilityContext);
   private draftStore: DraftStore = new DraftStore(getContext(this) as common.UIAbilityContext);
+  private settings: SettingsStore = new SettingsStore(getContext(this) as common.UIAbilityContext);
   private bpListeners: mediaquery.MediaQueryListener[] = [];
 
   private note(line: string): void {
@@ -40,6 +44,7 @@ struct HomePage {
     this.bpListeners = watchBreakpoints((bp: Breakpoint) => {
       this.bp = bp;
     });
+    this.applyTheme();
     this.refresh();
     this.refreshRecovery();
     this.refreshLibrary();
@@ -50,12 +55,21 @@ struct HomePage {
     this.bpListeners = [];
   }
 
-  /** 页面每次显示（含从编辑器返回、自由窗口 resize）时刷新 */
+  /** 页面每次显示（含从编辑器/设置返回、自由窗口 resize）时刷新 + 重读主题 */
   onPageShow(): void {
     this.bp = bpOf();
+    this.applyTheme();
     this.refresh();
     this.refreshRecovery();
     this.refreshLibrary();
+  }
+
+  /** 主题跟随设置（设置页切换后返回本页生效） */
+  private applyTheme(): void {
+    this.settings.load().then((s) => {
+      this.pal = AppTheme.of(s.theme === ThemeMode.DARK);
+    }).catch(() => {
+    });
   }
 
   private async refreshRecovery(): Promise<void> {
@@ -120,23 +134,13 @@ struct HomePage {
       Text('＋ 新建文档')
         .fontSize(16)
         .fontWeight(FontWeight.Medium)
-        .fontColor(AppTheme.PRIMARY)
+        .fontColor(this.pal.PRIMARY)
         .onClick(() => this.goEditor())
-      Text('打开文件')
+      Text('打开文档')
         .fontSize(16)
-        .fontColor(AppTheme.TEXT_SUB)
+        .fontColor(this.pal.TEXT_SUB)
         .onClick(() => this.openLibraryFile())
       Blank()
-      Button('刷新')
-        .fontSize(12)
-        .backgroundColor(AppTheme.TOOLBAR_BG)
-        .fontColor(AppTheme.TEXT_SUB)
-        .borderRadius(6)
-        .height(32)
-        .onClick(() => {
-          this.refresh();
-          this.refreshLibrary();
-        })
     }
     .width('100%')
     .height(48)
@@ -149,12 +153,12 @@ struct HomePage {
       Row() {
         Text('最近')
           .fontSize(14)
-          .fontColor(AppTheme.TEXT_SUB)
+          .fontColor(this.pal.TEXT_SUB)
         Blank()
         if (this.recent.length > 0) {
           Text(`${this.recent.length} 个文档`)
             .fontSize(12)
-            .fontColor(AppTheme.TEXT_FAINT)
+            .fontColor(this.pal.TEXT_FAINT)
         }
       }
       .width('100%')
@@ -164,10 +168,10 @@ struct HomePage {
         Column({ space: 6 }) {
           Text('还没有打开过文档')
             .fontSize(15)
-            .fontColor(AppTheme.TEXT_SUB)
+            .fontColor(this.pal.TEXT_SUB)
           Text('新建文档或打开文件后，最近使用的文档会显示在这里。')
             .fontSize(12)
-            .fontColor(AppTheme.TEXT_FAINT)
+            .fontColor(this.pal.TEXT_FAINT)
         }
         .alignItems(HorizontalAlign.Start)
         .width('100%')
@@ -181,16 +185,16 @@ struct HomePage {
               Text(item.documentId)
                 .fontSize(16)
                 .fontWeight(FontWeight.Medium)
-                .fontColor(AppTheme.TEXT)
+                .fontColor(this.pal.TEXT)
                 .maxLines(1)
               Text(this.fmtTime(item.lastOpenedAt))
                 .fontSize(11)
-                .fontColor(AppTheme.TEXT_FAINT)
+                .fontColor(this.pal.TEXT_FAINT)
             }
             .alignItems(HorizontalAlign.Start)
             .width('100%')
             .padding({ top: 16, bottom: 16, left: 0, right: 0 })
-            .border({ width: { bottom: 1 }, color: AppTheme.DIVIDER })
+            .border({ width: { bottom: 1 }, color: this.pal.DIVIDER })
             .onClick(() => this.goEditorWith(item.documentId))
           }
         }, (item: RecentEntry) => item.documentId)
@@ -209,27 +213,27 @@ struct HomePage {
     Column({ space: 12 }) {
       Text(`资料库`)
         .fontSize(14)
-        .fontColor(AppTheme.TEXT_SUB)
+        .fontColor(this.pal.TEXT_SUB)
       Text(`${this.libraryFiles.length} 个文档`)
         .fontSize(28)
         .fontWeight(FontWeight.Bold)
-        .fontColor(AppTheme.TEXT)
+        .fontColor(this.pal.TEXT)
 
       if (this.draftCount > 0) {
         Text(`找回未保存内容（${this.draftCount}）`)
           .fontSize(13)
-          .fontColor(AppTheme.AMBER)
+          .fontColor(this.pal.AMBER)
           .onClick(() => this.goRecovery())
       }
 
-      Divider().color(AppTheme.DIVIDER).margin({ top: 8, bottom: 8 })
+      Divider().color(this.pal.DIVIDER).margin({ top: 8, bottom: 8 })
 
       Text('完全离线 · 应用私有目录')
         .fontSize(12)
-        .fontColor(AppTheme.TEXT_FAINT)
+        .fontColor(this.pal.TEXT_FAINT)
       Text('不联网 · 不上传 · 不跟踪')
         .fontSize(12)
-        .fontColor(AppTheme.TEXT_FAINT)
+        .fontColor(this.pal.TEXT_FAINT)
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
@@ -242,21 +246,21 @@ struct HomePage {
     Column({ space: 10 }) {
       Text('关于')
         .fontSize(14)
-        .fontColor(AppTheme.TEXT_SUB)
+        .fontColor(this.pal.TEXT_SUB)
       Text('Markdown 工作台')
         .fontSize(20)
         .fontWeight(FontWeight.Bold)
-      Text('V0.1')
+      Text('1.0')
         .fontSize(13)
-        .fontColor(AppTheme.TEXT_FAINT)
-      Divider().color(AppTheme.DIVIDER).margin({ top: 8, bottom: 8 })
+        .fontColor(this.pal.TEXT_FAINT)
+      Divider().color(this.pal.DIVIDER).margin({ top: 8, bottom: 8 })
       Text('打开的是原文件，保存后仍是原文件。')
         .fontSize(13)
-        .fontColor(AppTheme.TEXT_SUB)
+        .fontColor(this.pal.TEXT_SUB)
         .lineHeight(20)
-      Text('自动保存 1.5 秒防抖落盘；外部修改进入冲突保护；崩溃后草稿可恢复。')
+      Text('内容只保存在本机；修改自动保存，意外退出可找回。')
         .fontSize(12)
-        .fontColor(AppTheme.TEXT_FAINT)
+        .fontColor(this.pal.TEXT_FAINT)
         .lineHeight(18)
     }
     .alignItems(HorizontalAlign.Start)
@@ -271,7 +275,7 @@ struct HomePage {
         Text('Markdown 工作台')
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
-          .fontColor(AppTheme.TEXT)
+          .fontColor(this.pal.TEXT)
           .padding({ top: 8, bottom: 8 })
           .onTouch((e: TouchEvent) => {
             if (e.type === TouchType.Down) {
@@ -281,24 +285,32 @@ struct HomePage {
         Blank()
         Text('设置')
           .fontSize(14)
-          .fontColor(AppTheme.TEXT_SUB)
+          .fontColor(this.pal.TEXT_SUB)
           .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
       }
       .width('100%')
 
       this.actionCards()
 
-      // 打开文件选择面板
+      // 打开文档选择面板
       if (this.pickingFile) {
         Column({ space: 4 }) {
-          Text(`选择资料库文档（${this.libraryFiles.length}）`)
+          Text(`选择文档（${this.libraryFiles.length}）`)
             .fontSize(13)
             .fontWeight(FontWeight.Medium)
+            .fontColor(this.pal.TEXT)
+          if (this.libraryFiles.length === 0) {
+            Text('资料库还没有文档，先新建一个吧。')
+              .fontSize(12)
+              .fontColor(this.pal.TEXT_FAINT)
+              .padding(12)
+          }
           Scroll() {
             Column({ space: 2 }) {
               ForEach(this.libraryFiles, (name: string) => {
                 Text(`📄 ${name}`)
                   .fontSize(13)
+                  .fontColor(this.pal.TEXT)
                   .width('100%')
                   .padding(8)
                   .onClick(() => {
@@ -318,7 +330,7 @@ struct HomePage {
         }
         .width('100%')
         .padding(10)
-        .backgroundColor(AppTheme.TOOLBAR_BG)
+        .backgroundColor(this.pal.TOOLBAR_BG)
         .borderRadius(10)
       }
 
@@ -364,11 +376,11 @@ struct HomePage {
           .layoutWeight(1)
           .width('100%')
 
-          // 底部 Tab Bar（自定义 Flex，3 个 tab：首页/编辑/我的）
+          // 底部 Tab Bar（自定义 Flex，3 个 tab：首页/编辑/设置）
           Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.SpaceAround, alignItems: ItemAlign.Center }) {
             Column({ space: 2 }) {
               Text('🏠').fontSize(20)
-              Text('首页').fontSize(10).fontColor(AppTheme.PRIMARY)
+              Text('首页').fontSize(10).fontColor(this.pal.PRIMARY)
             }
             .justifyContent(FlexAlign.Center)
             .onClick(() => {})
@@ -377,7 +389,7 @@ struct HomePage {
 
             Column({ space: 2 }) {
               Text('✏️').fontSize(20)
-              Text('编辑').fontSize(10).fontColor(AppTheme.TEXT_FAINT)
+              Text('编辑').fontSize(10).fontColor(this.pal.TEXT_FAINT)
             }
             .justifyContent(FlexAlign.Center)
             .onClick(() => this.goEditor())
@@ -386,7 +398,7 @@ struct HomePage {
 
             Column({ space: 2 }) {
               Text('⚙').fontSize(20)
-              Text('我的').fontSize(10).fontColor(AppTheme.TEXT_FAINT)
+              Text('设置').fontSize(10).fontColor(this.pal.TEXT_FAINT)
             }
             .justifyContent(FlexAlign.Center)
             .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
@@ -395,8 +407,8 @@ struct HomePage {
           }
           .width('100%')
           .height(56)
-          .backgroundColor('#FFFFFF')
-          .border({ width: { top: 1 }, color: AppTheme.DIVIDER })
+          .backgroundColor(this.pal.CARD)
+          .border({ width: { top: 1 }, color: this.pal.DIVIDER })
         }
         .width('100%')
         .layoutWeight(1)
@@ -405,7 +417,7 @@ struct HomePage {
     .padding(this.bp === 'phone' ? { left: 20, right: 20, top: 20, bottom: 0 } : 24)
     .width('100%')
     .height('100%')
-    .backgroundColor(AppTheme.BG)
+    .backgroundColor(this.pal.BG)
     .alignItems(HorizontalAlign.Start)
   }
 }
