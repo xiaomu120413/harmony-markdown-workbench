@@ -6,6 +6,7 @@ import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
 import { AppTheme } from '../common/AppTheme';
+import { beginWindowMove } from '../common/WindowDrag';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints, bpOf } from '../common/Breakpoints';
 
 const DOMAIN: number = 0x0000;
@@ -265,12 +266,18 @@ struct HomePage {
 
   build() {
     Column({ space: 16 }) {
-      // 顶栏（极简）
+      // 顶栏（极简；标题区为窗口拖动热区——系统标题栏已隐藏）
       Row() {
         Text('Markdown 工作台')
           .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor(AppTheme.TEXT)
+          .padding({ top: 8, bottom: 8 })
+          .onTouch((e: TouchEvent) => {
+            if (e.type === TouchType.Down) {
+              beginWindowMove(this.ctx);
+            }
+          })
         Blank()
         Text('设置')
           .fontSize(14)

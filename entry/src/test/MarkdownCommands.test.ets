@@ -67,6 +67,46 @@ export default function markdownCommandsTest(): void {
       expect(r.selection.from).assertEqual(2);
       expect(r.selection.to).assertEqual(5);
     });
+
+    // ---- V0.2.1：标题等级 / 分隔线 / 表格 ----
+
+    it('heading_adds_prefix_on_plain_line', 0, () => {
+      const r = MarkdownCommands.apply('标题文字', { from: 0, to: 4 }, 'h2');
+      expect(r.text).assertEqual('## 标题文字');
+      // 光标随前缀平移，不低于行首
+      expect(r.selection.from).assertEqual(3);
+    });
+
+    it('heading_midline_uses_its_line', 0, () => {
+      const r = MarkdownCommands.apply('a\n标题\nb', { from: 2, to: 4 }, 'h1');
+      expect(r.text).assertEqual('a\n# 标题\nb');
+    });
+
+    it('heading_same_level_toggles_off', 0, () => {
+      const r = MarkdownCommands.apply('### 三级', { from: 0, to: 6 }, 'h3');
+      expect(r.text).assertEqual('三级');
+    });
+
+    it('heading_switches_between_levels', 0, () => {
+      const r = MarkdownCommands.apply('### 三级', { from: 0, to: 6 }, 'h1');
+      expect(r.text).assertEqual('# 三级');
+    });
+
+    it('heading_h6_deepest', 0, () => {
+      const r = MarkdownCommands.apply('深', { from: 0, to: 1 }, 'h6');
+      expect(r.text).assertEqual('###### 深');
+    });
+
+    it('hr_inserts_at_cursor', 0, () => {
+      const r = MarkdownCommands.apply('ab', { from: 1, to: 1 }, 'hr');
+      expect(r.text).assertEqual('a---\nb');
+      expect(r.selection.from).assertEqual(5);
+    });
+
+    it('table_inserts_snippet', 0, () => {
+      const r = MarkdownCommands.apply('', { from: 0, to: 0 }, 'table');
+      expect(r.text).assertEqual('| 列1 | 列2 |\n| --- | --- |\n| 内容 | 内容 |\n');
+    });
   });
 
 }

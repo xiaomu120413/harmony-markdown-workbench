@@ -31,4 +31,18 @@ export class HeadingOutline {
     }
     return items;
   }
+
+  /**
+   * 每行起始字符偏移（0 基，长度 = 行数）：大纲条目 line → 编辑器文档偏移的映射。
+   * 与 extract 的 line 字段（0 基行号）配套使用；单次 O(n)。
+   */
+  static lineOffsets(markdown: string): number[] {
+    const offsets: number[] = [0];
+    for (let i = 0; i < markdown.length; i++) {
+      if (markdown.charAt(i) === '\n') {
+        offsets.push(i + 1);
+      }
+    }
+    return offsets;
+  }
 }

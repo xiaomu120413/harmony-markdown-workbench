@@ -54,5 +54,32 @@ export default function headingOutlineTest(): void {
       const items = HeadingOutline.extract('#   padded   ');
       expect(items[0].text).assertEqual('padded');
     });
+
+    // ---- V0.2.1：line → 文档偏移映射（大纲跳转） ----
+
+    it('line_offsets_empty_markdown', 0, () => {
+      const offsets = HeadingOutline.lineOffsets('');
+      expect(offsets.length).assertEqual(1);
+      expect(offsets[0]).assertEqual(0);
+    });
+
+    it('line_offsets_count_and_values', 0, () => {
+      // 'a\nbc\nd' → 行首偏移 [0, 2, 5]
+      const offsets = HeadingOutline.lineOffsets('a\nbc\nd');
+      expect(offsets.length).assertEqual(3);
+      expect(offsets[0]).assertEqual(0);
+      expect(offsets[1]).assertEqual(2);
+      expect(offsets[2]).assertEqual(5);
+    });
+
+    it('line_offsets_maps_outline_line_to_doc_offset', 0, () => {
+      const md = 'intro\n\n# Title\nbody\n## Sub';
+      const items = HeadingOutline.extract(md);
+      const offsets = HeadingOutline.lineOffsets(md);
+      // items[0].line=2 → 偏移 7 处应为 '#'
+      expect(md.charAt(offsets[items[0].line])).assertEqual('#');
+      // items[1].line=4 → 偏移 20 处为 '## Sub' 行首
+      expect(md.substring(offsets[items[1].line], offsets[items[1].line] + 2)).assertEqual('##');
+    });
   });
 }

@@ -4,8 +4,9 @@
  * 规则验收点：
  *  - 包裹型语法（加粗/斜体/删除线/行内代码）作用于当前选区；
  *  - 空选区时插入可继续输入的模板（光标置于内容位置）；
- *  - 块级命令（列表/引用/代码块）按行处理（多行也支持）；
- *  - 两面包裹重复时按"切换"语义撤销包裹（加粗再次执行=去除）。
+ *  - 块级命令（列表/引用/代码块/标题）按行处理（多行也支持）；
+ *  - 两面包裹重复时按"切换"语义撤销包裹（加粗再次执行=去除）；
+ *  - 标题命令：同级再执行=取消标题，异级=切换级别（H1⇄H3 等）。
  * 纯逻辑，可本地单测。
  */
 export interface TextRange {
@@ -19,7 +20,8 @@ export interface TextTransformResult {
 }
 
 export type MarkdownCommandName = 'bold' | 'italic' | 'strike' | 'inlineCode' | 'link' | 'image' |
-  'ul' | 'ol' | 'task' | 'quote' | 'codeBlock';
+  'ul' | 'ol' | 'task' | 'quote' | 'codeBlock' |
+  'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'hr' | 'table';
 
 export class MarkdownCommands {
   /**
@@ -80,6 +82,44 @@ export class MarkdownCommands {
     };
   }
 
+  /**
+   * 标题命令（选区覆盖的首行）：同级再执行=取消标题；异级=切换级别；无标题=添加。
+   * 光标/选区随行首前缀长度差平移（不低于行首）。
+   */
+  private static heading(text: string, sel: TextRange, level: number): TextTransformResult {
+    const lineStart = text.lastIndexOf('\n', sel.from - 1) + 1;
+    let lineEnd = text.indexOf('\n', sel.from);
+    if (lineEnd === -1) {
+      lineEnd = text.length;
+    }
+    const line = text.substring(lineStart, lineEnd);
+    const m = /^( {0,3})(#{1,6}) /.exec(line);
+    const prefix = `${'#'.repeat(level)} `;
+    let newLine: string;
+    if (m === null) {
+      newLine = prefix + line;
+    } else if (m[2].length === level) {
+      newLine = line.substring(m[0].length);
+    } else {
+      newLine = prefix + line.substring(m[0].length);
+    }
+    const delta = newLine.length - line.length;
+    const from = Math.max(lineStart, sel.from + delta);
+    return {
+      text: text.substring(0, lineStart) + newLine + text.substring(lineEnd),
+      selection: { from: from, to: Math.max(from, sel.to + delta) },
+    };
+  }
+
+  /** 片段插入（光标处）：光标落在片段末尾 */
+  private static insertSnippet(text: string, sel: TextRange, snippet: string): TextTransformResult {
+    const at = sel.from;
+    return {
+      text: text.substring(0, at) + snippet + text.substring(sel.to),
+      selection: { from: at + snippet.length, to: at + snippet.length },
+    };
+  }
+
   static apply(text: string, sel: TextRange, command: MarkdownCommandName): TextTransformResult {
     switch (command) {
       case 'bold':
@@ -104,6 +144,22 @@ export class MarkdownCommands {
         return MarkdownCommands.linePrefix(text, sel, '> ');
       case 'codeBlock':
         return MarkdownCommands.wrap(text, sel, '```\n', '\n```', '');
+      case 'h1':
+        return MarkdownCommands.heading(text, sel, 1);
+      case 'h2':
+        return MarkdownCommands.heading(text, sel, 2);
+      case 'h3':
+        return MarkdownCommands.heading(text, sel, 3);
+      case 'h4':
+        return MarkdownCommands.heading(text, sel, 4);
+      case 'h5':
+        return MarkdownCommands.heading(text, sel, 5);
+      case 'h6':
+        return MarkdownCommands.heading(text, sel, 6);
+      case 'hr':
+        return MarkdownCommands.insertSnippet(text, sel, '---\n');
+      case 'table':
+        return MarkdownCommands.insertSnippet(text, sel, '| 列1 | 列2 |\n| --- | --- |\n| 内容 | 内容 |\n');
       default:
         return { text: text, selection: { from: sel.from, to: sel.to } };
     }

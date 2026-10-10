@@ -11,8 +11,7 @@ export default class EntryAbility extends UIAbility {
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
-    // 沉浸式：扩展到状态栏区域，去掉系统标题栏冗余（自由窗口下 DecorBar 会
-    // 重复显示应用名——此处全屏布局让自定义顶栏成为唯一标题栏）
+    // 沉浸式：扩展到状态栏区域
     windowStage.getMainWindow().then((win: window.Window) => {
       win.setWindowLayoutFullScreen(true);
     });
@@ -22,6 +21,17 @@ export default class EntryAbility extends UIAbility {
         return;
       }
       hilog.info(DOMAIN, TAG, 'HomePage loaded');
+      // 隐藏系统标题栏（自由窗口 DecorBar）：应用自定义顶栏成为唯一标题栏，
+      // 内容区接管原标题栏空间；窗口拖动由应用内热区（页面标题，startMoving）接管。
+      // 须在 loadContent 生效后调用；不支持的形态（手机全屏等）静默降级。
+      windowStage.getMainWindow().then((win: window.Window) => {
+        try {
+          win.setWindowDecorVisible(false);
+          hilog.info(DOMAIN, TAG, 'window decor hidden');
+        } catch (e) {
+          hilog.info(DOMAIN, TAG, 'setWindowDecorVisible unavailable: %{public}s', JSON.stringify(e));
+        }
+      });
     });
   }
 

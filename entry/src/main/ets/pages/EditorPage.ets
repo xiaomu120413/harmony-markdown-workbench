@@ -8,6 +8,7 @@ import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult }
 import { FindReplaceEngine, FindOptions, FindMatch } from '../domain/editor/FindReplaceEngine';
 import { FindSession } from '../domain/editor/FindSession';
 import { ViewModePolicy } from '../domain/editor/ViewModePolicy';
+import { HeadingOutline } from '../domain/editor/HeadingOutline';
 import { EditorBridge } from '../services/EditorBridge';
 import { SaveCoordinator, SaveCoordinatorDeps } from '../services/SaveCoordinator';
 import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult } from '../domain/document/DocumentFileAdapter';
@@ -18,6 +19,7 @@ import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { RecentFileList } from '../domain/document/RecentFileList';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { AppTheme } from '../common/AppTheme';
+import { beginWindowMove } from '../common/WindowDrag';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../common/Breakpoints';
 import { AppSettings, SettingsValidator, ThemeMode, DefaultView } from '../domain/settings/AppSettings';
 
@@ -39,6 +41,14 @@ function editorBridgeSend(raw: string): void {
 interface RouteParams {
   name?: string;
   uri?: string;
+}
+
+/** 大纲条目（渲染用）：层级 + 文档内选区（跳转定位） */
+interface OutlineEntry {
+  level: number;
+  text: string;
+  from: number;
+  to: number;
 }
 
 /**
@@ -95,6 +105,8 @@ struct EditorPage {
   @State findWord: boolean = false;
   @State matchCount: number = 0;
   @State matchIndex: number = -1;
+  @State outlineVisible: boolean = false;
+  @State outlineEntries: OutlineEntry[] = [];
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private controller: webview.WebviewController = new webview.WebviewController();
   private previewController: webview.WebviewController = new webview.WebviewController();
@@ -152,7 +164,7 @@ struct EditorPage {
           c.onEdit(Date.now());
           this.saveLabel = SaveStateMachine.label(c.state);
         }
-        this.schedulePreviewSync();
+        this.scheduleDocSync();
         return;
       }
       if (!this.bridge.isFirstResponse(env.id)) {
@@ -299,14 +311,14 @@ struct EditorPage {
       this.docLength = md.length;
       const dt = t0 > 0 ? Date.now() - t0 : -1;
       this.append(`[打开] 文档 ${md.length} 字符（打开至可编辑 ${dt}ms）`);
-      this.syncPreviewNow();
+      this.syncDocNow();
     });
   }
 
-  // ---- 预览同步（编辑 → 预览，防抖 + 内容去重）----
+  // ---- 文档联动同步（编辑 → 预览渲染 + 大纲重建，防抖 + 内容去重）----
 
-  private schedulePreviewSync(): void {
-    if (this.viewMode === DefaultView.EDIT) {
+  private scheduleDocSync(): void {
+    if (this.viewMode === DefaultView.EDIT && !this.outlineVisible) {
       return;
     }
     if (this.previewTimer >= 0) {
@@ -314,26 +326,68 @@ struct EditorPage {
     }
     this.previewTimer = setTimeout(() => {
       this.previewTimer = -1;
-      this.syncPreviewNow();
+      this.syncDocNow();
     }, PREVIEW_SYNC_DEBOUNCE_MS);
   }
 
-  private syncPreviewNow(): void {
-    if (!this.previewReady || this.viewMode === DefaultView.EDIT) {
+  /** 一次快照取回，按需驱动预览渲染与大纲重建 */
+  private syncDocNow(): void {
+    if (!this.webReady) {
+      return;
+    }
+    const needPreview = this.previewReady && this.viewMode !== DefaultView.EDIT;
+    const needOutline = this.outlineVisible;
+    if (!needPreview && !needOutline) {
       return;
     }
     this.runJsValue('window.__editorApi.getSnapshot();').then((md: string) => {
-      if (md === this.lastPreviewedMd) {
-        return;
+      if (needPreview && md !== this.lastPreviewedMd) {
+        this.lastPreviewedMd = md;
+        const js = `window.__previewApi.render(${JSON.stringify(md)});`;
+        this.previewController.runJavaScript(js, (err) => {
+          if (err) {
+            this.append(`[预览] 渲染失败：${JSON.stringify(err)}`);
+          }
+        });
       }
-      this.lastPreviewedMd = md;
-      const js = `window.__previewApi.render(${JSON.stringify(md)});`;
-      this.previewController.runJavaScript(js, (err) => {
-        if (err) {
-          this.append(`[预览] 渲染失败：${JSON.stringify(err)}`);
-        }
-      });
+      if (needOutline) {
+        this.rebuildOutline(md);
+      }
     });
+  }
+
+  /** 大纲重建：领域提取 + 行偏移映射（FR-PREVIEW-003 总装） */
+  private rebuildOutline(md: string): void {
+    const items = HeadingOutline.extract(md);
+    const offsets = HeadingOutline.lineOffsets(md);
+    const entries: OutlineEntry[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const from = it.line < offsets.length ? offsets[it.line] : 0;
+      const to = it.line + 1 < offsets.length ? offsets[it.line + 1] - 1 : md.length;
+      entries.push({
+        level: it.level,
+        text: it.text.length > 0 ? it.text : '（无标题）',
+        from: from,
+        to: to,
+      });
+    }
+    this.outlineEntries = entries;
+  }
+
+  /** 大纲条目点击 → 编辑器定位（预览态先切回编辑） */
+  private jumpToOutlineEntry(e: OutlineEntry): void {
+    if (this.viewMode === DefaultView.PREVIEW) {
+      this.setViewMode(DefaultView.EDIT);
+    }
+    this.runJsValue(`window.__editorApi.setSelectionRange(${e.from}, ${e.to});`);
+  }
+
+  private toggleOutline(): void {
+    this.outlineVisible = !this.outlineVisible;
+    if (this.outlineVisible) {
+      this.syncDocNow();
+    }
   }
 
   /** 视图切换：进入预览/分屏立即同步一次（不等防抖） */
@@ -346,7 +400,7 @@ struct EditorPage {
     }
     this.viewMode = mode;
     if (mode !== DefaultView.EDIT) {
-      this.syncPreviewNow();
+      this.syncDocNow();
     }
   }
 
@@ -458,7 +512,7 @@ struct EditorPage {
       c.onEdit(Date.now());
       this.saveLabel = SaveStateMachine.label(c.state);
     }
-    this.schedulePreviewSync();
+    this.scheduleDocSync();
   }
 
   // ---- 保存 / 冲突 / 分享 ----
@@ -761,6 +815,13 @@ struct EditorPage {
           .fontWeight(FontWeight.Medium)
           .fontColor(AppTheme.TEXT)
           .constraintSize({ maxWidth: 200 })
+          .padding({ top: 8, bottom: 8 })
+          .onTouch((e: TouchEvent) => {
+            // 系统标题栏已隐藏：文档标题区接管窗口拖动（startMoving 热区）
+            if (e.type === TouchType.Down) {
+              beginWindowMove(this.ctx);
+            }
+          })
         Text(this.saveLabel)
           .fontSize(12)
           .padding({ left: 8, right: 8, top: 3, bottom: 3 })
@@ -777,6 +838,14 @@ struct EditorPage {
           }
         }
 
+        Button('📑')
+          .fontSize(15)
+          .fontColor(this.outlineVisible ? AppTheme.ON_PRIMARY : AppTheme.TEXT)
+          .backgroundColor(this.outlineVisible ? AppTheme.PRIMARY : AppTheme.TOOLBAR_BG)
+          .borderRadius(8)
+          .width(40)
+          .height(40)
+          .onClick(() => this.toggleOutline())
         Button('🔍')
           .fontSize(15)
           .fontColor(AppTheme.TEXT)
@@ -891,19 +960,26 @@ struct EditorPage {
         .borderRadius(8)
       }
 
-      // 快捷栏（仅编辑/分屏可见；FR-EDIT-002 命令子集；wrap 防溢出）
+      // 快捷栏（仅编辑/分屏可见；FR-EDIT-002；wrap 防溢出）
       if (this.viewMode !== DefaultView.PREVIEW) {
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start }) {
+          // 标题等级（V0.2.1：h1–h6 命令，工具栏暴露常用三级）
+          this.toolBtn('H1', 'h1')
+          this.toolBtn('H2', 'h2')
+          this.toolBtn('H3', 'h3')
           this.toolBtn('B', 'bold')
           this.toolBtn('I', 'italic')
           this.toolBtn('S̶', 'strike')
           this.toolBtn('`', 'inlineCode')
           this.toolBtn('🔗', 'link')
+          this.toolBtn('🖼', 'image')
           this.toolBtn('•', 'ul')
           this.toolBtn('1.', 'ol')
           this.toolBtn('☑', 'task')
           this.toolBtn('❝', 'quote')
           this.toolBtn('{}', 'codeBlock')
+          this.toolBtn('―', 'hr')
+          this.toolBtn('▦', 'table')
           Button('⤺')
             .fontSize(15)
             .fontColor(AppTheme.TEXT)
@@ -938,9 +1014,50 @@ struct EditorPage {
         .width('100%')
       }
 
-      // 工作区：编辑器 + 预览（三端同一布局路径——
+      // 工作区：大纲（可选）+ 编辑器 + 预览（三端同一布局路径——
       // phone：单栏互斥切换；tablet/pc 分屏：双 Web 并排；隐藏侧 Visibility.None 不占位）
       Row({ space: 8 }) {
+        // 大纲侧栏（FR-PREVIEW-003 总装：点击跳转标题行）
+        if (this.outlineVisible) {
+          Column() {
+            Text('大纲')
+              .fontSize(12)
+              .fontColor(AppTheme.TEXT_SUB)
+              .padding({ left: 8, top: 8, bottom: 4 })
+              .width('100%')
+            if (this.outlineEntries.length === 0) {
+              Text('暂无标题（用 H1–H3 或输入 # 添加）')
+                .fontSize(12)
+                .fontColor(AppTheme.TEXT_FAINT)
+                .padding(8)
+            }
+            List() {
+              ForEach(this.outlineEntries, (e: OutlineEntry) => {
+                ListItem() {
+                  Text(e.text)
+                    .fontSize(13)
+                    .fontColor(e.level === 1 ? AppTheme.TEXT : AppTheme.TEXT_SUB)
+                    .fontWeight(e.level === 1 ? FontWeight.Medium : FontWeight.Normal)
+                    .maxLines(1)
+                    .textOverflow({ overflow: TextOverflow.Ellipsis })
+                    .padding({ left: 8 + (e.level - 1) * 12, top: 6, bottom: 6, right: 8 })
+                    .width('100%')
+                    .onClick(() => this.jumpToOutlineEntry(e))
+                }
+              }, (e: OutlineEntry) => `${e.from}-${e.text}`)
+            }
+            .layoutWeight(1)
+            .width('100%')
+            .scrollBar(BarState.Auto)
+          }
+          .width(200)
+          .height('100%')
+          .backgroundColor(AppTheme.CARD)
+          .borderRadius(12)
+          .border({ width: 1, color: AppTheme.DIVIDER })
+          .clip(true)
+        }
+
         Column() {
           Web({ src: $rawfile('web/editor.html'), controller: this.controller })
             .javaScriptAccess(true)
@@ -984,7 +1101,7 @@ struct EditorPage {
             .onPageEnd(() => {
               this.previewReady = true;
               this.applyPreviewStyle();
-              this.syncPreviewNow();
+              this.syncDocNow();
               this.append('预览就绪');
             })
             .onErrorReceive((event) => {
