@@ -16,9 +16,10 @@ const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-HOME';
 
 /**
- * 正式首页（产品化）：品牌顶栏 + 主操作卡片 + 最近列表（卡片行）。
- * 断点（common/Breakpoints）：phone 单栏；tablet 双栏；pc 三栏 + 内容限宽居中。
- * 日志仅 hilog；无调试痕迹。
+ * 首页（V0.3 重设计：「卡片化工作台」）。
+ * 宽屏（tablet/pc）：侧栏 + 主区双栏 shell——侧栏承载品牌/主操作/导航/最近；
+ * 主区为欢迎面板（大入口卡片）。phone：单栏大按钮布局 + 底部 Tab。
+ * 断点（common/Breakpoints）；主题跟随设置；窗口拖动热区在品牌标题。
  */
 @Entry
 @Component
@@ -79,13 +80,14 @@ struct HomePage {
     } catch (e) {
       this.draftCount = 0;
     }
-    if (this.draftCount > 0) {
-      this.note(`[恢复] ${this.draftCount} 个检查点`);
-    }
   }
 
   private goRecovery(): void {
     router.pushUrl({ url: 'pages/RecoveryPage' });
+  }
+
+  private goSettings(): void {
+    router.pushUrl({ url: 'pages/SettingsPage' });
   }
 
   private async refresh(): Promise<void> {
@@ -108,7 +110,7 @@ struct HomePage {
     router.pushUrl({ url: 'pages/EditorPage' });
   }
 
-  /** 打开最近/资料库文档（name=内部相对路径 / uri=外部文档 URI） */
+  /** 打开最近/资料库文档（name=内部相对路径） */
   private goEditorWith(name: string): void {
     const params: ESObject = { name: name } as ESObject;
     router.pushUrl({ url: 'pages/EditorPage', params: params });
@@ -118,6 +120,15 @@ struct HomePage {
   private goEditorWithUri(uri: string): void {
     const params: ESObject = { uri: uri } as ESObject;
     router.pushUrl({ url: 'pages/EditorPage', params: params });
+  }
+
+  private openRecent(item: RecentEntry): void {
+    // 外部 URI 记录走 uri 通道（临时授权可能已失效，EditorPage 有失败路径）
+    if (item.documentId.startsWith('library/')) {
+      this.goEditorWith(item.documentId);
+    } else {
+      this.goEditorWithUri(item.documentId);
+    }
   }
 
   /** 「资料库」：枚举内部库选择 */
@@ -156,36 +167,355 @@ struct HomePage {
     return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
   }
 
-  /** 主操作行（极简文字按钮，非大卡片） */
+  // ---- 设计构件 ----
+
+  /** 文档类型徽标（36×36 圆角方块，统一图标语言） */
   @Builder
-  actionCards() {
-    Row({ space: 20 }) {
-      Text('＋ 新建文档')
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.pal.PRIMARY)
-        .onClick(() => this.goEditor())
-      Text('打开文档')
-        .fontSize(16)
-        .fontColor(this.pal.TEXT_SUB)
-        .onClick(() => this.openExternalFile())
-      Text('资料库')
-        .fontSize(16)
-        .fontColor(this.pal.TEXT_SUB)
-        .onClick(() => this.openLibraryFile())
-      Blank()
-    }
-    .width('100%')
-    .height(48)
+  mdChip(size: number) {
+    Text('MD')
+      .fontSize(size >= 36 ? 12 : 10)
+      .fontWeight(FontWeight.Bold)
+      .fontColor(this.pal.PRIMARY)
+      .textAlign(TextAlign.Center)
+      .width(size)
+      .height(size)
+      .lineHeight(size)
+      .backgroundColor(this.pal.PRIMARY_SOFT)
+      .borderRadius(size / 3)
   }
 
-  /** 最近文件列表（极简线条行，无卡片/阴影） */
+  /** 侧栏导航行 */
   @Builder
-  recentPanel() {
-    Column({ space: 0 }) {
+  navRow(label: string, sub: string, danger: boolean, action: () => void) {
+    Row({ space: 10 }) {
+      Column({ space: 2 }) {
+        Text(label)
+          .fontSize(15)
+          .fontColor(danger ? this.pal.AMBER : this.pal.TEXT)
+        if (sub.length > 0) {
+          Text(sub)
+            .fontSize(11)
+            .fontColor(this.pal.TEXT_FAINT)
+        }
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      Text('›')
+        .fontSize(18)
+        .fontColor(this.pal.TEXT_FAINT)
+    }
+    .width('100%')
+    .padding({ top: 11, bottom: 11, left: 12, right: 12 })
+    .borderRadius(10)
+    .backgroundColor(this.pal.TOOLBAR_BG)
+    .onClick(() => action())
+  }
+
+  /** 最近文档行（侧栏紧凑 / phone 全宽共用） */
+  @Builder
+  recentRow(item: RecentEntry) {
+    Row({ space: 10 }) {
+      this.mdChip(36)
+      Column({ space: 2 }) {
+        Text(RecentFileList.displayName(item.documentId))
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.pal.TEXT)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Text(this.fmtTime(item.lastOpenedAt))
+          .fontSize(11)
+          .fontColor(this.pal.TEXT_FAINT)
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      Text('›')
+        .fontSize(18)
+        .fontColor(this.pal.TEXT_FAINT)
+    }
+    .width('100%')
+    .padding({ top: 8, bottom: 8, left: 10, right: 10 })
+    .borderRadius(10)
+    .onClick(() => this.openRecent(item))
+  }
+
+  /** 主区大入口卡片 */
+  @Builder
+  entryCard(title: string, sub: string, badge: string, action: () => void) {
+    Column({ space: 8 }) {
+      Text(badge)
+        .fontSize(18)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.pal.PRIMARY)
+        .width(40)
+        .height(40)
+        .lineHeight(40)
+        .textAlign(TextAlign.Center)
+        .backgroundColor(this.pal.PRIMARY_SOFT)
+        .borderRadius(12)
+      Text(title)
+        .fontSize(16)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.pal.TEXT)
+      Text(sub)
+        .fontSize(12)
+        .fontColor(this.pal.TEXT_FAINT)
+        .maxLines(2)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .layoutWeight(1)
+    .height('100%')
+    .padding(16)
+    .backgroundColor(this.pal.CARD)
+    .borderRadius(16)
+    .border({ width: 1, color: this.pal.DIVIDER })
+    .onClick(() => action())
+  }
+
+  /** 资料库选择面板（pickingFile=true 时展开） */
+  @Builder
+  libraryPanel() {
+    Column({ space: 8 }) {
+      Row() {
+        Text(`资料库 · ${this.libraryFiles.length} 个文档`)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.pal.TEXT)
+          .layoutWeight(1)
+        Text('✕')
+          .fontSize(14)
+          .fontColor(this.pal.TEXT_SUB)
+          .onClick(() => { this.pickingFile = false; })
+      }
+      .width('100%')
+
+      if (this.libraryFiles.length === 0) {
+        Text('资料库还没有文档，先新建一个吧。')
+          .fontSize(13)
+          .fontColor(this.pal.TEXT_FAINT)
+          .padding(12)
+      }
+      Scroll() {
+        Column({ space: 4 }) {
+          ForEach(this.libraryFiles, (name: string) => {
+            Row({ space: 10 }) {
+              this.mdChip(32)
+              Text(name)
+                .fontSize(14)
+                .fontColor(this.pal.TEXT)
+                .maxLines(1)
+                .layoutWeight(1)
+              Text('›').fontSize(16).fontColor(this.pal.TEXT_FAINT)
+            }
+            .width('100%')
+            .padding({ top: 6, bottom: 6, left: 8, right: 8 })
+            .borderRadius(8)
+            .backgroundColor(this.pal.TOOLBAR_BG)
+            .onClick(() => {
+              this.pickingFile = false;
+              this.goEditorWith(name);
+            })
+          }, (name: string) => name)
+        }
+        .width('100%')
+      }
+      .constraintSize({ maxHeight: 260 })
+      .width('100%')
+    }
+    .width('100%')
+    .padding(14)
+    .backgroundColor(this.pal.CARD)
+    .borderRadius(16)
+    .border({ width: 1, color: this.pal.DIVIDER })
+  }
+
+  /** 侧栏（宽屏）：品牌 / 主操作 / 导航 / 最近 */
+  @Builder
+  sideBar() {
+    Column({ space: 10 }) {
+      Text('Markdown 工作台')
+        .fontSize(19)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.pal.TEXT)
+        .maxLines(1)
+        .padding({ top: 4, bottom: 2 })
+        .onTouch((e: TouchEvent) => {
+          if (e.type === TouchType.Down) {
+            beginWindowMove(this.ctx);
+          }
+        })
+      Text('完全离线 · 只在你本机')
+        .fontSize(11)
+        .fontColor(this.pal.TEXT_FAINT)
+
+      Button('＋  新建文档')
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.pal.ON_PRIMARY)
+        .backgroundColor(this.pal.PRIMARY)
+        .borderRadius(12)
+        .width('100%')
+        .height(44)
+        .margin({ top: 6, bottom: 6 })
+        .onClick(() => this.goEditor())
+
+      this.navRow('打开文档', '从系统文件选择', false, () => this.openExternalFile())
+      this.navRow('资料库', `${this.libraryFiles.length} 个本地文档`, false, () => this.openLibraryFile())
+      if (this.draftCount > 0) {
+        this.navRow(`找回未保存内容（${this.draftCount}）`, '意外退出时保留', true, () => this.goRecovery())
+      }
+      this.navRow('设置', '主题 · 编辑器 · 数据', false, () => this.goSettings())
+
       Row() {
         Text('最近')
+          .fontSize(12)
+          .fontColor(this.pal.TEXT_SUB)
+        Blank()
+        if (this.recent.length > 0) {
+          Text(`${this.recent.length}`)
+            .fontSize(12)
+            .fontColor(this.pal.TEXT_FAINT)
+        }
+      }
+      .width('100%')
+      .padding({ top: 6, bottom: 2 })
+
+      if (this.recent.length === 0) {
+        Text('打开过的文档会出现在这里')
+          .fontSize(12)
+          .fontColor(this.pal.TEXT_FAINT)
+          .padding({ top: 8, bottom: 8 })
+      }
+
+      List({ space: 2 }) {
+        ForEach(this.recent, (item: RecentEntry) => {
+          ListItem() {
+            this.recentRow(item)
+          }
+        }, (item: RecentEntry) => item.documentId)
+      }
+      .layoutWeight(1)
+      .width('100%')
+      .scrollBar(BarState.Auto)
+    }
+    .width(300)
+    .height('100%')
+    .padding(14)
+    .backgroundColor(this.pal.CARD)
+    .borderRadius(16)
+    .border({ width: 1, color: this.pal.DIVIDER })
+  }
+
+  /** 主区（宽屏）：欢迎面板 */
+  @Builder
+  welcomePanel() {
+    Column({ space: 16 }) {
+      if (this.pickingFile) {
+        this.libraryPanel()
+      }
+
+      Blank().layoutWeight(1)
+
+      Column({ space: 8 }) {
+        Text('Markdown 工作台')
+          .fontSize(28)
+          .fontWeight(FontWeight.Bold)
+          .fontColor(this.pal.TEXT)
+        Text('打开的是原文件，保存后仍是原文件。')
           .fontSize(14)
+          .fontColor(this.pal.TEXT_SUB)
+      }
+      .alignItems(HorizontalAlign.Start)
+      .width('100%')
+
+      Row({ space: 12 }) {
+        this.entryCard('新建文档', '从空白文档开始', '＋', () => this.goEditor())
+        this.entryCard('打开文档', '系统文件 .md / .txt', '⇪', () => this.openExternalFile())
+        this.entryCard('资料库', `${this.libraryFiles.length} 个本地文档`, '▤', () => this.openLibraryFile())
+      }
+      .width('100%')
+      .height(150)
+
+      Blank().layoutWeight(1)
+
+      Row() {
+        Text('修改自动保存 · 意外退出可找回')
+          .fontSize(12)
+          .fontColor(this.pal.TEXT_FAINT)
+        Blank()
+        Text('1.0')
+          .fontSize(12)
+          .fontColor(this.pal.TEXT_FAINT)
+      }
+      .width('100%')
+    }
+    .layoutWeight(1)
+    .height('100%')
+    .padding(20)
+  }
+
+  /** phone：单栏 */
+  @Builder
+  phoneHome() {
+    Column({ space: 12 }) {
+      Text('Markdown 工作台')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.pal.TEXT)
+        .padding({ top: 4, bottom: 4 })
+        .onTouch((e: TouchEvent) => {
+          if (e.type === TouchType.Down) {
+            beginWindowMove(this.ctx);
+          }
+        })
+
+      Button('＋  新建文档')
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.pal.ON_PRIMARY)
+        .backgroundColor(this.pal.PRIMARY)
+        .borderRadius(12)
+        .width('100%')
+        .height(44)
+
+      Row({ space: 12 }) {
+        Button('打开文档')
+          .fontSize(14)
+          .fontColor(this.pal.TEXT)
+          .backgroundColor(this.pal.CARD)
+          .borderRadius(12)
+          .height(40)
+          .layoutWeight(1)
+          .onClick(() => this.openExternalFile())
+        Button('资料库')
+          .fontSize(14)
+          .fontColor(this.pal.TEXT)
+          .backgroundColor(this.pal.CARD)
+          .borderRadius(12)
+          .height(40)
+          .layoutWeight(1)
+          .onClick(() => this.openLibraryFile())
+      }
+      .width('100%')
+
+      if (this.draftCount > 0) {
+        Text(`⚠ 找回未保存内容（${this.draftCount}）`)
+          .fontSize(13)
+          .fontColor(this.pal.AMBER)
+          .width('100%')
+          .padding({ top: 8, bottom: 8, left: 12, right: 12 })
+          .backgroundColor(this.pal.AMBER_SOFT)
+          .borderRadius(10)
+          .onClick(() => this.goRecovery())
+      }
+
+      if (this.pickingFile) {
+        this.libraryPanel()
+      }
+
+      Row() {
+        Text('最近')
+          .fontSize(13)
           .fontColor(this.pal.TEXT_SUB)
         Blank()
         if (this.recent.length > 0) {
@@ -195,47 +525,12 @@ struct HomePage {
         }
       }
       .width('100%')
-      .height(40)
+      .padding({ top: 2 })
 
-      if (this.recent.length === 0) {
-        Column({ space: 6 }) {
-          Text('还没有打开过文档')
-            .fontSize(15)
-            .fontColor(this.pal.TEXT_SUB)
-          Text('新建文档或打开文件后，最近使用的文档会显示在这里。')
-            .fontSize(12)
-            .fontColor(this.pal.TEXT_FAINT)
-        }
-        .alignItems(HorizontalAlign.Start)
-        .width('100%')
-        .padding({ top: 40, bottom: 40 })
-      }
-
-      List({ space: 0 }) {
+      List({ space: 4 }) {
         ForEach(this.recent, (item: RecentEntry) => {
           ListItem() {
-            Column({ space: 4 }) {
-              Text(RecentFileList.displayName(item.documentId))
-                .fontSize(16)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.pal.TEXT)
-                .maxLines(1)
-              Text(this.fmtTime(item.lastOpenedAt))
-                .fontSize(11)
-                .fontColor(this.pal.TEXT_FAINT)
-            }
-            .alignItems(HorizontalAlign.Start)
-            .width('100%')
-            .padding({ top: 16, bottom: 16, left: 0, right: 0 })
-            .border({ width: { bottom: 1 }, color: this.pal.DIVIDER })
-            .onClick(() => {
-              // 外部 URI 记录走 uri 通道（临时授权可能已失效，EditorPage 有失败路径）
-              if (item.documentId.startsWith('library/')) {
-                this.goEditorWith(item.documentId);
-              } else {
-                this.goEditorWithUri(item.documentId);
-              }
-            })
+            this.recentRow(item)
           }
         }, (item: RecentEntry) => item.documentId)
       }
@@ -244,220 +539,52 @@ struct HomePage {
       .scrollBar(BarState.Off)
     }
     .width('100%')
-    .height('100%')
+    .layoutWeight(1)
+    .padding({ left: 16, right: 16, top: 12 })
   }
 
-  /** 资料库/恢复侧栏（极简） */
+  /** phone：底部 Tab */
   @Builder
-  sidePanel() {
-    Column({ space: 12 }) {
-      Text(`资料库`)
-        .fontSize(14)
-        .fontColor(this.pal.TEXT_SUB)
-      Text(`${this.libraryFiles.length} 个文档`)
-        .fontSize(28)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.pal.TEXT)
-
-      if (this.draftCount > 0) {
-        Text(`找回未保存内容（${this.draftCount}）`)
-          .fontSize(13)
-          .fontColor(this.pal.AMBER)
-          .onClick(() => this.goRecovery())
-      }
-
-      Divider().color(this.pal.DIVIDER).margin({ top: 8, bottom: 8 })
-
-      Text('完全离线 · 应用私有目录')
-        .fontSize(12)
-        .fontColor(this.pal.TEXT_FAINT)
-      Text('不联网 · 不上传 · 不跟踪')
-        .fontSize(12)
-        .fontColor(this.pal.TEXT_FAINT)
-    }
-    .alignItems(HorizontalAlign.Start)
-    .width('100%')
-    .padding(20)
-  }
-
-  /** 信息卡（pc 档第三列） */
-  @Builder
-  infoPanel() {
-    Column({ space: 10 }) {
-      Text('关于')
-        .fontSize(14)
-        .fontColor(this.pal.TEXT_SUB)
-      Text('Markdown 工作台')
-        .fontSize(20)
-        .fontWeight(FontWeight.Bold)
-      Text('1.0')
-        .fontSize(13)
-        .fontColor(this.pal.TEXT_FAINT)
-      Divider().color(this.pal.DIVIDER).margin({ top: 8, bottom: 8 })
-      Text('打开的是原文件，保存后仍是原文件。')
-        .fontSize(13)
-        .fontColor(this.pal.TEXT_SUB)
-        .lineHeight(20)
-      Text('内容只保存在本机；修改自动保存，意外退出可找回。')
-        .fontSize(12)
-        .fontColor(this.pal.TEXT_FAINT)
-        .lineHeight(18)
-    }
-    .alignItems(HorizontalAlign.Start)
-    .width('100%')
-    .padding(20)
+  phoneTab(label: string, active: boolean, action: () => void) {
+    Text(label)
+      .fontSize(12)
+      .fontWeight(active ? FontWeight.Medium : FontWeight.Normal)
+      .fontColor(active ? this.pal.PRIMARY : this.pal.TEXT_FAINT)
+      .textAlign(TextAlign.Center)
+      .width('100%')
+      .lineHeight(52)
+      .onClick(() => action())
+      .layoutWeight(1)
+      .height(52)
   }
 
   build() {
-    Column({ space: 16 }) {
-      // 顶栏（极简；标题区为窗口拖动热区——系统标题栏已隐藏）
-      Row() {
-        Text('Markdown 工作台')
-          .fontSize(22)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal.TEXT)
-          .padding({ top: 8, bottom: 8 })
-          .onTouch((e: TouchEvent) => {
-            if (e.type === TouchType.Down) {
-              beginWindowMove(this.ctx);
-            }
-          })
-        Blank()
-        Text('设置')
-          .fontSize(14)
-          .fontColor(this.pal.TEXT_SUB)
-          .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
-      }
-      .width('100%')
-
-      this.actionCards()
-
-      // 打开文档选择面板
-      if (this.pickingFile) {
-        Column({ space: 4 }) {
-          Text(`选择文档（${this.libraryFiles.length}）`)
-            .fontSize(13)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.pal.TEXT)
-          if (this.libraryFiles.length === 0) {
-            Text('资料库还没有文档，先新建一个吧。')
-              .fontSize(12)
-              .fontColor(this.pal.TEXT_FAINT)
-              .padding(12)
-          }
-          Scroll() {
-            Column({ space: 2 }) {
-              ForEach(this.libraryFiles, (name: string) => {
-                Text(`📄 ${name}`)
-                  .fontSize(13)
-                  .fontColor(this.pal.TEXT)
-                  .width('100%')
-                  .padding(8)
-                  .onClick(() => {
-                    this.pickingFile = false;
-                    this.goEditorWith(name);
-                  })
-              }, (name: string) => name)
-            }
-            .width('100%')
-          }
-          .height(160)
-          .width('100%')
-          Button('取消')
-            .fontSize(12)
-            .borderRadius(8)
-            .onClick(() => { this.pickingFile = false; })
+    Column() {
+      if (this.bp === 'phone') {
+        this.phoneHome()
+        // 底部 Tab
+        Row() {
+          this.phoneTab('首页', true, () => {})
+          this.phoneTab('编辑', false, () => this.goEditor())
+          this.phoneTab('设置', false, () => this.goSettings())
         }
         .width('100%')
-        .padding(10)
-        .backgroundColor(this.pal.TOOLBAR_BG)
-        .borderRadius(10)
-      }
-
-      // 断点布局：phone 单栏 + 底部 Tab Bar；tablet 双栏；pc 三栏 + 限宽居中
-      if (this.bp === 'pc') {
-        Row({ space: 12 }) {
-          Column() {
-            this.recentPanel()
-          }
-          .layoutWeight(3)
-
-          Column() {
-            this.sidePanel()
-            Blank().height(12)
-            this.infoPanel()
-          }
-          .layoutWeight(1)
-        }
-        .width('100%')
-        .alignSelf(ItemAlign.Center)
-        .constraintSize({ maxWidth: 1280 })
-        .layoutWeight(1)
-      } else if (this.bp === 'tablet') {
-        Row({ space: 12 }) {
-          Column() {
-            this.recentPanel()
-          }
-          .layoutWeight(2)
-
-          Column() {
-            this.sidePanel()
-          }
-          .layoutWeight(1)
-        }
-        .width('100%')
-        .layoutWeight(1)
+        .height(52)
+        .backgroundColor(this.pal.CARD)
+        .border({ width: { top: 1 }, color: this.pal.DIVIDER })
       } else {
-        // Phone：内容区 + 底部 Tab Bar（产品级导航）
-        Column({ space: 0 }) {
-          Column() {
-            this.recentPanel()
-          }
-          .layoutWeight(1)
-          .width('100%')
-
-          // 底部 Tab Bar（自定义 Flex，3 个 tab：首页/编辑/设置）
-          Flex({ direction: FlexDirection.Row, justifyContent: FlexAlign.SpaceAround, alignItems: ItemAlign.Center }) {
-            Column({ space: 2 }) {
-              Text('🏠').fontSize(20)
-              Text('首页').fontSize(10).fontColor(this.pal.PRIMARY)
-            }
-            .justifyContent(FlexAlign.Center)
-            .onClick(() => {})
-            .layoutWeight(1)
-            .height(56)
-
-            Column({ space: 2 }) {
-              Text('✏️').fontSize(20)
-              Text('编辑').fontSize(10).fontColor(this.pal.TEXT_FAINT)
-            }
-            .justifyContent(FlexAlign.Center)
-            .onClick(() => this.goEditor())
-            .layoutWeight(1)
-            .height(56)
-
-            Column({ space: 2 }) {
-              Text('⚙').fontSize(20)
-              Text('设置').fontSize(10).fontColor(this.pal.TEXT_FAINT)
-            }
-            .justifyContent(FlexAlign.Center)
-            .onClick(() => { router.pushUrl({ url: 'pages/SettingsPage' }); })
-            .layoutWeight(1)
-            .height(56)
-          }
-          .width('100%')
-          .height(56)
-          .backgroundColor(this.pal.CARD)
-          .border({ width: { top: 1 }, color: this.pal.DIVIDER })
+        Row({ space: 12 }) {
+          this.sideBar()
+          this.welcomePanel()
         }
         .width('100%')
-        .layoutWeight(1)
+        .height('100%')
+        .constraintSize({ maxWidth: 1280 })
+        .alignItems(VerticalAlign.Top)
       }
     }
-    .padding(this.bp === 'phone' ? { left: 20, right: 20, top: 20, bottom: 0 } : 24)
     .width('100%')
     .height('100%')
     .backgroundColor(this.pal.BG)
-    .alignItems(HorizontalAlign.Start)
   }
 }

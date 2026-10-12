@@ -785,16 +785,16 @@ struct EditorPage {
 
   // ---- 视图构建 ----
 
-  /** 快捷栏统一按钮样式（图标化，浅底圆角） */
+  /** 快捷栏命令按钮（中文/短码标签，等高圆角，宽随文字） */
   @Builder
   toolBtn(label: string, cmd: MarkdownCommandName) {
     Button(label)
-      .fontSize(15)
+      .fontSize(13)
       .fontColor(this.pal.TEXT)
       .backgroundColor(this.pal.TOOLBAR_BG)
       .borderRadius(8)
-      .width(46)
-      .height(38)
+      .height(36)
+      .padding({ left: 10, right: 10 })
       .onClick(() => this.applyCommand(cmd))
   }
 
@@ -803,12 +803,12 @@ struct EditorPage {
   toolSep() {
     Divider()
       .vertical(true)
-      .height(22)
+      .height(20)
       .color(this.pal.DIVIDER)
-      .margin({ left: 4, right: 4 })
+      .margin({ left: 5, right: 5 })
   }
 
-  /** 历史按钮（撤销/重做，文字标签） */
+  /** 历史按钮（撤销/重做） */
   @Builder
   histBtn(label: string, kind: 'undo' | 'redo') {
     Button(label)
@@ -816,9 +816,24 @@ struct EditorPage {
       .fontColor(this.pal.TEXT)
       .backgroundColor(this.pal.TOOLBAR_BG)
       .borderRadius(8)
-      .height(38)
+      .height(36)
       .padding({ left: 10, right: 10 })
       .onClick(() => this.applyHistory(kind))
+  }
+
+  /** 顶栏小图标按钮 */
+  @Builder
+  topBtn(label: string, active: boolean, action: () => void) {
+    Text(label)
+      .fontSize(14)
+      .fontColor(active ? this.pal.ON_PRIMARY : this.pal.TEXT)
+      .backgroundColor(active ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
+      .borderRadius(8)
+      .width(36)
+      .height(36)
+      .lineHeight(36)
+      .textAlign(TextAlign.Center)
+      .onClick(() => action())
   }
 
   /** 面板小按钮 */
@@ -835,34 +850,40 @@ struct EditorPage {
 
   build() {
     Column({ space: 8 }) {
-      // 标题栏（wrap 保证窄窗/自由窗口下按钮不被挤出）
+      // 顶栏：返回 | 文档名+保存状态 | （弹性） | 视图分段 | 查找/大纲/分享 | 保存（wrap 适配窄窗）
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Button('‹')
-          .fontSize(22)
+          .fontSize(20)
           .fontColor(this.pal.TEXT)
           .backgroundColor(this.pal.TOOLBAR_BG)
           .borderRadius(10)
-          .width(40)
-          .height(40)
+          .width(38)
+          .height(38)
           .onClick(() => this.goBack())
-        Text(this.docTitle)
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.pal.TEXT)
-          .constraintSize({ maxWidth: 200 })
-          .padding({ top: 8, bottom: 8 })
-          .onTouch((e: TouchEvent) => {
-            // 系统标题栏已隐藏：文档标题区接管窗口拖动（startMoving 热区）
-            if (e.type === TouchType.Down) {
-              beginWindowMove(this.ctx);
-            }
-          })
-        Text(this.saveLabel)
-          .fontSize(12)
-          .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-          .fontColor(this.saveLabel === '已保存' ? this.pal.OK : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER : this.pal.AMBER))
-          .backgroundColor(this.saveLabel === '已保存' ? this.pal.OK_SOFT : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER_SOFT : this.pal.AMBER_SOFT))
-          .borderRadius(8)
+
+        Row({ space: 8 }) {
+          Text(this.docTitle)
+            .fontSize(15)
+            .fontWeight(FontWeight.Medium)
+            .fontColor(this.pal.TEXT)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .constraintSize({ maxWidth: 220 })
+            .padding({ top: 8, bottom: 8 })
+            .onTouch((e: TouchEvent) => {
+              // 系统标题栏已隐藏：文档标题区接管窗口拖动（startMoving 热区）
+              if (e.type === TouchType.Down) {
+                beginWindowMove(this.ctx);
+              }
+            })
+          Text(this.saveLabel)
+            .fontSize(11)
+            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
+            .fontColor(this.saveLabel === '已保存' ? this.pal.OK : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER : this.pal.AMBER))
+            .backgroundColor(this.saveLabel === '已保存' ? this.pal.OK_SOFT : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER_SOFT : this.pal.AMBER_SOFT))
+            .borderRadius(8)
+        }
+        .alignItems(VerticalAlign.Center)
 
         // 视图模式分段（三端核心交互；phone 无分屏档；SegBtn 保证 active/palette 动态刷新）
         Row({ space: 4 }) {
@@ -873,39 +894,28 @@ struct EditorPage {
           }
         }
 
-        Button('📑')
-          .fontSize(15)
-          .fontColor(this.outlineVisible ? this.pal.ON_PRIMARY : this.pal.TEXT)
-          .backgroundColor(this.outlineVisible ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
-          .borderRadius(8)
-          .width(40)
-          .height(40)
-          .onClick(() => this.toggleOutline())
-        Button('🔍')
-          .fontSize(15)
-          .fontColor(this.pal.TEXT)
-          .backgroundColor(this.pal.TOOLBAR_BG)
-          .borderRadius(8)
-          .width(40)
-          .height(40)
-          .onClick(() => {
-            if (this.findVisible) {
-              this.findVisible = false;
-            } else {
-              this.openFind();
-            }
-          })
+        this.topBtn('🔍', false, () => {
+          if (this.findVisible) {
+            this.findVisible = false;
+          } else {
+            this.openFind();
+          }
+        })
+        this.topBtn('☰', this.outlineVisible, () => this.toggleOutline())
         Button('分享')
           .fontSize(13)
           .backgroundColor(this.pal.TOOLBAR_BG)
           .fontColor(this.pal.TEXT)
           .borderRadius(8)
+          .height(36)
           .onClick(() => this.share())
         Button('保存')
           .fontSize(13)
+          .fontWeight(FontWeight.Medium)
           .fontColor(this.pal.ON_PRIMARY)
           .backgroundColor(this.pal.PRIMARY)
           .borderRadius(8)
+          .height(36)
           .onClick(() => this.save())
       }
       .width('100%')
@@ -995,7 +1005,7 @@ struct EditorPage {
         .borderRadius(8)
       }
 
-      // 快捷栏（仅编辑/分屏可见；FR-EDIT-002；分组：标题 | 行内 | 块级 | 历史；wrap 防溢出）
+      // 快捷栏（仅编辑/分屏可见；FR-EDIT-002；分组：标题 | 行内 | 块级 | 插入 | 历史；wrap 防溢出）
       if (this.viewMode !== DefaultView.PREVIEW) {
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
           // 标题等级（h1–h6 命令，工具栏暴露常用三级）
@@ -1006,19 +1016,21 @@ struct EditorPage {
           // 行内样式
           this.toolBtn('B', 'bold')
           this.toolBtn('I', 'italic')
-          this.toolBtn('S̶', 'strike')
-          this.toolBtn('`', 'inlineCode')
-          this.toolBtn('🔗', 'link')
-          this.toolBtn('🖼', 'image')
+          this.toolBtn('S', 'strike')
+          this.toolBtn('</>', 'inlineCode')
           this.toolSep()
           // 块级
-          this.toolBtn('•', 'ul')
-          this.toolBtn('1.', 'ol')
-          this.toolBtn('☑', 'task')
-          this.toolBtn('❝', 'quote')
-          this.toolBtn('{}', 'codeBlock')
-          this.toolBtn('―', 'hr')
-          this.toolBtn('▦', 'table')
+          this.toolBtn('列表', 'ul')
+          this.toolBtn('序号', 'ol')
+          this.toolBtn('任务', 'task')
+          this.toolBtn('引用', 'quote')
+          this.toolBtn('代码块', 'codeBlock')
+          this.toolSep()
+          // 插入
+          this.toolBtn('链接', 'link')
+          this.toolBtn('图片', 'image')
+          this.toolBtn('表格', 'table')
+          this.toolBtn('分隔线', 'hr')
           this.toolSep()
           this.histBtn('撤销', 'undo')
           this.histBtn('重做', 'redo')
