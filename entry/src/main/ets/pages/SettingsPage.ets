@@ -131,6 +131,7 @@ struct SettingsPage {
                 this.persist();
               } })
             }
+            .width('100%')
             .padding({ bottom: 12 })
 
             this.settingRow('字号', `${this.fontSize} px`)
@@ -144,9 +145,11 @@ struct SettingsPage {
                 this.persist();
               } })
             }
+            .width('100%')
             .padding({ bottom: 12 })
           }
           .width('100%')
+          .alignItems(HorizontalAlign.Start)
           .padding({ left: 14, right: 14 })
           .backgroundColor(this.pal.CARD)
           .borderRadius(12)
@@ -198,9 +201,11 @@ struct SettingsPage {
                 this.persist();
               } })
             }
+            .width('100%')
             .padding({ bottom: 12 })
           }
           .width('100%')
+          .alignItems(HorizontalAlign.Start)
           .padding({ left: 14, right: 14 })
           .backgroundColor(this.pal.CARD)
           .borderRadius(12)

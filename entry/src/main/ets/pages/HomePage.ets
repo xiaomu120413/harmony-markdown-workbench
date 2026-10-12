@@ -400,6 +400,7 @@ struct HomePage {
     }
     .width(300)
     .height('100%')
+    .alignItems(HorizontalAlign.Start)
     .padding(14)
     .backgroundColor(this.pal.CARD)
     .borderRadius(16)
@@ -540,6 +541,7 @@ struct HomePage {
     }
     .width('100%')
     .layoutWeight(1)
+    .alignItems(HorizontalAlign.Start)
     .padding({ left: 16, right: 16, top: 12 })
   }
 

@@ -260,6 +260,7 @@ struct RecoveryPage {
             .backgroundColor(this.pal.CARD)
             .borderRadius(10)
             .border({ width: 1, color: this.pal.DIVIDER })
+            .alignItems(HorizontalAlign.Start)
             .width('100%')
           }
         }, (row: DraftRow) => row.draft.documentId)
