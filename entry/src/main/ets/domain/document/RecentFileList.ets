@@ -23,6 +23,23 @@ export class RecentFileList {
     }
   }
 
+  /**
+   * 记录 id 的展示名（V0.2.3 显示修复）：
+   *   internal —— "library/周报.md" → "周报.md"；
+   *   external —— URI 取最后路径段（file:///docs/a/周报.md → 周报.md）；
+   *   兜底原样返回。
+   */
+  static displayName(id: string): string {
+    if (id.startsWith('library/')) {
+      return id.substring('library/'.length);
+    }
+    const slash = id.lastIndexOf('/');
+    if (slash >= 0 && slash + 1 < id.length) {
+      return id.substring(slash + 1);
+    }
+    return id;
+  }
+
   get size(): number {
     return this.entries.length;
   }

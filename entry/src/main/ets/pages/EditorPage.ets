@@ -267,7 +267,7 @@ struct EditorPage {
     } else if (uri !== undefined && uri.length > 0) {
       const src: ExternalSource = { kind: 'external', uri: uri, displayName: uri };
       this.docTarget = src;
-      this.docTitle = uri;
+      this.docTitle = RecentFileList.displayName(uri);
       this.loadOpenedDoc(src);
     }
   }

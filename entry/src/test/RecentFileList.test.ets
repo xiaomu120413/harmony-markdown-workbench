@@ -6,6 +6,21 @@ import { RecentFileList, RECENT_LIMIT } from '../main/ets/domain/document/Recent
  */
 export default function recentFileListTest(): void {
   describe('RecentFileList', () => {
+    it('display_name_internal_strips_library_prefix', 0, () => {
+      expect(RecentFileList.displayName('library/周报.md')).assertEqual('周报.md');
+      expect(RecentFileList.displayName('library/未命名文档(2).md')).assertEqual('未命名文档(2).md');
+    });
+
+    it('display_name_external_uri_takes_last_segment', 0, () => {
+      expect(RecentFileList.displayName('file:///docs/notes/会议纪要.md')).assertEqual('会议纪要.md');
+      expect(RecentFileList.displayName('filestorage://media/README.md')).assertEqual('README.md');
+    });
+
+    it('display_name_fallback', 0, () => {
+      expect(RecentFileList.displayName('裸名.md')).assertEqual('裸名.md');
+      expect(RecentFileList.displayName('a/')).assertEqual('a/');
+    });
+
     it('touch_inserts_and_sorts_desc', 0, () => {
       const list = new RecentFileList();
       list.touch('a', 100);

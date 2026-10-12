@@ -179,6 +179,8 @@ struct RecoveryPage {
   }
 
   build() {
+    // 外层全宽容器负责水平居中（页面根上的 alignSelf 不生效）
+    Column() {
     Stack({ alignContent: Alignment.Top }) {
       Column({ space: 8 }) {
       Row({ space: 8 }) {
@@ -271,5 +273,10 @@ struct RecoveryPage {
       .height('100%')
       .backgroundColor(this.pal.BG)
     }
+    }
+    .width('100%')
+    .height('100%')
+    .alignItems(HorizontalAlign.Center)
+    .backgroundColor(this.pal.BG)
   }
 }

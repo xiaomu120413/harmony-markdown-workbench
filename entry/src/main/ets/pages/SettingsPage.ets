@@ -93,6 +93,8 @@ struct SettingsPage {
   }
 
   build() {
+    // 外层全宽容器负责水平居中（页面根上的 alignSelf 不生效，宽窗口下会左贴边）
+    Column() {
     Column({ space: 0 }) {
       // 顶栏
       Row({ space: 8 }) {
@@ -246,7 +248,10 @@ struct SettingsPage {
     .width('100%')
     .height('100%')
     .constraintSize({ maxWidth: 760 })
-    .alignSelf(ItemAlign.Center)
+    }
+    .width('100%')
+    .height('100%')
+    .alignItems(HorizontalAlign.Center)
     .backgroundColor(this.pal.BG)
   }
 }

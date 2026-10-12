@@ -41,9 +41,16 @@ function notify(type, payload) {
 const themeDark = EditorView.theme({
   '&': { backgroundColor: '#1e1e1e', color: '#d4d4d4' },
   '.cm-content': { caretColor: '#fff' },
+  '.cm-gutters': { backgroundColor: '#1e1e1e', color: '#6b7078', border: 'none' },
+  '.cm-activeLine': { backgroundColor: '#26262a' },
+  '.cm-activeLineGutter': { backgroundColor: '#2a2a2f', color: '#d4d4d4' },
+  '.cm-selectionBackground, ::selection': { backgroundColor: '#2f4368' },
+  '.cm-cursor': { borderLeftColor: '#fff' },
+  '.cm-selectionMatch': { backgroundColor: '#3a5a3a' },
 }, { dark: true });
 
-// 设置（M5-03）：字号/自动换行/行号以 Compartment 动态切换（reconfigure 不重载文档）
+// 设置（M5-03）：主题/字号/自动换行/行号以 Compartment 动态切换（reconfigure 不重载文档）
+const themeC = new Compartment();
 const fontC = new Compartment();
 const wrapC = new Compartment();
 const gutterHidden = EditorView.theme({
@@ -87,6 +94,7 @@ try {
         markdown(),
         editExt,
         placeholder('开始输入…'),
+        themeC.of([]),
         fontC.of(EditorView.theme({ '&': { fontSize: '15px' } })),
         contentWide,
         wrapC.of([]),
@@ -138,7 +146,7 @@ window.__editorApi = {
     return to - from;
   },
   setTheme(dark) {
-    view.dispatch({ effects: dark ? themeDark : [] });
+    view.dispatch({ effects: themeC.reconfigure(dark ? themeDark : []) });
   },
   setFontSize(px) {
     view.dispatch({

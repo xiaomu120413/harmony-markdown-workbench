@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, mediaquery } from '@kit.ArkUI';
+import { picker } from '@kit.CoreFileKit';
 import { RecentFileList, RecentEntry } from '../domain/document/RecentFileList';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
@@ -107,17 +108,45 @@ struct HomePage {
     router.pushUrl({ url: 'pages/EditorPage' });
   }
 
-  /** 打开最近/资料库文档（name 参数 → EditorPage 读取并加载） */
+  /** 打开最近/资料库文档（name=内部相对路径 / uri=外部文档 URI） */
   private goEditorWith(name: string): void {
     const params: ESObject = { name: name } as ESObject;
     router.pushUrl({ url: 'pages/EditorPage', params: params });
   }
 
-  /** 「打开文件」：枚举资料库选择（离线内部库） */
+  /** 外部文档（URI）：EditorPage 经 ExternalUriFileSource 读写（M0-02 实测链路） */
+  private goEditorWithUri(uri: string): void {
+    const params: ESObject = { uri: uri } as ESObject;
+    router.pushUrl({ url: 'pages/EditorPage', params: params });
+  }
+
+  /** 「资料库」：枚举内部库选择 */
   private openLibraryFile(): void {
     this.refreshLibrary().then(() => {
       this.pickingFile = true;
     });
+  }
+
+  /**
+   * 「打开文档」：系统文件选择器（.md/.txt）→ 外部 URI 打开。
+   * 产品原则主链路："打开的是原文件，保存后仍是原文件"。
+   * 授权为单次临时（API 26 无持久授权，R-10/ADR-009）：本次会话内可读写，
+   * 重启后需重新定位。
+   */
+  private async openExternalFile(): Promise<void> {
+    try {
+      const documentPicker = new picker.DocumentViewPicker(this.ctx);
+      const result: Array<string> = await documentPicker.select({
+        maxSelectNumber: 1,
+        fileSuffixFilters: ['.md', '.markdown', '.txt'],
+      });
+      if (result.length === 0) {
+        return; // 用户取消
+      }
+      this.goEditorWithUri(result[0]);
+    } catch (e) {
+      this.note(`[打开] 选择器失败：${JSON.stringify(e)}`);
+    }
   }
 
   private fmtTime(ms: number): string {
@@ -137,6 +166,10 @@ struct HomePage {
         .fontColor(this.pal.PRIMARY)
         .onClick(() => this.goEditor())
       Text('打开文档')
+        .fontSize(16)
+        .fontColor(this.pal.TEXT_SUB)
+        .onClick(() => this.openExternalFile())
+      Text('资料库')
         .fontSize(16)
         .fontColor(this.pal.TEXT_SUB)
         .onClick(() => this.openLibraryFile())
@@ -182,7 +215,7 @@ struct HomePage {
         ForEach(this.recent, (item: RecentEntry) => {
           ListItem() {
             Column({ space: 4 }) {
-              Text(item.documentId)
+              Text(RecentFileList.displayName(item.documentId))
                 .fontSize(16)
                 .fontWeight(FontWeight.Medium)
                 .fontColor(this.pal.TEXT)
@@ -195,7 +228,14 @@ struct HomePage {
             .width('100%')
             .padding({ top: 16, bottom: 16, left: 0, right: 0 })
             .border({ width: { bottom: 1 }, color: this.pal.DIVIDER })
-            .onClick(() => this.goEditorWith(item.documentId))
+            .onClick(() => {
+              // 外部 URI 记录走 uri 通道（临时授权可能已失效，EditorPage 有失败路径）
+              if (item.documentId.startsWith('library/')) {
+                this.goEditorWith(item.documentId);
+              } else {
+                this.goEditorWithUri(item.documentId);
+              }
+            })
           }
         }, (item: RecentEntry) => item.documentId)
       }
