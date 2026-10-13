@@ -1008,10 +1008,13 @@ struct EditorPage {
       // 快捷栏（仅编辑/分屏可见；FR-EDIT-002；分组：标题 | 行内 | 块级 | 插入 | 历史；wrap 防溢出）
       if (this.viewMode !== DefaultView.PREVIEW) {
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-          // 标题等级（h1–h6 命令，工具栏暴露常用三级）
+          // 标题等级（h1–h6 全量，Markdown 标准六级）
           this.toolBtn('H1', 'h1')
           this.toolBtn('H2', 'h2')
           this.toolBtn('H3', 'h3')
+          this.toolBtn('H4', 'h4')
+          this.toolBtn('H5', 'h5')
+          this.toolBtn('H6', 'h6')
           this.toolSep()
           // 行内样式
           this.toolBtn('B', 'bold')
@@ -1025,6 +1028,8 @@ struct EditorPage {
           this.toolBtn('任务', 'task')
           this.toolBtn('引用', 'quote')
           this.toolBtn('代码块', 'codeBlock')
+          this.toolBtn('缩进', 'indent')
+          this.toolBtn('减少缩进', 'outdent')
           this.toolSep()
           // 插入
           this.toolBtn('链接', 'link')

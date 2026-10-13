@@ -107,6 +107,28 @@ export default function markdownCommandsTest(): void {
       const r = MarkdownCommands.apply('', { from: 0, to: 0 }, 'table');
       expect(r.text).assertEqual('| 列1 | 列2 |\n| --- | --- |\n| 内容 | 内容 |\n');
     });
+
+    // ---- V0.4.1：缩进/减少缩进（嵌套列表） ----
+
+    it('indent_adds_two_spaces_per_line', 0, () => {
+      const r = MarkdownCommands.apply('- a\n- b', { from: 0, to: 9 }, 'indent');
+      expect(r.text).assertEqual('  - a\n  - b');
+    });
+
+    it('outdent_removes_up_to_two_spaces', 0, () => {
+      const r = MarkdownCommands.apply('  - a\n    - b', { from: 0, to: 15 }, 'outdent');
+      expect(r.text).assertEqual('- a\n  - b');
+    });
+
+    it('outdent_no_leading_space_unchanged', 0, () => {
+      const r = MarkdownCommands.apply('- a', { from: 0, to: 3 }, 'outdent');
+      expect(r.text).assertEqual('- a');
+    });
+
+    it('outdent_single_space_removed', 0, () => {
+      const r = MarkdownCommands.apply(' - a', { from: 0, to: 4 }, 'outdent');
+      expect(r.text).assertEqual('- a');
+    });
   });
 
 }

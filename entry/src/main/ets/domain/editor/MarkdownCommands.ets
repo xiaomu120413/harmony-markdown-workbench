@@ -21,7 +21,8 @@ export interface TextTransformResult {
 
 export type MarkdownCommandName = 'bold' | 'italic' | 'strike' | 'inlineCode' | 'link' | 'image' |
   'ul' | 'ol' | 'task' | 'quote' | 'codeBlock' |
-  'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'hr' | 'table';
+  'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'hr' | 'table' |
+  'indent' | 'outdent';
 
 export class MarkdownCommands {
   /**
@@ -120,6 +121,35 @@ export class MarkdownCommands {
     };
   }
 
+  /**
+   * 缩进/减少缩进（嵌套列表层级）：选区覆盖的每行行首 ±2 空格。
+   * 减少缩进每行最多移除 2 个前导空格（不足则该行不动）。
+   */
+  private static shiftIndent(text: string, sel: TextRange, add: boolean): TextTransformResult {
+    const lineStart = text.lastIndexOf('\n', sel.from - 1) + 1;
+    let lineEnd = text.indexOf('\n', sel.to);
+    if (lineEnd === -1) {
+      lineEnd = text.length;
+    }
+    const block = text.substring(lineStart, lineEnd);
+    const lines: string[] = block.split('\n');
+    const newLines: string[] = [];
+    for (const line of lines) {
+      if (add) {
+        newLines.push('  ' + line);
+      } else {
+        const m = /^ {1,2}/.exec(line);
+        newLines.push(m === null ? line : line.substring(m[0].length));
+      }
+    }
+    const newBlock = newLines.join('\n');
+    const delta = newBlock.length - block.length;
+    return {
+      text: text.substring(0, lineStart) + newBlock + text.substring(lineEnd),
+      selection: { from: sel.from, to: Math.max(sel.from, sel.to + delta) },
+    };
+  }
+
   static apply(text: string, sel: TextRange, command: MarkdownCommandName): TextTransformResult {
     switch (command) {
       case 'bold':
@@ -160,6 +190,10 @@ export class MarkdownCommands {
         return MarkdownCommands.insertSnippet(text, sel, '---\n');
       case 'table':
         return MarkdownCommands.insertSnippet(text, sel, '| 列1 | 列2 |\n| --- | --- |\n| 内容 | 内容 |\n');
+      case 'indent':
+        return MarkdownCommands.shiftIndent(text, sel, true);
+      case 'outdent':
+        return MarkdownCommands.shiftIndent(text, sel, false);
       default:
         return { text: text, selection: { from: sel.from, to: sel.to } };
     }
