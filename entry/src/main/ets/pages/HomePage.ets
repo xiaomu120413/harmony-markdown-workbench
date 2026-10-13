@@ -16,10 +16,9 @@ const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-HOME';
 
 /**
- * 首页（V0.3 重设计：「卡片化工作台」）。
- * 宽屏（tablet/pc）：侧栏 + 主区双栏 shell——侧栏承载品牌/主操作/导航/最近；
- * 主区为欢迎面板（大入口卡片）。phone：单栏大按钮布局 + 底部 Tab。
- * 断点（common/Breakpoints）；主题跟随设置；窗口拖动热区在品牌标题。
+ * 首页（V0.4：对齐系统原生「色调分层」——参考系统备忘录真机提取）。
+ * 宽屏三区：侧栏（导航，#EEEFF1）→ 最近列表（#F2F3F5，细分隔线行）→
+ * 欢迎内容（#FFFFFF）。面板无边框无圆角，靠色调分层；phone 单栏。
  */
 @Entry
 @Component
@@ -141,8 +140,7 @@ struct HomePage {
   /**
    * 「打开文档」：系统文件选择器（.md/.txt）→ 外部 URI 打开。
    * 产品原则主链路："打开的是原文件，保存后仍是原文件"。
-   * 授权为单次临时（API 26 无持久授权，R-10/ADR-009）：本次会话内可读写，
-   * 重启后需重新定位。
+   * 授权为单次临时（API 26 无持久授权，R-10/ADR-009）。
    */
   private async openExternalFile(): Promise<void> {
     try {
@@ -167,115 +165,52 @@ struct HomePage {
     return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
   }
 
-  // ---- 设计构件 ----
+  // ---- 设计构件（备忘录式：平铺行、细分隔线、无描边） ----
 
-  /** 文档类型徽标（36×36 圆角方块，统一图标语言） */
+  /** 侧栏导航行（备忘录式纯文字行） */
   @Builder
-  mdChip(size: number) {
-    Text('MD')
-      .fontSize(size >= 36 ? 12 : 10)
-      .fontWeight(FontWeight.Bold)
-      .fontColor(this.pal.PRIMARY)
-      .textAlign(TextAlign.Center)
-      .width(size)
-      .height(size)
-      .lineHeight(size)
-      .backgroundColor(this.pal.PRIMARY_SOFT)
-      .borderRadius(size / 3)
-  }
-
-  /** 侧栏导航行 */
-  @Builder
-  navRow(label: string, sub: string, danger: boolean, action: () => void) {
-    Row({ space: 10 }) {
-      Column({ space: 2 }) {
-        Text(label)
-          .fontSize(15)
-          .fontColor(danger ? this.pal.AMBER : this.pal.TEXT)
-        if (sub.length > 0) {
-          Text(sub)
-            .fontSize(11)
-            .fontColor(this.pal.TEXT_FAINT)
-        }
-      }
-      .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
+  navRow(label: string, action: () => void) {
+    Row({ space: 8 }) {
+      Text(label)
+        .fontSize(15)
+        .fontColor(this.pal.TEXT)
+        .layoutWeight(1)
       Text('›')
-        .fontSize(18)
+        .fontSize(16)
         .fontColor(this.pal.TEXT_FAINT)
     }
     .width('100%')
-    .padding({ top: 11, bottom: 11, left: 12, right: 12 })
+    .height(44)
+    .padding({ left: 14, right: 12 })
     .borderRadius(10)
-    .backgroundColor(this.pal.TOOLBAR_BG)
     .onClick(() => action())
   }
 
-  /** 最近文档行（侧栏紧凑 / phone 全宽共用） */
+  /** 最近文档行（列表区行 + 细分隔线） */
   @Builder
   recentRow(item: RecentEntry) {
-    Row({ space: 10 }) {
-      this.mdChip(36)
-      Column({ space: 2 }) {
-        Text(RecentFileList.displayName(item.documentId))
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.pal.TEXT)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(this.fmtTime(item.lastOpenedAt))
-          .fontSize(11)
-          .fontColor(this.pal.TEXT_FAINT)
-      }
-      .alignItems(HorizontalAlign.Start)
-      .layoutWeight(1)
-      Text('›')
-        .fontSize(18)
+    Column({ space: 3 }) {
+      Text(RecentFileList.displayName(item.documentId))
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.pal.TEXT)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Text(this.fmtTime(item.lastOpenedAt))
+        .fontSize(11)
         .fontColor(this.pal.TEXT_FAINT)
     }
+    .alignItems(HorizontalAlign.Start)
     .width('100%')
-    .padding({ top: 8, bottom: 8, left: 10, right: 10 })
-    .borderRadius(10)
+    .padding({ top: 11, bottom: 11, left: 20, right: 16 })
+    .border({ width: { bottom: 1 }, color: this.pal.DIVIDER })
     .onClick(() => this.openRecent(item))
   }
 
-  /** 主区大入口卡片 */
-  @Builder
-  entryCard(title: string, sub: string, badge: string, action: () => void) {
-    Column({ space: 8 }) {
-      Text(badge)
-        .fontSize(18)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.pal.PRIMARY)
-        .width(40)
-        .height(40)
-        .lineHeight(40)
-        .textAlign(TextAlign.Center)
-        .backgroundColor(this.pal.PRIMARY_SOFT)
-        .borderRadius(12)
-      Text(title)
-        .fontSize(16)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.pal.TEXT)
-      Text(sub)
-        .fontSize(12)
-        .fontColor(this.pal.TEXT_FAINT)
-        .maxLines(2)
-    }
-    .alignItems(HorizontalAlign.Start)
-    .layoutWeight(1)
-    .height('100%')
-    .padding(16)
-    .backgroundColor(this.pal.CARD)
-    .borderRadius(16)
-    .border({ width: 1, color: this.pal.DIVIDER })
-    .onClick(() => action())
-  }
-
-  /** 资料库选择面板（pickingFile=true 时展开） */
+  /** 资料库选择面板 */
   @Builder
   libraryPanel() {
-    Column({ space: 8 }) {
+    Column({ space: 6 }) {
       Row() {
         Text(`资料库 · ${this.libraryFiles.length} 个文档`)
           .fontSize(14)
@@ -293,13 +228,12 @@ struct HomePage {
         Text('资料库还没有文档，先新建一个吧。')
           .fontSize(13)
           .fontColor(this.pal.TEXT_FAINT)
-          .padding(12)
+          .padding(8)
       }
       Scroll() {
-        Column({ space: 4 }) {
+        Column({ space: 0 }) {
           ForEach(this.libraryFiles, (name: string) => {
             Row({ space: 10 }) {
-              this.mdChip(32)
               Text(name)
                 .fontSize(14)
                 .fontColor(this.pal.TEXT)
@@ -308,9 +242,8 @@ struct HomePage {
               Text('›').fontSize(16).fontColor(this.pal.TEXT_FAINT)
             }
             .width('100%')
-            .padding({ top: 6, bottom: 6, left: 8, right: 8 })
-            .borderRadius(8)
-            .backgroundColor(this.pal.TOOLBAR_BG)
+            .height(42)
+            .padding({ left: 12, right: 12 })
             .onClick(() => {
               this.pickingFile = false;
               this.goEditorWith(name);
@@ -324,21 +257,34 @@ struct HomePage {
     }
     .width('100%')
     .padding(14)
-    .backgroundColor(this.pal.CARD)
-    .borderRadius(16)
-    .border({ width: 1, color: this.pal.DIVIDER })
+    .backgroundColor(this.pal.CONTENT)
+    .borderRadius(12)
+  }
+
+  /** 主按钮（HarmonyOS 胶囊样式） */
+  @Builder
+  primaryBtn(label: string, action: () => void) {
+    Button(label)
+      .fontSize(15)
+      .fontWeight(FontWeight.Medium)
+      .fontColor(this.pal.ON_PRIMARY)
+      .backgroundColor(this.pal.PRIMARY)
+      .borderRadius(22)
+      .width('100%')
+      .height(44)
+      .onClick(() => action())
   }
 
   /** 侧栏（宽屏）：品牌 / 主操作 / 导航 / 最近 */
   @Builder
   sideBar() {
-    Column({ space: 10 }) {
+    Column({ space: 2 }) {
       Text('Markdown 工作台')
-        .fontSize(19)
+        .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)
         .maxLines(1)
-        .padding({ top: 4, bottom: 2 })
+        .padding({ top: 6, bottom: 2 })
         .onTouch((e: TouchEvent) => {
           if (e.type === TouchType.Down) {
             beginWindowMove(this.ctx);
@@ -347,24 +293,20 @@ struct HomePage {
       Text('完全离线 · 只在你本机')
         .fontSize(11)
         .fontColor(this.pal.TEXT_FAINT)
+        .padding({ bottom: 10 })
 
-      Button('＋  新建文档')
-        .fontSize(15)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.pal.ON_PRIMARY)
-        .backgroundColor(this.pal.PRIMARY)
-        .borderRadius(12)
-        .width('100%')
-        .height(44)
-        .margin({ top: 6, bottom: 6 })
-        .onClick(() => this.goEditor())
+      this.primaryBtn('＋  新建文档', () => this.goEditor())
 
-      this.navRow('打开文档', '从系统文件选择', false, () => this.openExternalFile())
-      this.navRow('资料库', `${this.libraryFiles.length} 个本地文档`, false, () => this.openLibraryFile())
-      if (this.draftCount > 0) {
-        this.navRow(`找回未保存内容（${this.draftCount}）`, '意外退出时保留', true, () => this.goRecovery())
+      Column({ space: 0 }) {
+        this.navRow('打开文档', () => this.openExternalFile())
+        this.navRow('资料库', () => this.openLibraryFile())
+        if (this.draftCount > 0) {
+          this.navRow(`找回未保存内容（${this.draftCount}）`, () => this.goRecovery())
+        }
+        this.navRow('设置', () => this.goSettings())
       }
-      this.navRow('设置', '主题 · 编辑器 · 数据', false, () => this.goSettings())
+      .width('100%')
+      .margin({ top: 6 })
 
       Row() {
         Text('最近')
@@ -378,16 +320,43 @@ struct HomePage {
         }
       }
       .width('100%')
-      .padding({ top: 6, bottom: 2 })
+      .padding({ top: 14, bottom: 4, left: 14, right: 12 })
+    }
+    .width(250)
+    .height('100%')
+    .padding({ left: 8, right: 8, top: 10, bottom: 10 })
+    .backgroundColor(this.pal.SIDEBAR)
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  /** 最近列表区（宽屏中栏） */
+  @Builder
+  recentColumn() {
+    Column({ space: 0 }) {
+      Row() {
+        Text('最近')
+          .fontSize(16)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.pal.TEXT)
+          .layoutWeight(1)
+        if (this.recent.length > 0) {
+          Text(`${this.recent.length} 个文档`)
+            .fontSize(12)
+            .fontColor(this.pal.TEXT_FAINT)
+        }
+      }
+      .width('100%')
+      .height(52)
+      .padding({ left: 20, right: 16 })
 
       if (this.recent.length === 0) {
         Text('打开过的文档会出现在这里')
-          .fontSize(12)
+          .fontSize(13)
           .fontColor(this.pal.TEXT_FAINT)
-          .padding({ top: 8, bottom: 8 })
+          .padding({ top: 16, left: 20 })
       }
 
-      List({ space: 2 }) {
+      List({ space: 0 }) {
         ForEach(this.recent, (item: RecentEntry) => {
           ListItem() {
             this.recentRow(item)
@@ -396,46 +365,43 @@ struct HomePage {
       }
       .layoutWeight(1)
       .width('100%')
-      .scrollBar(BarState.Auto)
+      .scrollBar(BarState.Off)
     }
     .width(300)
     .height('100%')
+    .backgroundColor(this.pal.BG)
     .alignItems(HorizontalAlign.Start)
-    .padding(14)
-    .backgroundColor(this.pal.CARD)
-    .borderRadius(16)
-    .border({ width: 1, color: this.pal.DIVIDER })
   }
 
-  /** 主区（宽屏）：欢迎面板 */
+  /** 欢迎内容区（宽屏右栏） */
   @Builder
   welcomePanel() {
-    Column({ space: 16 }) {
-      if (this.pickingFile) {
-        this.libraryPanel()
-      }
-
+    Column({ space: 14 }) {
       Blank().layoutWeight(1)
 
       Column({ space: 8 }) {
         Text('Markdown 工作台')
-          .fontSize(28)
+          .fontSize(26)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.pal.TEXT)
         Text('打开的是原文件，保存后仍是原文件。')
           .fontSize(14)
           .fontColor(this.pal.TEXT_SUB)
       }
-      .alignItems(HorizontalAlign.Start)
       .width('100%')
+      .alignItems(HorizontalAlign.Start)
 
       Row({ space: 12 }) {
-        this.entryCard('新建文档', '从空白文档开始', '＋', () => this.goEditor())
-        this.entryCard('打开文档', '系统文件 .md / .txt', '⇪', () => this.openExternalFile())
-        this.entryCard('资料库', `${this.libraryFiles.length} 个本地文档`, '▤', () => this.openLibraryFile())
+        this.entryTile('＋', '新建文档', '从空白文档开始', () => this.goEditor())
+        this.entryTile('⇪', '打开文档', '系统文件 .md / .txt', () => this.openExternalFile())
+        this.entryTile('▤', '资料库', `${this.libraryFiles.length} 个本地文档`, () => this.openLibraryFile())
       }
       .width('100%')
-      .height(150)
+      .height(130)
+
+      if (this.pickingFile) {
+        this.libraryPanel()
+      }
 
       Blank().layoutWeight(1)
 
@@ -452,48 +418,75 @@ struct HomePage {
     }
     .layoutWeight(1)
     .height('100%')
-    .padding(20)
+    .padding(24)
+    .backgroundColor(this.pal.CONTENT)
+    .alignItems(HorizontalAlign.Start)
   }
 
-  /** phone：单栏 */
+  /** 入口瓷贴（浅色调块，无描边） */
+  @Builder
+  entryTile(badge: string, title: string, sub: string, action: () => void) {
+    Column({ space: 6 }) {
+      Text(badge)
+        .fontSize(16)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.pal.PRIMARY)
+        .width(34)
+        .height(34)
+        .lineHeight(34)
+        .textAlign(TextAlign.Center)
+        .backgroundColor(this.pal.PRIMARY_SOFT)
+        .borderRadius(10)
+      Text(title)
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.pal.TEXT)
+      Text(sub)
+        .fontSize(11)
+        .fontColor(this.pal.TEXT_FAINT)
+        .maxLines(1)
+    }
+    .alignItems(HorizontalAlign.Start)
+    .layoutWeight(1)
+    .height('100%')
+    .padding(14)
+    .backgroundColor(this.pal.CARD)
+    .borderRadius(12)
+    .onClick(() => action())
+  }
+
+  /** phone：单栏（列表色调背景 + 平铺行） */
   @Builder
   phoneHome() {
-    Column({ space: 12 }) {
+    Column({ space: 10 }) {
       Text('Markdown 工作台')
-        .fontSize(20)
+        .fontSize(19)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)
-        .padding({ top: 4, bottom: 4 })
+        .padding({ top: 4, bottom: 2 })
         .onTouch((e: TouchEvent) => {
           if (e.type === TouchType.Down) {
             beginWindowMove(this.ctx);
           }
         })
 
-      Button('＋  新建文档')
-        .fontSize(15)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.pal.ON_PRIMARY)
-        .backgroundColor(this.pal.PRIMARY)
-        .borderRadius(12)
-        .width('100%')
-        .height(44)
+      this.primaryBtn('＋  新建文档', () => this.goEditor())
 
-      Row({ space: 12 }) {
+      Row({ space: 10 }) {
         Button('打开文档')
           .fontSize(14)
           .fontColor(this.pal.TEXT)
-          .backgroundColor(this.pal.CARD)
-          .borderRadius(12)
-          .height(40)
+          .backgroundColor(this.pal.CONTENT)
+          .borderRadius(20)
+          .height(38)
           .layoutWeight(1)
           .onClick(() => this.openExternalFile())
         Button('资料库')
           .fontSize(14)
           .fontColor(this.pal.TEXT)
-          .backgroundColor(this.pal.CARD)
-          .borderRadius(12)
-          .height(40)
+          .backgroundColor(this.pal.CONTENT)
+          .borderRadius(20)
+          .height(38)
           .layoutWeight(1)
           .onClick(() => this.openLibraryFile())
       }
@@ -504,7 +497,7 @@ struct HomePage {
           .fontSize(13)
           .fontColor(this.pal.AMBER)
           .width('100%')
-          .padding({ top: 8, bottom: 8, left: 12, right: 12 })
+          .padding({ top: 8, bottom: 8, left: 14, right: 14 })
           .backgroundColor(this.pal.AMBER_SOFT)
           .borderRadius(10)
           .onClick(() => this.goRecovery())
@@ -528,7 +521,7 @@ struct HomePage {
       .width('100%')
       .padding({ top: 2 })
 
-      List({ space: 4 }) {
+      List({ space: 0 }) {
         ForEach(this.recent, (item: RecentEntry) => {
           ListItem() {
             this.recentRow(item)
@@ -541,8 +534,8 @@ struct HomePage {
     }
     .width('100%')
     .layoutWeight(1)
+    .padding({ left: 14, right: 14, top: 10 })
     .alignItems(HorizontalAlign.Start)
-    .padding({ left: 16, right: 16, top: 12 })
   }
 
   /** phone：底部 Tab */
@@ -564,7 +557,6 @@ struct HomePage {
     Column() {
       if (this.bp === 'phone') {
         this.phoneHome()
-        // 底部 Tab
         Row() {
           this.phoneTab('首页', true, () => {})
           this.phoneTab('编辑', false, () => this.goEditor())
@@ -572,17 +564,18 @@ struct HomePage {
         }
         .width('100%')
         .height(52)
-        .backgroundColor(this.pal.CARD)
+        .backgroundColor(this.pal.CONTENT)
         .border({ width: { top: 1 }, color: this.pal.DIVIDER })
       } else {
-        Row({ space: 12 }) {
+        Row({ space: 0 }) {
           this.sideBar()
+          Divider().vertical(true).height('100%').color(this.pal.DIVIDER)
+          this.recentColumn()
+          Divider().vertical(true).height('100%').color(this.pal.DIVIDER)
           this.welcomePanel()
         }
         .width('100%')
         .height('100%')
-        .constraintSize({ maxWidth: 1280 })
-        .alignItems(VerticalAlign.Top)
       }
     }
     .width('100%')

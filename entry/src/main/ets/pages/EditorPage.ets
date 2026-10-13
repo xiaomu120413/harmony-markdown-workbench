@@ -791,7 +791,7 @@ struct EditorPage {
     Button(label)
       .fontSize(13)
       .fontColor(this.pal.TEXT)
-      .backgroundColor(this.pal.TOOLBAR_BG)
+      .backgroundColor(this.pal.CARD)
       .borderRadius(8)
       .height(36)
       .padding({ left: 10, right: 10 })
@@ -814,7 +814,7 @@ struct EditorPage {
     Button(label)
       .fontSize(13)
       .fontColor(this.pal.TEXT)
-      .backgroundColor(this.pal.TOOLBAR_BG)
+      .backgroundColor(this.pal.CARD)
       .borderRadius(8)
       .height(36)
       .padding({ left: 10, right: 10 })
@@ -827,7 +827,7 @@ struct EditorPage {
     Text(label)
       .fontSize(14)
       .fontColor(active ? this.pal.ON_PRIMARY : this.pal.TEXT)
-      .backgroundColor(active ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
+      .backgroundColor(active ? this.pal.PRIMARY : this.pal.CARD)
       .borderRadius(8)
       .width(36)
       .height(36)
@@ -842,7 +842,7 @@ struct EditorPage {
     Button(label)
       .fontSize(12)
       .fontColor(this.pal.TEXT)
-      .backgroundColor(this.pal.TOOLBAR_BG)
+      .backgroundColor(this.pal.CARD)
       .borderRadius(6)
       .height(30)
       .onClick(() => action())
@@ -855,7 +855,7 @@ struct EditorPage {
         Button('‹')
           .fontSize(20)
           .fontColor(this.pal.TEXT)
-          .backgroundColor(this.pal.TOOLBAR_BG)
+          .backgroundColor(Color.Transparent)
           .borderRadius(10)
           .width(38)
           .height(38)
@@ -904,7 +904,7 @@ struct EditorPage {
         this.topBtn('☰', this.outlineVisible, () => this.toggleOutline())
         Button('分享')
           .fontSize(13)
-          .backgroundColor(this.pal.TOOLBAR_BG)
+          .backgroundColor(this.pal.CARD)
           .fontColor(this.pal.TEXT)
           .borderRadius(8)
           .height(36)
@@ -956,7 +956,7 @@ struct EditorPage {
           Row({ space: 4 }) {
             Text('Aa').fontSize(12)
               .fontColor(this.findCase ? this.pal.ON_PRIMARY : this.pal.TEXT)
-              .backgroundColor(this.findCase ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
+              .backgroundColor(this.findCase ? this.pal.PRIMARY : this.pal.CARD)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 4, bottom: 4 })
               .onClick(() => {
@@ -965,7 +965,7 @@ struct EditorPage {
               })
             Text('全词').fontSize(12)
               .fontColor(this.findWord ? this.pal.ON_PRIMARY : this.pal.TEXT)
-              .backgroundColor(this.findWord ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
+              .backgroundColor(this.findWord ? this.pal.PRIMARY : this.pal.CARD)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 4, bottom: 4 })
               .onClick(() => {
@@ -974,7 +974,7 @@ struct EditorPage {
               })
             Text('✕').fontSize(12)
               .fontColor(this.pal.TEXT_SUB)
-              .backgroundColor(this.pal.TOOLBAR_BG)
+              .backgroundColor(this.pal.CARD)
               .borderRadius(6)
               .padding({ left: 8, right: 8, top: 4, bottom: 4 })
               .onClick(() => {
@@ -995,9 +995,9 @@ struct EditorPage {
           Text('⚠ 磁盘版本已变化（自动保存已停止）')
             .fontSize(12)
             .fontColor(this.pal.DANGER)
-          Button('用磁盘版').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictKeepDisk())
-          Button('保留本地').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictKeepLocal())
-          Button('另存副本').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.TOOLBAR_BG).borderRadius(8).onClick(() => this.conflictSaveCopy())
+          Button('用磁盘版').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.CARD).borderRadius(8).onClick(() => this.conflictKeepDisk())
+          Button('保留本地').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.CARD).borderRadius(8).onClick(() => this.conflictKeepLocal())
+          Button('另存副本').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.CARD).borderRadius(8).onClick(() => this.conflictSaveCopy())
         }
         .width('100%')
         .padding(6)
@@ -1040,7 +1040,7 @@ struct EditorPage {
 
       // 工作区：大纲（可选）+ 编辑器 + 预览（三端同一布局路径——
       // phone：单栏互斥切换；tablet/pc 分屏：双 Web 并排；隐藏侧 Visibility.None 不占位）
-      Row({ space: 8 }) {
+      Row({ space: 0 }) {
         // 大纲侧栏（FR-PREVIEW-003 总装：点击跳转标题行）
         if (this.outlineVisible) {
           Column() {
@@ -1076,10 +1076,12 @@ struct EditorPage {
           }
           .width(200)
           .height('100%')
-          .backgroundColor(this.pal.CARD)
-          .borderRadius(12)
-          .border({ width: 1, color: this.pal.DIVIDER })
+          .backgroundColor(this.pal.SIDEBAR)
           .clip(true)
+        }
+
+        if (this.outlineVisible) {
+          Divider().vertical(true).height('100%').color(this.pal.DIVIDER)
         }
 
         Column() {
@@ -1107,9 +1109,6 @@ struct EditorPage {
         .visibility(this.viewMode === DefaultView.PREVIEW ? Visibility.None : Visibility.Visible)
         .layoutWeight(1)
         .width('100%')
-        .backgroundColor(this.pal.CARD)
-        .borderRadius(12)
-        .border({ width: 1, color: this.pal.DIVIDER })
         .clip(true)
 
         if (this.viewMode === DefaultView.SPLIT) {
@@ -1137,9 +1136,6 @@ struct EditorPage {
         .visibility(this.viewMode === DefaultView.EDIT ? Visibility.None : Visibility.Visible)
         .layoutWeight(1)
         .width('100%')
-        .backgroundColor(this.pal.CARD)
-        .borderRadius(12)
-        .border({ width: 1, color: this.pal.DIVIDER })
         .clip(true)
       }
       .layoutWeight(1)
@@ -1149,8 +1145,6 @@ struct EditorPage {
     .padding(12)
     .width('100%')
     .height('100%')
-    .backgroundColor(this.pal.BG)
-    .alignSelf(ItemAlign.Center)
-    .constraintSize({ maxWidth: this.bp === 'pc' ? 1440 : 10000 })
+    .backgroundColor(this.pal.CONTENT)
   }
 }

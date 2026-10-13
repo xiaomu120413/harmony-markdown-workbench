@@ -18,7 +18,7 @@ export struct SegBtn {
       .fontSize(13)
       .padding({ left: 14, right: 14, top: 7, bottom: 7 })
       .fontColor(this.active ? this.pal.ON_PRIMARY : this.pal.TEXT)
-      .backgroundColor(this.active ? this.pal.PRIMARY : this.pal.TOOLBAR_BG)
+      .backgroundColor(this.active ? this.pal.PRIMARY : this.pal.CARD)
       .borderRadius(8)
       .onClick(() => this.action())
   }

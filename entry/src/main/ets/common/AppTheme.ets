@@ -1,13 +1,18 @@
 /**
- * 应用统一视觉基调（产品化，V0.2.2）。
- * 色板来源：HarmonyOS 官方设计规范；明/暗双实例，随设置（M5-03 主题）切换。
- * 页面持有 `@State pal: AppTheme` 并在读取设置后赋值；
- * 属性绑定统一走 `this.pal.XXX`（深色切换时随状态驱动刷新）。
+ * 应用统一视觉基调（V0.4：对齐系统原生「色调分层」设计）。
+ * 参考提取自系统备忘录（真机像素采样）：
+ *   侧栏 #EEEFF1 → 列表区 #F2F3F5 → 内容区 #FFFFFF，面板间无边框无圆角，
+ *   列表项以细分隔线区隔——平台风格是色调分层而非描边卡片。
+ * 明/暗双实例，随设置（M5-03 主题）切换；页面持有 @State pal。
  */
 export class AppTheme {
-  /** 页面背景 */
+  /** 页面背景（最底层/列表区） */
   readonly BG: string;
-  /** 卡片背景 */
+  /** 侧栏底色（导航区） */
+  readonly SIDEBAR: string;
+  /** 内容区底色（编辑器/主内容/设置分组） */
+  readonly CONTENT: string;
+  /** 控件浅底（工具条/输入框/非激活分段） */
   readonly CARD: string;
   /** 主色（HarmonyOS 官方蓝 #007DFF） */
   readonly PRIMARY: string;
@@ -23,8 +28,6 @@ export class AppTheme {
   readonly TEXT_FAINT: string;
   /** 分隔线 */
   readonly DIVIDER: string;
-  /** 工具条底色 */
-  readonly TOOLBAR_BG: string;
   /** 成功（已保存） */
   readonly OK: string;
   /** 琥珀（进行中/未保存） */
@@ -37,11 +40,14 @@ export class AppTheme {
   readonly DANGER_SOFT: string;
 
   private constructor(
-    bg: string, card: string, primary: string, primarySoft: string, onPrimary: string,
-    text: string, textSub: string, textFaint: string, divider: string, toolbarBg: string,
+    bg: string, sidebar: string, content: string, card: string,
+    primary: string, primarySoft: string, onPrimary: string,
+    text: string, textSub: string, textFaint: string, divider: string,
     ok: string, amber: string, danger: string, okSoft: string, amberSoft: string, dangerSoft: string,
   ) {
     this.BG = bg;
+    this.SIDEBAR = sidebar;
+    this.CONTENT = content;
     this.CARD = card;
     this.PRIMARY = primary;
     this.PRIMARY_SOFT = primarySoft;
@@ -50,7 +56,6 @@ export class AppTheme {
     this.TEXT_SUB = textSub;
     this.TEXT_FAINT = textFaint;
     this.DIVIDER = divider;
-    this.TOOLBAR_BG = toolbarBg;
     this.OK = ok;
     this.AMBER = amber;
     this.DANGER = danger;
@@ -61,16 +66,18 @@ export class AppTheme {
 
   static light(): AppTheme {
     return new AppTheme(
-      '#F4F4F5', '#FFFFFF', '#007DFF', '#E6F0FF', '#FFFFFF',
-      '#182431', '#8A8F99', '#B7BCC4', '#EDEDED', '#F4F5F7',
+      '#F2F3F5', '#EEEFF1', '#FFFFFF', '#F4F5F7',
+      '#007DFF', '#E6F0FF', '#FFFFFF',
+      '#182431', '#8A8F99', '#B7BCC4', '#E5E6E8',
       '#2E9E5B', '#C77A18', '#D93A3A', '#E7F6ED', '#FCF1E3', '#FDEBEB',
     );
   }
 
   static dark(): AppTheme {
     return new AppTheme(
-      '#131316', '#1E1E22', '#0A84FF', '#1B2A3D', '#FFFFFF',
-      '#E8E9EB', '#9CA1AA', '#6B7078', '#323236', '#2A2A2F',
+      '#131316', '#17171B', '#1E1E22', '#2A2A2F',
+      '#0A84FF', '#1B2A3D', '#FFFFFF',
+      '#E8E9EB', '#9CA1AA', '#6B7078', '#323236',
       '#4BC98A', '#E0A64E', '#F06A6A', '#1C3227', '#39301E', '#3D2424',
     );
   }
