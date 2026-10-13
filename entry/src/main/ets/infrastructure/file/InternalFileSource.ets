@@ -149,4 +149,38 @@ export class InternalFileSource implements DocumentFileAdapter {
       // 已不存在/IO 失败：忽略
     }
   }
+
+  /**
+   * 资料库内重命名（V0.4.2 库管理）：目标名已存在返回 false（不覆盖）；
+   * 文件名合法性由调用方（FileNameValidator）先行校验。
+   */
+  renameLibrary(oldName: string, newName: string): boolean {
+    const libDir = `${this.baseDir}/library`;
+    try {
+      fs.renameSync(`${libDir}/${oldName}`, `${libDir}/${newName}`);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /**
+   * 移入回收站（V0.4.2 库管理）：library/.trash/（listLibrary 已排除）。
+   * 目录不存在时自动创建；返回是否成功。
+   */
+  trashLibrary(name: string): boolean {
+    const libDir = `${this.baseDir}/library`;
+    const trashDir = `${libDir}/.trash`;
+    try {
+      try {
+        fs.mkdirSync(trashDir);
+      } catch (e) {
+        // 已存在
+      }
+      fs.renameSync(`${libDir}/${name}`, `${trashDir}/${name}`);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

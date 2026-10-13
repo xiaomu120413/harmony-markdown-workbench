@@ -129,6 +129,16 @@ export default function markdownCommandsTest(): void {
       const r = MarkdownCommands.apply(' - a', { from: 0, to: 4 }, 'outdent');
       expect(r.text).assertEqual('- a');
     });
+
+    it('highlight_wraps_with_double_equals', 0, () => {
+      const r = MarkdownCommands.apply('重点内容', { from: 0, to: 4 }, 'highlight');
+      expect(r.text).assertEqual('==重点内容==');
+    });
+
+    it('highlight_toggle_removes', 0, () => {
+      const r = MarkdownCommands.apply('==重点内容==', { from: 0, to: 8 }, 'highlight');
+      expect(r.text).assertEqual('重点内容');
+    });
   });
 
 }

@@ -22,7 +22,7 @@ export interface TextTransformResult {
 export type MarkdownCommandName = 'bold' | 'italic' | 'strike' | 'inlineCode' | 'link' | 'image' |
   'ul' | 'ol' | 'task' | 'quote' | 'codeBlock' |
   'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6' | 'hr' | 'table' |
-  'indent' | 'outdent';
+  'indent' | 'outdent' | 'highlight';
 
 export class MarkdownCommands {
   /**
@@ -160,6 +160,8 @@ export class MarkdownCommands {
         return MarkdownCommands.wrap(text, sel, '~~', '~~', '删除线文本');
       case 'inlineCode':
         return MarkdownCommands.wrap(text, sel, '`', '`', '代码');
+      case 'highlight':
+        return MarkdownCommands.wrap(text, sel, '==', '==', '高亮文本');
       case 'link':
         return MarkdownCommands.wrap(text, sel, '[', '](https://)', '链接文字');
       case 'image':

@@ -178,6 +178,19 @@
 | FR-EDIT-002 | V0.4.1-01 | **标题等级工具栏全量 H1–H6**（领域层 h1–h6 命令此前已有，工具栏只暴露三级）；预览补 h4/h5/h6 字号样式 | ✅ 单测（heading 5 用例含 h6）+ 真机 UI 树：H4 按钮在工具栏（id 170） |
 | FR-EDIT-002 | V0.4.1-02 | **嵌套列表缩进**：缩进/减少缩进命令（选区每行行首 ±2 空格；减少时最多移 2 空格、不足不动）；工具栏「缩进」「减少缩进」按钮 | ✅ 单测 4 用例（shiftIndent:4 执行确证）+ 真机 UI 树（id 198） |
 
+## V0.4.2 编辑器能力补齐（2026-10-13，真机 HAD-W32）
+
+> 用户反馈：继续对比补能力。对标成熟编辑器（Typora/备忘录/Markor）清单：
+> 状态栏统计、资料库管理、高亮/脚注语法、HTML 导出为本轮四项缺口。
+
+| 需求 ID | 实现任务 | 验收用例 | 状态 |
+|---|---|---|---|
+| FR-EDIT-001 | V0.4.2-01 | **状态栏**（备忘录式底部信息条）：字数 + 光标 行/列 + 标题数；editor.js edit 事件携带 line/col、新增 cursor 事件（selectionSet） | ✅ 构建 + 装机（用户实测确认；单测不适用——桥链路 V0.2-01 同源已验） |
+| FR-EDIT-002 | V0.4.2-02 | **高亮 ==text==**：MarkdownCommands highlight 包裹/切换命令（单测 2 用例）+ 工具栏「高亮」；预览 markdown-it-mark 插件渲染（含深色样式） | ✅ 单测 + 构建 |
+| FR-PREVIEW-001 | V0.4.2-03 | **脚注 [^1]**：markdown-it-footnote 插件（预览渲染 + footnotes 样式） | ✅ 构建（标准插件，bundle 重建一致） |
+| FR-SHARE | V0.4.2-04 | **分享动作菜单**：复制 Markdown 原文 / 复制渲染 HTML（previewApi.getHtml，previewController 返回值通道） | ✅ 构建 + 装机 |
+| FR-FILE-001 | V0.4.2-05 | **资料库管理**：行「⋯」菜单 → 重命名（行内输入，补 .md 后缀/查重/最近列表同步）或删除（确认弹窗 → library/.trash 回收站，listLibrary 排除）；InternalFileSource.renameLibrary/trashLibrary | ✅ 构建 + 装机（用户实测确认） |
+
 ## 门禁检查（M0-01 已完成项）
 
 - ✅ 单元测试空套件/示例套件可执行：3 个示例用例通过（hypium 1.0.21）。

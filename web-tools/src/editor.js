@@ -71,15 +71,24 @@ const contentWide = EditorView.theme({
   '.cm-content': { maxWidth: '860px', margin: '0 auto' },
 });
 
-// ---- 编辑事件（自动保存 + 预览同步）：用户输入 → native 'edit'（程序化 setDocument/loadDocument 抑制）----
+// ---- 编辑事件（自动保存 + 预览同步 + 状态栏）：用户输入 → native 'edit'
+// （程序化 setDocument/loadDocument 抑制）；光标移动 → native 'cursor'（V0.4.2 状态栏）
 let suppressEdit = false;
 const editExt = EditorView.updateListener.of(function (u) {
+  if (u.docChanged && !suppressEdit) {
+    const head = u.state.selection.main.head;
+    const line = u.state.doc.lineAt(head);
+    notify('edit', { len: u.state.doc.length, line: line.number, col: head - line.from + 1 });
+    return;
+  }
   if (suppressEdit) {
     suppressEdit = false;
     return;
   }
-  if (u.docChanged) {
-    notify('edit', { len: u.state.doc.length });
+  if (u.selectionSet) {
+    const head = u.state.selection.main.head;
+    const line = u.state.doc.lineAt(head);
+    notify('cursor', { line: line.number, col: head - line.from + 1 });
   }
 });
 

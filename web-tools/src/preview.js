@@ -7,6 +7,8 @@
  */
 import MarkdownIt from 'markdown-it';
 import taskLists from 'markdown-it-task-lists';
+import footnote from 'markdown-it-footnote';
+import mark from 'markdown-it-mark';
 
 const md = new MarkdownIt({
   html: false,
@@ -15,6 +17,9 @@ const md = new MarkdownIt({
 });
 
 md.use(taskLists, { enabled: true, label: true, labelAfter: true });
+// 脚注 [^1]（V0.4.2）与高亮 ==text==（非 GFM 核心，主流编辑器通用扩展）
+md.use(footnote);
+md.use(mark);
 
 // 删除线（~~x~~）——手写 inline 规则（token 级输出 <del>，外来 HTML 仍被 html:false 禁止）
 md.inline.ruler.after('emphasis', 'strikethrough', (state, silent) => {
@@ -57,13 +62,20 @@ function postProcess(html) {
   return out;
 }
 
+let lastHtml = '';
+
 window.__previewApi = {
   version: 1,
   render(mdText) {
     const raw = md.render(mdText || '');
     const safe = postProcess(raw);
+    lastHtml = safe;
     document.getElementById('out').innerHTML = safe;
     return { length: safe.length, html: safe };
+  },
+  /** 最近一次渲染的 HTML（导出/复制用） */
+  getHtml() {
+    return lastHtml;
   },
   /** 主题跟随编辑器（M5-03 设置：dark） */
   setDark(dark) {

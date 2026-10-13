@@ -1,6 +1,6 @@
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { router, mediaquery } from '@kit.ArkUI';
+import { router, mediaquery, promptAction } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
 import { RecentFileList, RecentEntry } from '../domain/document/RecentFileList';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
@@ -27,6 +27,8 @@ struct HomePage {
   @State libraryFiles: string[] = [];
   @State draftCount: number = 0;
   @State pickingFile: boolean = false;
+  @State renamingFrom: string = '';
+  @State renameText: string = '';
   @State bp: Breakpoint = 'phone';
   @State pal: AppTheme = AppTheme.light();
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
@@ -158,6 +160,97 @@ struct HomePage {
     }
   }
 
+  /** 资料库行操作菜单（V0.4.2 库管理） */
+  private libraryRowMenu(name: string): void {
+    const that = this;
+    promptAction.showActionMenu({
+      title: name,
+      buttons: [
+        { text: '重命名', color: that.pal.TEXT },
+        { text: '删除（移入回收站）', color: that.pal.DANGER },
+      ],
+    }).then((r: promptAction.ActionMenuSuccessResponse) => {
+      if (r.index === 0) {
+        that.renamingFrom = name;
+        that.renameText = name;
+      } else if (r.index === 1) {
+        that.confirmDelete(name);
+      }
+    });
+  }
+
+  /** 重命名确认：补 .md 后缀、查重、最近列表同步 */
+  private async confirmRename(): Promise<void> {
+    const oldName = this.renamingFrom;
+    let newName = this.renameText.trim();
+    this.renamingFrom = '';
+    if (oldName.length === 0 || newName.length === 0 || newName === oldName) {
+      return;
+    }
+    if (!newName.endsWith('.md')) {
+      newName = `${newName}.md`;
+    }
+    if (newName.indexOf('/') >= 0 || this.fileSource.listLibrary().indexOf(newName) !== -1) {
+      promptAction.showToast({ message: '名称不可用或已存在' });
+      return;
+    }
+    if (this.fileSource.renameLibrary(oldName, newName)) {
+      try {
+        const entries = await this.meta.loadRecent();
+        const list = new RecentFileList(entries);
+        list.remove(`library/${oldName}`);
+        list.touch(`library/${newName}`, Date.now());
+        await this.meta.saveRecent(list.snapshot());
+      } catch (e) {
+        // 元数据失败不阻塞文件操作
+      }
+      this.refresh();
+      this.refreshLibrary();
+      promptAction.showToast({ message: `已重命名为 ${newName}` });
+    } else {
+      promptAction.showToast({ message: '重命名失败' });
+    }
+  }
+
+  /** 删除确认（移入 library/.trash，listLibrary 不再枚举） */
+  private confirmDelete(name: string): void {
+    const that = this;
+    AlertDialog.show({
+      title: '删除文档',
+      message: `「${name}」将移入回收站（应用私有目录），确定删除？`,
+      primaryButton: {
+        value: '删除',
+        fontColor: that.pal.DANGER,
+        action: () => {
+          that.doDelete(name);
+        },
+      },
+      secondaryButton: {
+        value: '取消',
+        action: () => {
+        },
+      },
+    });
+  }
+
+  private async doDelete(name: string): Promise<void> {
+    if (this.fileSource.trashLibrary(name)) {
+      try {
+        const entries = await this.meta.loadRecent();
+        const list = new RecentFileList(entries);
+        list.remove(`library/${name}`);
+        await this.meta.saveRecent(list.snapshot());
+      } catch (e) {
+        // 元数据失败不阻塞文件操作
+      }
+      this.refresh();
+      this.refreshLibrary();
+      promptAction.showToast({ message: `已删除 ${name}` });
+    } else {
+      promptAction.showToast({ message: '删除失败' });
+    }
+  }
+
   private fmtTime(ms: number): string {
     const d = new Date(ms);
     const hh = `${d.getHours()}`.padStart(2, '0');
@@ -233,22 +326,56 @@ struct HomePage {
       Scroll() {
         Column({ space: 0 }) {
           ForEach(this.libraryFiles, (name: string) => {
-            Row({ space: 10 }) {
-              Text(name)
-                .fontSize(14)
-                .fontColor(this.pal.TEXT)
-                .maxLines(1)
-                .layoutWeight(1)
-              Text('›').fontSize(16).fontColor(this.pal.TEXT_FAINT)
+            if (this.renamingFrom === name) {
+              Row({ space: 8 }) {
+                TextInput({ text: this.renameText })
+                  .fontSize(14)
+                  .height(36)
+                  .padding({ left: 8, right: 8 })
+                  .backgroundColor(this.pal.CONTENT)
+                  .borderRadius(8)
+                  .layoutWeight(1)
+                  .onChange((v: string) => {
+                    this.renameText = v;
+                  })
+                  .onSubmit(() => this.confirmRename())
+                Text('✓')
+                  .fontSize(15)
+                  .fontColor(this.pal.PRIMARY)
+                  .padding(6)
+                  .onClick(() => this.confirmRename())
+                Text('✕')
+                  .fontSize(15)
+                  .fontColor(this.pal.TEXT_SUB)
+                  .padding(6)
+                  .onClick(() => {
+                    this.renamingFrom = '';
+                  })
+              }
+              .width('100%')
+              .padding({ top: 3, bottom: 3 })
+            } else {
+              Row({ space: 10 }) {
+                Text(name)
+                  .fontSize(14)
+                  .fontColor(this.pal.TEXT)
+                  .maxLines(1)
+                  .layoutWeight(1)
+                Text('⋯')
+                  .fontSize(16)
+                  .fontColor(this.pal.TEXT_FAINT)
+                  .padding({ left: 6, right: 2 })
+                  .onClick(() => this.libraryRowMenu(name))
+              }
+              .width('100%')
+              .height(42)
+              .padding({ left: 12, right: 12 })
+              .onClick(() => {
+                this.pickingFile = false;
+                this.goEditorWith(name);
+              })
             }
-            .width('100%')
-            .height(42)
-            .padding({ left: 12, right: 12 })
-            .onClick(() => {
-              this.pickingFile = false;
-              this.goEditorWith(name);
-            })
-          }, (name: string) => name)
+          }, (name: string) => name + (this.renamingFrom === name ? ':edit' : ''))
         }
         .width('100%')
       }

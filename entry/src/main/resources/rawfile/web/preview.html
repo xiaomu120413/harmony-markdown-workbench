@@ -26,6 +26,12 @@
   #out .task-list-item { list-style: none; }
   #out a { color: #007dff; }
   #out hr { border: none; border-top: 1px solid var(--border); }
+  /* 高亮 ==text== 与脚注（V0.4.2） */
+  #out mark { background: #fff3b0; padding: 0 2px; border-radius: 3px; }
+  body.dark #out mark { background: #665c1e; color: #f5e79a; }
+  #out .footnotes { font-size: 0.9em; color: #8a8f99; border-top: 1px solid var(--border); margin-top: 1.5em; padding-top: 0.5em; }
+  #out .footnotes ol { padding-left: 1.2em; }
+  #out .footnotes li { margin: 0.2em 0; }
   /* 深色主题（跟随编辑器设置，body.dark 切换） */
   body.dark { color: #d4d4d4; background: #1e1e1e; }
   body.dark { --pre-bg: #2a2a2a; --border: #484848; --inline-code-bg: #333333; }

@@ -1,7 +1,7 @@
 import { webview } from '@kit.ArkWeb';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { router, mediaquery } from '@kit.ArkUI';
+import { router, mediaquery, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { SaveState, SaveStateMachine } from '../domain/recovery/SaveStateMachine';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../domain/editor/MarkdownCommands';
@@ -109,6 +109,8 @@ struct EditorPage {
   @State matchIndex: number = -1;
   @State outlineVisible: boolean = false;
   @State outlineEntries: OutlineEntry[] = [];
+  @State cursorLine: number = 1;
+  @State cursorCol: number = 1;
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private controller: webview.WebviewController = new webview.WebviewController();
   private previewController: webview.WebviewController = new webview.WebviewController();
@@ -162,12 +164,32 @@ struct EditorPage {
         if (len !== undefined) {
           this.docLength = len;
         }
+        const ln = env.payload.line as number | undefined;
+        const col = env.payload.col as number | undefined;
+        if (ln !== undefined) {
+          this.cursorLine = ln;
+        }
+        if (col !== undefined) {
+          this.cursorCol = col;
+        }
         const c = this.coordinator;
         if (c !== undefined) {
           c.onEdit(Date.now());
           this.saveLabel = SaveStateMachine.label(c.state);
         }
         this.scheduleDocSync();
+        return;
+      }
+      if (env.type === 'cursor') {
+        // 光标移动（点击/方向键）：状态栏行列更新
+        const ln = env.payload.line as number | undefined;
+        const col = env.payload.col as number | undefined;
+        if (ln !== undefined) {
+          this.cursorLine = ln;
+        }
+        if (col !== undefined) {
+          this.cursorCol = col;
+        }
         return;
       }
       if (!this.bridge.isFirstResponse(env.id)) {
@@ -623,9 +645,14 @@ struct EditorPage {
 
   /** 同步执行 JS 并返回结果（返回值通道，M0-03 实测可用） */
   private runJsValue(script: string): Promise<string> {
+    return this.runJsValueOn(this.controller, script);
+  }
+
+  /** 指定 Web 控制器的同步 JS 返回值通道（预览控制器复用） */
+  private runJsValueOn(ctrl: webview.WebviewController, script: string): Promise<string> {
     return new Promise<string>((resolve) => {
       try {
-        this.controller.runJavaScript(script, (err, result) => {
+        ctrl.runJavaScript(script, (err, result) => {
           resolve(err ? '' : (result === undefined ? '' : EditorPage.decodeReturn(result)));
         });
       } catch (e) {
@@ -753,30 +780,60 @@ struct EditorPage {
     this.append(`[冲突] 副本保存${ran && c.state !== SaveState.ERROR ? '完成' : '失败'} → ${copy.relativePath}`);
   }
 
-  /** M5-02 分享：原始 Markdown → 剪贴板（API 26 Beta SDK 无 ShareKit，R-18 降级通道） */
+  /** M5-02 分享：动作菜单（复制 Markdown 原文 / 复制渲染 HTML；API 26 无 ShareKit，R-18 剪贴板降级） */
   private async share(): Promise<void> {
     const c = this.coordinator;
     if (c === undefined) {
       return;
     }
-    // dirty 文档分享前先落盘（SDD 9.2：确保最新内容已保存）
-    let saveOk: boolean = true;
+    try {
+      const that = this;
+      promptAction.showActionMenu({
+        title: '分享',
+        buttons: [
+          { text: '复制 Markdown 原文', color: that.pal.TEXT },
+          { text: '复制渲染 HTML', color: that.pal.TEXT },
+        ],
+      }).then((r: promptAction.ActionMenuSuccessResponse) => {
+        if (r.index === 0) {
+          that.copyToClipboard('markdown');
+        } else if (r.index === 1) {
+          that.copyToClipboard('html');
+        }
+      });
+    } catch (e) {
+      this.append(`[分享] 菜单失败：${JSON.stringify(e)}`);
+    }
+  }
+
+  /** 剪贴板导出通道：markdown=原文；html=预览渲染结果 */
+  private async copyToClipboard(kind: 'markdown' | 'html'): Promise<void> {
+    const c = this.coordinator;
+    if (c === undefined) {
+      return;
+    }
+    // dirty 文档导出前先落盘（SDD 9.2：确保最新内容）
     if (c.state === SaveState.DIRTY || c.state === SaveState.ERROR) {
-      saveOk = await c.saveNow(Date.now());
+      await c.saveNow(Date.now());
     }
     this.saveLabel = SaveStateMachine.label(c.state);
-    if (c.state === SaveState.CONFLICT) {
-      this.conflictVisible = true;
-    }
-    if (!saveOk || c.state === SaveState.ERROR || c.state === SaveState.CONFLICT) {
+    if (c.state === SaveState.ERROR || c.state === SaveState.CONFLICT) {
+      this.conflictVisible = c.state === SaveState.CONFLICT;
       this.append('[分享] 需要先解决保存状态（失败/冲突），避免分享过期内容');
       return;
     }
-    const text = await this.runJsValue('window.__editorApi.getSnapshot();');
+    let payload = '';
+    if (kind === 'markdown') {
+      payload = await this.runJsValue('window.__editorApi.getSnapshot();');
+    } else {
+      const md = await this.runJsValue('window.__editorApi.getSnapshot();');
+      this.previewController.runJavaScript(`window.__previewApi.render(${JSON.stringify(md)});`);
+      payload = await this.runJsValueOn(this.previewController, 'window.__previewApi.getHtml();');
+    }
     try {
-      const record = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, text);
+      const record = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, payload);
       await pasteboard.getSystemPasteboard().setData(record);
-      this.append(`[分享] Markdown 原文已复制（${text.length} 字符），请粘贴到目标应用`);
+      this.append(`[分享] ${kind === 'markdown' ? 'Markdown 原文' : '渲染 HTML'}已复制（${payload.length} 字符）`);
     } catch (e) {
       const err: ESObject = e as ESObject;
       this.append(`[分享] 复制失败：${JSON.stringify(err)}`);
@@ -1021,6 +1078,7 @@ struct EditorPage {
           this.toolBtn('I', 'italic')
           this.toolBtn('S', 'strike')
           this.toolBtn('</>', 'inlineCode')
+          this.toolBtn('高亮', 'highlight')
           this.toolSep()
           // 块级
           this.toolBtn('列表', 'ul')
@@ -1146,6 +1204,26 @@ struct EditorPage {
       .layoutWeight(1)
       .width('100%')
       .alignItems(VerticalAlign.Center)
+
+      // 状态栏（V0.4.2：字数 + 光标行列，备忘录式底部信息条）
+      Row() {
+        Text(`${this.docLength} 字`)
+          .fontSize(11)
+          .fontColor(this.pal.TEXT_FAINT)
+        Text(`行 ${this.cursorLine}，列 ${this.cursorCol}`)
+          .fontSize(11)
+          .fontColor(this.pal.TEXT_FAINT)
+          .padding({ left: 12 })
+        Blank()
+        if (this.outlineEntries.length > 0) {
+          Text(`${this.outlineEntries.length} 个标题`)
+            .fontSize(11)
+            .fontColor(this.pal.TEXT_FAINT)
+        }
+      }
+      .width('100%')
+      .height(26)
+      .padding({ left: 4, right: 4 })
     }
     .padding(12)
     .width('100%')
