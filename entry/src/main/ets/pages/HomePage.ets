@@ -101,7 +101,13 @@ struct HomePage {
 
   private async refresh(): Promise<void> {
     const entries = await this.meta.loadRecent();
-    this.recent = new RecentFileList(entries).snapshot();
+    // C3-4：固定项排最前，其余按时间倒序
+    this.recent = new RecentFileList(entries).snapshot().sort((a: RecentEntry, b: RecentEntry): number => {
+      if (a.pinned !== b.pinned) {
+        return a.pinned ? -1 : 1;
+      }
+      return b.lastOpenedAt - a.lastOpenedAt;
+    });
     this.note(`[最近] ${this.recent.length} 条`);
   }
 
@@ -261,14 +267,15 @@ struct HomePage {
     }
   }
 
-  /** 回收站恢复（V0.4.4：兑现"回收站"承诺——可见、可恢复） */
-  private restoreFromTrash(name: string): void {
-    if (this.fileSource.restoreTrash(name)) {
+  /** 回收站恢复（C3：唯一回收 ID + 重名避让） */
+  private restoreFromTrash(trashName: string): void {
+    const restored = this.fileSource.restoreTrash(trashName);
+    if (restored.length > 0) {
       this.refreshLibrary();
       this.refresh();
-      promptAction.showToast({ message: `已恢复 ${name}` });
+      promptAction.showToast({ message: `已恢复为 ${restored}` });
     } else {
-      promptAction.showToast({ message: '恢复失败（同名文档已存在？）' });
+      promptAction.showToast({ message: '恢复失败' });
     }
   }
 
@@ -344,16 +351,57 @@ struct HomePage {
     .onClick(() => action())
   }
 
+  /** 回收名（原名.<时间戳>）→ 显示原名 */
+  private trashDisplayName(trashName: string): string {
+    const dot = trashName.lastIndexOf('.');
+    return dot > 0 ? trashName.substring(0, dot) : trashName;
+  }
+
+  /** C3-4：最近行长按 → 固定/取消固定 */
+  private recentRowMenu(item: RecentEntry): void {
+    const that = this;
+    promptAction.showActionMenu({
+      title: RecentFileList.displayName(item.documentId),
+      buttons: [
+        { text: item.pinned ? '取消固定' : '固定到顶部', color: that.pal.TEXT },
+      ],
+    }).then((r: promptAction.ActionMenuSuccessResponse) => {
+      if (r.index === 0) {
+        that.togglePin(item.documentId);
+      }
+    });
+  }
+
+  private async togglePin(docId: string): Promise<void> {
+    try {
+      const entries = await this.meta.loadRecent();
+      const list = new RecentFileList(entries);
+      const cur = entries.find((e: RecentEntry): boolean => e.documentId === docId);
+      list.setPinned(docId, !(cur?.pinned === true));
+      await this.meta.saveRecent(list.snapshot());
+      this.refresh();
+    } catch (e) {
+      promptAction.showToast({ message: '操作失败' });
+    }
+  }
+
   /** 最近文档行（列表区行 + 细分隔线） */
   @Builder
   recentRow(item: RecentEntry) {
     Column({ space: 3 }) {
-      Text(RecentFileList.displayName(item.documentId))
-        .fontSize(15)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.pal.TEXT)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
+      Row({ space: 6 }) {
+        if (item.pinned) {
+          Text('📌').fontSize(11)
+        }
+        Text(RecentFileList.displayName(item.documentId))
+          .fontSize(15)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.pal.TEXT)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+          .layoutWeight(1)
+      }
+      .width('100%')
       Text(this.fmtTime(item.lastOpenedAt))
         .fontSize(11)
         .fontColor(this.pal.TEXT_FAINT)
@@ -363,6 +411,10 @@ struct HomePage {
     .padding({ top: 11, bottom: 11, left: 20, right: 16 })
     .border({ width: { bottom: 1 }, color: this.pal.DIVIDER })
     .onClick(() => this.openRecent(item))
+    .gesture(
+      LongPressGesture({ repeat: false, duration: 500 })
+        .onActionEnd(() => this.recentRowMenu(item))
+    )
   }
 
   /** 资料库选择面板 */
@@ -465,9 +517,9 @@ struct HomePage {
         }
         .width('100%')
         if (this.trashOpen) {
-          ForEach(this.trashFiles, (name: string) => {
+          ForEach(this.trashFiles, (trashName: string) => {
             Row({ space: 10 }) {
-              Text(name)
+              Text(this.trashDisplayName(trashName))
                 .fontSize(13)
                 .fontColor(this.pal.TEXT_SUB)
                 .maxLines(1)
@@ -476,12 +528,12 @@ struct HomePage {
                 .fontSize(12)
                 .fontColor(this.pal.PRIMARY)
                 .padding(4)
-                .onClick(() => this.restoreFromTrash(name))
+                .onClick(() => this.restoreFromTrash(trashName))
             }
             .width('100%')
             .height(36)
             .padding({ left: 12, right: 12 })
-          }, (name: string) => name)
+          }, (trashName: string) => trashName)
         }
       }
     }

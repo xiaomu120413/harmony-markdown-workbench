@@ -172,19 +172,20 @@ export class InternalFileSource implements DocumentFileAdapter {
   }
 
   /**
-   * 移入回收站（V0.4.2 库管理）：library/.trash/（listLibrary 已排除）。
-   * 目录不存在时自动创建；返回是否成功。
+   * 移入回收站（V0.4.2 库管理；C3-1 唯一回收 ID）。
+   * 回收名 = 原名.<时间戳>（两次删除同名文档不互相覆盖）。
    */
   trashLibrary(name: string): boolean {
     const libDir = `${this.baseDir}/library`;
     const trashDir = `${libDir}/.trash`;
+    const trashName = `${name}.${Date.now()}`;
     try {
       try {
         fs.mkdirSync(trashDir);
       } catch (e) {
         // 已存在
       }
-      fs.renameSync(`${libDir}/${name}`, `${trashDir}/${name}`);
+      fs.renameSync(`${libDir}/${name}`, `${trashDir}/${trashName}`);
       return true;
     } catch (e) {
       return false;
@@ -207,14 +208,30 @@ export class InternalFileSource implements DocumentFileAdapter {
     return names;
   }
 
-  /** 从回收站恢复（同名已存在时失败返回 false） */
-  restoreTrash(name: string): boolean {
+  /**
+   * 从回收站恢复（C3-2：重名自动避让 原名(N).恢复.md；不覆盖现有文档）。
+   * 返回恢复后的文件名（失败返回空串）。
+   */
+  restoreTrash(trashName: string): string {
     const libDir = `${this.baseDir}/library`;
+    // 回收名格式：原名.<时间戳> → 提取原名
+    const dot = trashName.lastIndexOf('.');
+    const origName = dot > 0 ? trashName.substring(0, dot) : trashName;
     try {
-      fs.renameSync(`${libDir}/.trash/${name}`, `${libDir}/${name}`);
-      return true;
+      let target = origName;
+      const existing = this.listLibrary();
+      let n = 2;
+      while (existing.indexOf(target) !== -1) {
+        const mdDot = origName.lastIndexOf('.md');
+        target = mdDot > 0
+          ? `${origName.substring(0, mdDot)}(${n})${origName.substring(mdDot)}`
+          : `${origName}(${n})`;
+        n++;
+      }
+      fs.renameSync(`${libDir}/.trash/${trashName}`, `${libDir}/${target}`);
+      return target;
     } catch (e) {
-      return false;
+      return '';
     }
   }
 }

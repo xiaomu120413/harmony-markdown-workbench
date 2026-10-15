@@ -301,3 +301,12 @@
 | B2-02 | phone 档不自动展开（bp !== 'phone' 门控）；断点变化时 watchBreakpoints 回调可扩展为空间策略 | ✅ 代码 |
 
 新增文件：components/DocumentSidebar.ets（@Component，最近/固定/资料库 + 搜索）、infrastructure/metadata/WorkspaceUiStore.ets（B2 偏好持久化）。
+
+## 整改方案 C3：回收站、固定与资料库管理（2026-10-15）
+
+| 用例 | 内容 | 结果 |
+|---|---|---|
+| C3-1 | 回收 ID 唯一：trashLibrary 移入时追加 .<时间戳>，两次删除同名文档不互相覆盖 | ✅ 代码 |
+| C3-2 | 恢复重名自动避让：原名(N).md（不覆盖现有文档）；恢复名返回调用方展示 | ✅ 代码 |
+| C3-3 | 固定与取消固定：最近行长按（500ms）→ ActionMenu；固定项排最前 + 📌 标记；重启保持（RecentFileList.setPinned 持久化） | ✅ 代码 + 构建 |
+| C3-4 | 固定项不被淘汰：领域层 evict 已保护（FR-RECENT），UI 排序固定项优先 | ✅ 代码 |
