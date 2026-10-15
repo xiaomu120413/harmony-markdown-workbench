@@ -3,6 +3,8 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, mediaquery, promptAction } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
 import { RecentFileList, RecentEntry } from '../domain/document/RecentFileList';
+import { LibrarySearch, DocSearchResult, LibraryDoc } from '../domain/document/LibrarySearch';
+import { FindOptions } from '../domain/editor/FindReplaceEngine';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
@@ -29,6 +31,10 @@ struct HomePage {
   @State pickingFile: boolean = false;
   @State renamingFrom: string = '';
   @State renameText: string = '';
+  @State searchQuery: string = '';
+  @State searchResults: DocSearchResult[] = [];
+  @State searchBusy: boolean = false;
+  private searchTimer: number = -1;
   @State bp: Breakpoint = 'phone';
   @State pal: AppTheme = AppTheme.light();
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
@@ -206,10 +212,55 @@ struct HomePage {
       }
       this.refresh();
       this.refreshLibrary();
+      if (this.searchQuery.length > 0) {
+        this.runSearch();
+      }
       promptAction.showToast({ message: `已重命名为 ${newName}` });
     } else {
       promptAction.showToast({ message: '重命名失败' });
     }
+  }
+
+  /** 资料库全文搜索（V0.4.3）：查询词防抖 300ms → 读全部文档 → 领域匹配 */
+  private scheduleSearch(): void {
+    if (this.searchTimer >= 0) {
+      clearTimeout(this.searchTimer);
+    }
+    this.searchTimer = setTimeout(() => {
+      this.searchTimer = -1;
+      this.runSearch();
+    }, 300);
+  }
+
+  private async runSearch(): Promise<void> {
+    const q = this.searchQuery.trim();
+    if (q.length === 0) {
+      this.searchResults = [];
+      return;
+    }
+    this.searchBusy = true;
+    try {
+      const docs: LibraryDoc[] = [];
+      const names = this.fileSource.listLibrary();
+      for (const name of names) {
+        try {
+          const src: ESObject = { kind: 'internal', relativePath: `library/${name}` } as ESObject;
+          const r = await this.fileSource.read(src);
+          docs.push({ name: name, content: r.content });
+        } catch (e) {
+          // 单篇读取失败跳过
+        }
+      }
+      const opts: FindOptions = { caseSensitive: false, wholeWord: false };
+      this.searchResults = LibrarySearch.search(docs, q, opts);
+    } finally {
+      this.searchBusy = false;
+    }
+  }
+
+  /** 搜索结果行点击 → 打开对应文档 */
+  private goEditorWithResult(name: string): void {
+    this.goEditorWith(`library/${name}`);
   }
 
   /** 删除确认（移入 library/.trash，listLibrary 不再枚举） */
@@ -245,6 +296,9 @@ struct HomePage {
       }
       this.refresh();
       this.refreshLibrary();
+      if (this.searchQuery.length > 0) {
+        this.runSearch();
+      }
       promptAction.showToast({ message: `已删除 ${name}` });
     } else {
       promptAction.showToast({ message: '删除失败' });
@@ -461,12 +515,16 @@ struct HomePage {
   recentColumn() {
     Column({ space: 0 }) {
       Row() {
-        Text('最近')
+        Text(this.searchQuery.length > 0 ? '搜索结果' : '最近')
           .fontSize(16)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.pal.TEXT)
           .layoutWeight(1)
-        if (this.recent.length > 0) {
+        if (this.searchQuery.length > 0) {
+          Text(this.searchBusy ? '搜索中…' : `${this.searchResults.length} 篇`)
+            .fontSize(12)
+            .fontColor(this.pal.TEXT_FAINT)
+        } else if (this.recent.length > 0) {
           Text(`${this.recent.length} 个文档`)
             .fontSize(12)
             .fontColor(this.pal.TEXT_FAINT)
@@ -476,23 +534,89 @@ struct HomePage {
       .height(52)
       .padding({ left: 20, right: 16 })
 
-      if (this.recent.length === 0) {
-        Text('打开过的文档会出现在这里')
+      // 资料库全文搜索框（V0.4.3）
+      Row({ space: 8 }) {
+        Text('🔍').fontSize(13)
+        TextInput({ placeholder: '搜索文档内容', text: this.searchQuery })
           .fontSize(13)
-          .fontColor(this.pal.TEXT_FAINT)
-          .padding({ top: 16, left: 20 })
+          .height(34)
+          .padding({ left: 0, right: 8 })
+          .backgroundColor(Color.Transparent)
+          .layoutWeight(1)
+          .onChange((v: string) => {
+            this.searchQuery = v;
+            this.scheduleSearch();
+          })
+        if (this.searchQuery.length > 0) {
+          Text('✕')
+            .fontSize(13)
+            .fontColor(this.pal.TEXT_SUB)
+            .onClick(() => {
+              this.searchQuery = '';
+              this.searchResults = [];
+            })
+        }
       }
-
-      List({ space: 0 }) {
-        ForEach(this.recent, (item: RecentEntry) => {
-          ListItem() {
-            this.recentRow(item)
-          }
-        }, (item: RecentEntry) => item.documentId)
-      }
-      .layoutWeight(1)
       .width('100%')
-      .scrollBar(BarState.Off)
+      .padding({ left: 20, right: 16, bottom: 6 })
+
+      if (this.searchQuery.length > 0) {
+        // 搜索结果列表
+        if (this.searchResults.length === 0 && !this.searchBusy) {
+          Text('没有匹配的文档')
+            .fontSize(13)
+            .fontColor(this.pal.TEXT_FAINT)
+            .padding({ top: 16, left: 20 })
+        }
+        List({ space: 0 }) {
+          ForEach(this.searchResults, (r: DocSearchResult) => {
+            ListItem() {
+              Column({ space: 3 }) {
+                Text(r.name)
+                  .fontSize(15)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.pal.TEXT)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(r.snippet)
+                  .fontSize(11)
+                  .fontColor(this.pal.TEXT_FAINT)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(`${r.count} 处命中`)
+                  .fontSize(11)
+                  .fontColor(this.pal.PRIMARY)
+              }
+              .alignItems(HorizontalAlign.Start)
+              .width('100%')
+              .padding({ top: 11, bottom: 11, left: 20, right: 16 })
+              .border({ width: { bottom: 1 }, color: this.pal.DIVIDER })
+              .onClick(() => this.goEditorWithResult(r.name))
+            }
+          }, (r: DocSearchResult) => `${r.name}-${r.count}`)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .scrollBar(BarState.Off)
+      } else {
+        if (this.recent.length === 0) {
+          Text('打开过的文档会出现在这里')
+            .fontSize(13)
+            .fontColor(this.pal.TEXT_FAINT)
+            .padding({ top: 16, left: 20 })
+        }
+
+        List({ space: 0 }) {
+          ForEach(this.recent, (item: RecentEntry) => {
+            ListItem() {
+              this.recentRow(item)
+            }
+          }, (item: RecentEntry) => item.documentId)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .scrollBar(BarState.Off)
+      }
     }
     .width(300)
     .height('100%')
@@ -634,30 +758,95 @@ struct HomePage {
         this.libraryPanel()
       }
 
-      Row() {
-        Text('最近')
+      Row({ space: 8 }) {
+        Text('🔍').fontSize(13)
+        TextInput({ placeholder: '搜索文档内容', text: this.searchQuery })
           .fontSize(13)
-          .fontColor(this.pal.TEXT_SUB)
-        Blank()
-        if (this.recent.length > 0) {
-          Text(`${this.recent.length} 个文档`)
-            .fontSize(12)
-            .fontColor(this.pal.TEXT_FAINT)
+          .height(36)
+          .padding({ left: 0, right: 8 })
+          .backgroundColor(this.pal.CONTENT)
+          .borderRadius(10)
+          .layoutWeight(1)
+          .onChange((v: string) => {
+            this.searchQuery = v;
+            this.scheduleSearch();
+          })
+        if (this.searchQuery.length > 0) {
+          Text('✕')
+            .fontSize(13)
+            .fontColor(this.pal.TEXT_SUB)
+            .padding(4)
+            .onClick(() => {
+              this.searchQuery = '';
+              this.searchResults = [];
+            })
         }
       }
       .width('100%')
-      .padding({ top: 2 })
 
-      List({ space: 0 }) {
-        ForEach(this.recent, (item: RecentEntry) => {
-          ListItem() {
-            this.recentRow(item)
+      if (this.searchQuery.length > 0) {
+        if (this.searchResults.length === 0 && !this.searchBusy) {
+          Text('没有匹配的文档')
+            .fontSize(13)
+            .fontColor(this.pal.TEXT_FAINT)
+            .padding({ top: 12 })
+        }
+        List({ space: 0 }) {
+          ForEach(this.searchResults, (r: DocSearchResult) => {
+            ListItem() {
+              Column({ space: 3 }) {
+                Text(r.name)
+                  .fontSize(15)
+                  .fontWeight(FontWeight.Medium)
+                  .fontColor(this.pal.TEXT)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(r.snippet)
+                  .fontSize(11)
+                  .fontColor(this.pal.TEXT_FAINT)
+                  .maxLines(1)
+                  .textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(`${r.count} 处命中`)
+                  .fontSize(11)
+                  .fontColor(this.pal.PRIMARY)
+              }
+              .alignItems(HorizontalAlign.Start)
+              .width('100%')
+              .padding({ top: 11, bottom: 11, left: 4, right: 4 })
+              .border({ width: { bottom: 1 }, color: this.pal.DIVIDER })
+              .onClick(() => this.goEditorWithResult(r.name))
+            }
+          }, (r: DocSearchResult) => `${r.name}-${r.count}`)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .scrollBar(BarState.Off)
+      } else {
+        Row() {
+          Text('最近')
+            .fontSize(13)
+            .fontColor(this.pal.TEXT_SUB)
+          Blank()
+          if (this.recent.length > 0) {
+            Text(`${this.recent.length} 个文档`)
+              .fontSize(12)
+              .fontColor(this.pal.TEXT_FAINT)
           }
-        }, (item: RecentEntry) => item.documentId)
+        }
+        .width('100%')
+        .padding({ top: 2 })
+
+        List({ space: 0 }) {
+          ForEach(this.recent, (item: RecentEntry) => {
+            ListItem() {
+              this.recentRow(item)
+            }
+          }, (item: RecentEntry) => item.documentId)
+        }
+        .layoutWeight(1)
+        .width('100%')
+        .scrollBar(BarState.Off)
       }
-      .layoutWeight(1)
-      .width('100%')
-      .scrollBar(BarState.Off)
     }
     .width('100%')
     .layoutWeight(1)

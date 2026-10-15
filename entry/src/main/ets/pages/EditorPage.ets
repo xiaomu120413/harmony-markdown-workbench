@@ -3,6 +3,7 @@ import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, mediaquery, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
+import { fileIo as fs, picker } from '@kit.CoreFileKit';
 import { SaveState, SaveStateMachine } from '../domain/recovery/SaveStateMachine';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../domain/editor/MarkdownCommands';
 import { FindReplaceEngine, FindOptions, FindMatch } from '../domain/editor/FindReplaceEngine';
@@ -18,6 +19,7 @@ import { DraftStore } from '../infrastructure/metadata/DraftStore';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { RecentFileList } from '../domain/document/RecentFileList';
 import { DocumentNamer } from '../domain/document/DocumentNamer';
+import { HtmlExporter } from '../domain/document/HtmlExporter';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { AppTheme } from '../common/AppTheme';
 import { SegBtn } from '../common/SegBtn';
@@ -793,12 +795,15 @@ struct EditorPage {
         buttons: [
           { text: '复制 Markdown 原文', color: that.pal.TEXT },
           { text: '复制渲染 HTML', color: that.pal.TEXT },
+          { text: '导出 HTML 文件', color: that.pal.TEXT },
         ],
       }).then((r: promptAction.ActionMenuSuccessResponse) => {
         if (r.index === 0) {
           that.copyToClipboard('markdown');
         } else if (r.index === 1) {
           that.copyToClipboard('html');
+        } else if (r.index === 2) {
+          that.exportHtmlFile();
         }
       });
     } catch (e) {
@@ -838,6 +843,65 @@ struct EditorPage {
       const err: ESObject = e as ESObject;
       this.append(`[分享] 复制失败：${JSON.stringify(err)}`);
     }
+  }
+
+  /**
+   * 导出为独立 HTML 文件（V0.4.3）：渲染当前正文 → 自包含 HTML（内联样式）
+   * → 系统保存选择器（用户选位置与文件名）→ fd 写入。
+   */
+  private async exportHtmlFile(): Promise<void> {
+    const c = this.coordinator;
+    if (c === undefined) {
+      return;
+    }
+    try {
+      const md = await this.runJsValue('window.__editorApi.getSnapshot();');
+      this.previewController.runJavaScript(`window.__previewApi.render(${JSON.stringify(md)});`);
+      const body = await this.runJsValueOn(this.previewController, 'window.__previewApi.getHtml();');
+      if (body.length === 0) {
+        promptAction.showToast({ message: '文档为空，无法导出' });
+        return;
+      }
+      const html = HtmlExporter.buildStandalone(this.docTitle, body);
+      const fileName = HtmlExporter.exportFileName(this.docTitle);
+      const savePicker = new picker.DocumentViewPicker(this.ctx);
+      const uris: Array<string> = await savePicker.save({ newFileNames: [fileName] });
+      if (uris.length === 0) {
+        return; // 用户取消
+      }
+      const file = fs.openSync(uris[0], fs.OpenMode.WRITE_ONLY);
+      fs.writeSync(file.fd, html);
+      fs.closeSync(file.fd);
+      promptAction.showToast({ message: `已导出 ${fileName}` });
+      this.append(`[导出] ${fileName}（${html.length} 字符）`);
+    } catch (e) {
+      const err: ESObject = e as ESObject;
+      promptAction.showToast({ message: '导出失败' });
+      this.append(`[导出] 失败：${JSON.stringify(err)}`);
+    }
+  }
+
+  /** 快捷键与使用提示面板（V0.4.3） */
+  private showHelp(): void {
+    AlertDialog.show({
+      title: '快捷键与提示',
+      message: [
+        '编辑器内：',
+        '· Ctrl+Z 撤销　Ctrl+Y / Ctrl+Shift+Z 重做',
+        '· 工具栏：H1–H6 标题，B/I/S/高亮 行内样式，',
+        '　列表/序号/任务/引用/代码块/缩进 块级，',
+        '　链接/图片/表格/分隔线 插入',
+        '· 同级标题再点一次取消，异级切换',
+        '· 编辑/预览/分屏：顶栏切换（平板与电脑支持分屏）',
+        '· ☰ 打开大纲，点击标题跳转对应位置',
+        '· 修改自动保存；意外退出可在首页「找回未保存内容」恢复',
+      ].join('\\n'),
+      confirm: {
+        value: '知道了',
+        action: () => {
+        },
+      },
+    });
   }
 
   // ---- 视图构建 ----
@@ -966,6 +1030,7 @@ struct EditorPage {
           .borderRadius(8)
           .height(36)
           .onClick(() => this.share())
+        this.topBtn('⌨', false, () => this.showHelp())
         Button('保存')
           .fontSize(13)
           .fontWeight(FontWeight.Medium)

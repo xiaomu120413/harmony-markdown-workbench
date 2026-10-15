@@ -191,6 +191,16 @@
 | FR-SHARE | V0.4.2-04 | **分享动作菜单**：复制 Markdown 原文 / 复制渲染 HTML（previewApi.getHtml，previewController 返回值通道） | ✅ 构建 + 装机 |
 | FR-FILE-001 | V0.4.2-05 | **资料库管理**：行「⋯」菜单 → 重命名（行内输入，补 .md 后缀/查重/最近列表同步）或删除（确认弹窗 → library/.trash 回收站，listLibrary 排除）；InternalFileSource.renameLibrary/trashLibrary | ✅ 构建 + 装机（用户实测确认） |
 
+## V0.4.3 搜索 / 导出 / 帮助（2026-10-15，真机 HAD-W32）
+
+> 用户反馈：把发现的候选全部做完。三项：跨文档搜索、导出 HTML 文件、快捷键提示面板。
+
+| 需求 ID | 实现任务 | 验收用例 | 状态 |
+|---|---|---|---|
+| FR-SEARCH | V0.4.3-01 | **资料库全文搜索**：列表区搜索框（300ms 防抖）→ 读全部库文档 → LibrarySearch（匹配语义复用 FindReplaceEngine，大小写不敏感）→ 结果行（文件名 + 首处命中上下文摘录 + N 处命中），点击打开文档；改名/删除后搜索结果联动刷新；宽屏列表区与 phone 均有入口 | ✅ 单测 5 用例（search:6 执行确证）+ 构建 + 装机 |
+| FR-SHARE | V0.4.3-02 | **导出 HTML 文件**：分享菜单第三项 → 渲染正文 → HtmlExporter 自包含文件（内联样式与预览一致、标题转义）→ 系统保存选择器（用户选位置/文件名，newFileNames 预填 文档名.html）→ fd 写入 | ✅ 单测 4 用例（buildStandalone/exportFileName/escapeHtml 执行确证）+ 构建 + 装机 |
+| —（帮助） | V0.4.3-03 | **快捷键与提示面板**：顶栏 ⌨ → 撤销重做快捷键 + 工具栏用法 + 视图/大纲/自动保存说明 | ✅ 构建 + 装机 |
+
 ## 门禁检查（M0-01 已完成项）
 
 - ✅ 单元测试空套件/示例套件可执行：3 个示例用例通过（hypium 1.0.21）。
