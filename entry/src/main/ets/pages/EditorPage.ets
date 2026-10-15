@@ -12,7 +12,7 @@ import { ViewModePolicy } from '../domain/editor/ViewModePolicy';
 import { HeadingOutline } from '../domain/editor/HeadingOutline';
 import { EditorBridge } from '../services/EditorBridge';
 import { SaveCoordinator, SaveCoordinatorDeps, SnapshotData } from '../services/SaveCoordinator';
-import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult, WriteFailResult } from '../domain/document/DocumentFileAdapter';
+import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult, WriteFailResult, DocumentWriteFormat } from '../domain/document/DocumentFileAdapter';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { ExternalUriFileSource } from '../infrastructure/file/ExternalUriFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
@@ -134,6 +134,9 @@ struct EditorPage {
   private pendingLoad: string = '';
   /** A3：新建文档的会话草稿 ID（首次保存前即拥有草稿身份，R05） */
   private sessionDraftId: string = `session:${Date.now()}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
+  /** A4：文档格式（编码/换行）——读取时捕获，落盘时还原；非法 UTF-8 阻断写回 */
+  private docFormat: DocumentWriteFormat = { encoding: 'utf-8', lineEnding: 'lf' };
+  private docValidUtf8: boolean = true;
   private pendingLoadAt: number = 0;
   private webReady: boolean = false;
   private previewReady: boolean = false;
@@ -322,6 +325,8 @@ struct EditorPage {
       this.expectedRevision = r.revision;
       this.pendingLoad = r.content;
       this.pendingLoadAt = t0;
+      this.docFormat = { encoding: r.encoding, lineEnding: r.lineEnding };
+      this.docValidUtf8 = r.validUtf8;
       this.loadState = 'ready';
       this.trackRecent(target);
       if (this.webReady) {
@@ -647,7 +652,7 @@ struct EditorPage {
       const better = DocumentNamer.upgrade(currentName, content, this.internal.listLibrary());
       if (better !== undefined) {
         const renamed: InternalSource = { kind: 'internal', relativePath: `library/${better}` };
-        const w = await this.internal.write(renamed, content, this.expectedRevision);
+        const w = await this.internal.write(renamed, content, this.expectedRevision, this.docFormat);
         if (w.ok) {
           this.internal.remove(target);
           this.docTarget = renamed;
@@ -668,9 +673,14 @@ struct EditorPage {
       const fail: WriteFailResult = { ok: false, reason: 'io', message: 'document not loaded; write-back blocked' };
       return fail;
     }
+    if (!this.docValidUtf8) {
+      // A4-04：非 UTF-8 文档不静默乱码覆盖——阻断原位写回（内容仍可另存副本）
+      const fail: WriteFailResult = { ok: false, reason: 'io', message: 'non-UTF-8 document; write-back blocked' };
+      return fail;
+    }
     const result = target.kind === 'internal'
-      ? await this.internal.write(target, content, this.expectedRevision)
-      : await this.external.write(target, content, this.expectedRevision);
+      ? await this.internal.write(target, content, this.expectedRevision, this.docFormat)
+      : await this.external.write(target, content, this.expectedRevision, this.docFormat);
     if (result.ok) {
       this.expectedRevision = result.revision;
       this.drafts.remove(this.draftIdOf(target));

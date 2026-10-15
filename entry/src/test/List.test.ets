@@ -15,6 +15,7 @@ import findSessionTest from './FindSession.test';
 import viewModePolicyTest from './ViewModePolicy.test';
 import documentNamerTest from './DocumentNamer.test';
 import exportAndSearchTest from './ExportAndSearch.test';
+import textRoundtripTest from './TextRoundtrip.test';
 import headingOutlineTest from './HeadingOutline.test';
 import htmlSafetyTest from './HtmlSafety.test';
 import appSettingsTest from './AppSettings.test';
@@ -58,6 +59,7 @@ export default function listTest(): void {
   viewModePolicyTest();
   documentNamerTest();
   exportAndSearchTest();
+  textRoundtripTest();
   headingOutlineTest();
   htmlSafetyTest();
   appSettingsTest();

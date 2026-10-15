@@ -437,7 +437,8 @@ struct HomePage {
               .padding({ left: 12, right: 12 })
               .onClick(() => {
                 this.pickingFile = false;
-                this.goEditorWith(name);
+                // listLibrary 返回裸文件名，路由需要完整相对路径（修复 loadFailed 误报）
+                this.goEditorWith(`library/${name}`);
               })
             }
           }, (name: string) => name + (this.renamingFrom === name ? ':edit' : ''))

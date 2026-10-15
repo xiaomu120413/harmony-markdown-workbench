@@ -11,6 +11,7 @@ import {
 } from '../../domain/document/DocumentFileAdapter';
 import { HashUtil } from '../../domain/document/HashUtil';
 import { TextEncodingDetector } from '../../domain/document/TextEncoding';
+import { TextRoundtrip, DocumentWriteFormat } from '../../domain/document/DocumentFileAdapter';
 import { util } from '@kit.ArkTS';
 
 /**
@@ -42,11 +43,13 @@ export class InternalFileSource implements DocumentFileAdapter {
     const bytes = new Uint8Array(raw).slice(0, len);
     const detection = TextEncodingDetector.detect(bytes);
     const decoder = util.TextDecoder.create('utf-8');
-    const text = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
+    const rawText = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
+    const text = TextRoundtrip.normalizeToLf(rawText);
     return {
       content: text,
       encoding: detection.encoding,
       lineEnding: detection.lineEnding,
+      validUtf8: detection.validUtf8,
       revision: {
         size: stat.size,
         contentHash: HashUtil.of(text),
@@ -55,7 +58,7 @@ export class InternalFileSource implements DocumentFileAdapter {
     };
   }
 
-  async write(source: DocumentSource, content: string, expectedRevision: FileRevisionContract): Promise<WriteDocumentResult> {
+  async write(source: DocumentSource, content: string, expectedRevision: FileRevisionContract, format?: DocumentWriteFormat): Promise<WriteDocumentResult> {
     const path = this.pathOf(source);
     // 确保父目录存在（容错：已存在时忽略）
     const dir = path.substring(0, path.lastIndexOf('/'));
@@ -75,7 +78,7 @@ export class InternalFileSource implements DocumentFileAdapter {
       const len = fs.readSync(file.fd, current);
       fs.closeSync(file.fd);
       const decoder = util.TextDecoder.create('utf-8');
-      const text = decoder.decodeToString(new Uint8Array(current).slice(0, len));
+      const text = TextRoundtrip.normalizeToLf(decoder.decodeToString(new Uint8Array(current).slice(0, len)));
       if (HashUtil.of(text) !== expectedRevision.contentHash) {
         const fail: WriteFailResult = { ok: false, reason: 'conflict', message: 'revision mismatch' };
         return fail;
@@ -84,17 +87,21 @@ export class InternalFileSource implements DocumentFileAdapter {
       // 文件不存在：首写，无需基线校验
     }
     try {
+      const fmt: DocumentWriteFormat = format ?? { encoding: 'utf-8', lineEnding: 'lf' };
+      const out = TextRoundtrip.applyFormat(content, fmt);
       const tmp = `${path}.tmp`;
       const w = fs.openSync(tmp, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
-      if (content.length > 0) {
-        fs.writeSync(w.fd, content);
+      if (out.length > 0) {
+        fs.writeSync(w.fd, out);
       }
       fs.fsyncSync(w.fd);
       fs.closeSync(w.fd);
       fs.renameSync(tmp, path);
+      const encoder = util.TextEncoder.create('utf-8');
+      const byteLen = encoder.encodeInto(out).byteLength;
       const ok: WriteOkResult = {
         ok: true,
-        revision: { size: content.length, contentHash: HashUtil.of(content) },
+        revision: { size: byteLen, contentHash: HashUtil.of(content) },
       };
       return ok;
     } catch (e) {

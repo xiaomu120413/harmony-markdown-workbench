@@ -10,6 +10,7 @@ import {
 } from '../../domain/document/DocumentFileAdapter';
 import { HashUtil } from '../../domain/document/HashUtil';
 import { TextEncodingDetector } from '../../domain/document/TextEncoding';
+import { TextRoundtrip, DocumentWriteFormat } from '../../domain/document/DocumentFileAdapter';
 import { util } from '@kit.ArkTS';
 
 /**
@@ -33,11 +34,13 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
       const bytes = new Uint8Array(raw).slice(0, len);
       const detection = TextEncodingDetector.detect(bytes);
       const decoder = util.TextDecoder.create('utf-8');
-      const text = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
+      const rawText = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
+      const text = TextRoundtrip.normalizeToLf(rawText);
       return {
         content: text,
         encoding: detection.encoding,
         lineEnding: detection.lineEnding,
+        validUtf8: detection.validUtf8,
         revision: { size: stat.size, contentHash: HashUtil.of(text), modifiedTime: stat.mtime },
       };
     } finally {
@@ -51,7 +54,7 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
     }
   }
 
-  async write(source: DocumentSource, content: string, expectedRevision: FileRevisionContract): Promise<WriteDocumentResult> {
+  async write(source: DocumentSource, content: string, expectedRevision: FileRevisionContract, format?: DocumentWriteFormat): Promise<WriteDocumentResult> {
     const uri = this.uriOf(source);
     // ---- A2 冲突预检（R03）：写入前重读磁盘，与打开时的基线按同一规则比对 ----
     let check: fs.File | undefined = undefined;
@@ -65,8 +68,8 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
       const bytes = new Uint8Array(raw).slice(0, len);
       const detection = TextEncodingDetector.detect(bytes);
       const decoder = util.TextDecoder.create('utf-8');
-      const text = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
-      const diskHash = HashUtil.of(text);
+      const rawText = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
+      const diskHash = HashUtil.of(TextRoundtrip.normalizeToLf(rawText));
       if (expectedRevision.contentHash !== '' && diskHash !== expectedRevision.contentHash) {
         const conflict: WriteFailResult = { ok: false, reason: 'conflict', message: 'external file changed on disk' };
         return conflict;
@@ -91,15 +94,17 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
     // ---- 原位写入（provider 不保证原子替换；草稿检查点已先行落盘兜底） ----
     let w: fs.File | undefined = undefined;
     try {
+      const fmt: DocumentWriteFormat = format ?? { encoding: 'utf-8', lineEnding: 'lf' };
+      const out = TextRoundtrip.applyFormat(content, fmt);
       w = fs.openSync(uri, fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
-      if (content.length > 0) {
-        fs.writeSync(w.fd, content);
+      if (out.length > 0) {
+        fs.writeSync(w.fd, out);
       }
       fs.fsyncSync(w.fd);
       fs.closeSync(w.fd);
       w = undefined;
       const encoder = util.TextEncoder.create('utf-8');
-      const byteLen = encoder.encodeInto(content).byteLength;
+      const byteLen = encoder.encodeInto(out).byteLength;
       const ok: WriteOkResult = {
         ok: true,
         revision: { size: byteLen, contentHash: HashUtil.of(content) },

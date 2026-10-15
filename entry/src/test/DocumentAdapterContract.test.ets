@@ -43,6 +43,7 @@ class InMemoryAdapter implements DocumentFileAdapter {
       content: content,
       encoding: 'utf-8',
       lineEnding: content.includes('\r\n') ? 'crlf' : 'lf',
+      validUtf8: true,
       revision: { size: content.length, contentHash: hashOf(content), modifiedTime: 0 },
     };
   }

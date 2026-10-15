@@ -273,3 +273,18 @@
 | — | 恢复页会话草稿显示名"未保存的新文档"（原始 session:xxx 不再裸露）；提示引导"另存副本" | ✅ 代码 |
 
 实现要点：sessionDraftId（会话随机 ID）使新文档编辑即刻拥有草稿身份；doSaveCheckpoint 无目标时也落盘；doPersist/升级成功后统一清理会话草稿（迁移完成才删旧）；goBack 的"保存并离开"改经 requestLeave（saveNow 五态结果 + pending 门控），失败不再无条件 back。
+
+## 整改方案 A4：统一编码与版本元数据（2026-10-15，真机 HAD-W32）
+
+> R07（编码、换行与字节长度元数据未形成完整读写契约）。
+
+| 用例 | 内容 | 结果 |
+|---|---|---|
+| A4-01 | CRLF 文件打开 → 编辑（H2 命令）→ 自动保存落盘：**内容变更生效（# → ##）且行尾 0d0a 字节级保持**（编辑器 LF 规范层 ↔ 磁盘原格式还原，xxd 验证） | ✅ 真机实测 |
+| A4-02 | 写入 revision.size 改用 UTF-8 字节长度（内外适配器 + TextEncoder；原 JS length 多字节偏小） | ✅ 代码 |
+| A4-03 | BOM/CRLF 文件外部未改 → 不误报冲突：读写两侧哈希均基于 normalizeToLf 后文本（同一规范层） | ✅ 代码路径统一（TextRoundtrip 单测 7 用例覆盖往返稳定性） |
+| A4-04 | 非 UTF-8（validUtf8=false）阻断原位写回（doPersist 短路），不静默乱码覆盖；内容仍可另存副本 | ✅ 代码 + 构建 |
+
+实现要点：DocumentWriteFormat（encoding/lineEnding）进入文档会话（读取时捕获）；TextRoundtrip 纯逻辑（normalizeToLf / applyFormat：CRLF 还原 + ﻿ BOM 前缀）；内外适配器 read 统一规范化并返回 validUtf8，write 按会话格式还原、基线预检哈希同规范；契约测试适配新字段。
+
+附带修复：资料库面板行点击传裸文件名导致 loadFailed 误报（listLibrary 返回裸名，路由需 library/ 前缀——A2 真机验证时暴露的路径，本轮修复后复测通过）。
