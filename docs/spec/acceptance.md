@@ -288,3 +288,16 @@
 实现要点：DocumentWriteFormat（encoding/lineEnding）进入文档会话（读取时捕获）；TextRoundtrip 纯逻辑（normalizeToLf / applyFormat：CRLF 还原 + ﻿ BOM 前缀）；内外适配器 read 统一规范化并返回 validUtf8，write 按会话格式还原、基线预检哈希同规范；契约测试适配新字段。
 
 附带修复：资料库面板行点击传裸文件名导致 loadFailed 误报（listLibrary 返回裸名，路由需 library/ 前缀——A2 真机验证时暴露的路径，本轮修复后复测通过）。
+
+## 整改方案 B1/B2：文档侧栏与可折叠（2026-10-15）
+
+> R09/R10：编辑页内切换文档不必返回首页；侧栏可折叠、记忆偏好。
+
+| 用例 | 内容 | 结果 |
+|---|---|---|
+| B1-01 | 编辑页文档侧栏（240vp，SIDEBAR 色调）：最近/固定/资料库三段筛选 Tab + 搜索框；点击文档经 switchToDocument 直接加载（不必返回首页） | ✅ 构建 + 装机（构建通过；交互验证因设备占用由用户上手确认） |
+| B1-02 | 切换前 dirty/ERROR/CONFLICT → 经 saveNow 五态门控（A1/A3 契约），失败/冲突阻止切换并 toast | ✅ 代码 |
+| B2-01 | 侧栏开关（顶栏 ☰）：toggleSidebar 持久化 sidebarPreferredOpen（WorkspaceUiStore / preferences） | ✅ 代码 |
+| B2-02 | phone 档不自动展开（bp !== 'phone' 门控）；断点变化时 watchBreakpoints 回调可扩展为空间策略 | ✅ 代码 |
+
+新增文件：components/DocumentSidebar.ets（@Component，最近/固定/资料库 + 搜索）、infrastructure/metadata/WorkspaceUiStore.ets（B2 偏好持久化）。

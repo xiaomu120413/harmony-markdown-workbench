@@ -24,6 +24,9 @@ import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { AppTheme } from '../common/AppTheme';
 import { SegBtn } from '../common/SegBtn';
 import { beginWindowMove } from '../common/WindowDrag';
+import { DocumentSidebar } from '../components/DocumentSidebar';
+import { WorkspaceUiStore } from '../infrastructure/metadata/WorkspaceUiStore';
+import { RecentEntry } from '../domain/document/RecentFileList';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../common/Breakpoints';
 import { AppSettings, SettingsValidator, ThemeMode, DefaultView } from '../domain/settings/AppSettings';
 
@@ -115,6 +118,10 @@ struct EditorPage {
   @State cursorCol: number = 1;
   /** 文档加载状态（A2）：新文档默认 ready；外部/内部文档打开前 loading，失败分流 */
   @State loadState: 'loading' | 'ready' | 'loadFailed' | 'accessExpired' = 'ready';
+  // B1/B2：文档侧栏（编辑页内切换文档）
+  @State sidebarVisible: boolean = false;
+  @State sidebarRecent: RecentEntry[] = [];
+  @State sidebarLibrary: string[] = [];
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private controller: webview.WebviewController = new webview.WebviewController();
   private previewController: webview.WebviewController = new webview.WebviewController();
@@ -240,6 +247,7 @@ struct EditorPage {
     }, 500);
     this.resolveRouteParams();
     this.applyAppSettings();
+    this.initSidebar();
   }
 
   /** M5-03：读取持久化设置并应用（主题/字号/换行/行号即时生效；defaultView 决定入口视图） */
@@ -273,6 +281,63 @@ struct EditorPage {
     const dark = this.appSettings.theme === ThemeMode.DARK;
     this.previewController.runJavaScript(`window.__previewApi.setDark(${dark});`);
     this.previewController.runJavaScript(`window.__previewApi.setFontSize(${this.appSettings.fontSize});`);
+  }
+
+  /** B1/B2：侧栏初始化——加载用户偏好与文档列表 */
+  private initSidebar(): void {
+    const ui = new WorkspaceUiStore(this.ctx);
+    ui.loadSidebarPreferredOpen().then((open: boolean) => {
+      this.sidebarVisible = open && this.bp !== 'phone';
+    }).catch(() => {
+      this.sidebarVisible = this.bp !== 'phone';
+    });
+    this.refreshSidebarData();
+  }
+
+  private refreshSidebarData(): void {
+    this.sidebarLibrary = this.internal.listLibrary();
+    this.meta.loadRecent().then((entries: RecentEntry[]) => {
+      this.sidebarRecent = new RecentFileList(entries).snapshot();
+    }).catch(() => {
+      this.sidebarRecent = [];
+    });
+  }
+
+  /** 侧栏开关（B2-01：手动调整持久化） */
+  private toggleSidebar(): void {
+    this.sidebarVisible = !this.sidebarVisible;
+    const ui = new WorkspaceUiStore(this.ctx);
+    ui.saveSidebarPreferredOpen(this.sidebarVisible);
+    this.refreshSidebarData();
+  }
+
+  /**
+   * B1-01：侧栏选文档 → 不必返回首页。
+   * B1-02：dirty 时经 A3 离开流程（保存失败/冲突阻止切换）。
+   */
+  private async switchToDocument(docId: string): Promise<void> {
+    if (docId.startsWith('library/')) {
+      const cur = this.docTarget;
+      if (cur !== undefined && cur.kind === 'internal' && (cur as InternalSource).relativePath === docId) {
+        return;
+      }
+      const c = this.coordinator;
+      if (c !== undefined && (c.state === SaveState.DIRTY || c.state === SaveState.ERROR || c.state === SaveState.CONFLICT)) {
+        const outcome = await c.saveNow(Date.now());
+        this.saveLabel = SaveStateMachine.label(c.state);
+        if (!((outcome === 'saved' || outcome === 'unchanged') && !c.pending)) {
+          promptAction.showToast({ message: '请先保存当前文档再切换' });
+          return;
+        }
+      }
+      const src: InternalSource = { kind: 'internal', relativePath: docId };
+      this.docTarget = src;
+      this.docTitle = docId.substring(docId.lastIndexOf('/') + 1);
+      this.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
+      this.docValidUtf8 = true;
+      this.loadOpenedDoc(src);
+      this.refreshSidebarData();
+    }
   }
 
   aboutToDisappear(): void {
@@ -1144,6 +1209,7 @@ struct EditorPage {
           .width(38)
           .height(38)
           .onClick(() => this.goBack())
+        this.topBtn('☰', this.sidebarVisible, () => this.toggleSidebar())
 
         Row({ space: 8 }) {
           Text(this.docTitle)
@@ -1401,6 +1467,19 @@ struct EditorPage {
       // 工作区：大纲（可选）+ 编辑器 + 预览（三端同一布局路径——
       // phone：单栏互斥切换；tablet/pc 分屏：双 Web 并排；隐藏侧 Visibility.None 不占位）
       Row({ space: 0 }) {
+        // B1/B2：文档侧栏（编辑页内切换文档，phone 档可折叠）
+        if (this.sidebarVisible) {
+          DocumentSidebar({
+            recent: $sidebarRecent,
+            libraryFiles: $sidebarLibrary,
+            pal: this.pal,
+            onDocSelected: (docId: string): void => {
+              this.switchToDocument(docId);
+            },
+          })
+          Divider().vertical(true).height('100%').color(this.pal.DIVIDER)
+        }
+
         // 大纲侧栏（FR-PREVIEW-003 总装：点击跳转标题行）
         if (this.outlineVisible) {
           Column() {
