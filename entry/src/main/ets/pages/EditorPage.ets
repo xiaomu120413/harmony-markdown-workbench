@@ -1437,43 +1437,48 @@ struct EditorPage {
         .borderRadius(8)
       }
 
-      // 快捷栏（仅编辑/分屏可见；FR-EDIT-002；分组：标题 | 行内 | 块级 | 插入 | 历史；wrap 防溢出）
+      // 快捷栏（仅编辑/分屏可见；B3-02：单行水平滚动，不换行成按钮墙）
       if (this.viewMode !== DefaultView.PREVIEW) {
-        Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-          // 标题等级（h1–h6 全量，Markdown 标准六级）
-          this.toolBtn('H1', 'h1')
-          this.toolBtn('H2', 'h2')
-          this.toolBtn('H3', 'h3')
-          this.toolBtn('H4', 'h4')
-          this.toolBtn('H5', 'h5')
-          this.toolBtn('H6', 'h6')
-          this.toolSep()
-          // 行内样式
-          this.toolBtn('B', 'bold')
-          this.toolBtn('I', 'italic')
-          this.toolBtn('S', 'strike')
-          this.toolBtn('</>', 'inlineCode')
-          this.toolBtn('高亮', 'highlight')
-          this.toolSep()
-          // 块级
-          this.toolBtn('列表', 'ul')
-          this.toolBtn('序号', 'ol')
-          this.toolBtn('任务', 'task')
-          this.toolBtn('引用', 'quote')
-          this.toolBtn('代码块', 'codeBlock')
-          this.toolBtn('缩进', 'indent')
-          this.toolBtn('减少缩进', 'outdent')
-          this.toolSep()
-          // 插入
-          this.toolBtn('链接', 'link')
-          this.toolBtn('图片', 'image')
-          this.toolBtn('表格', 'table')
-          this.toolBtn('分隔线', 'hr')
-          this.toolSep()
-          this.histBtn('撤销', 'undo')
-          this.histBtn('重做', 'redo')
+        Scroll() {
+          Row({ space: 2 }) {
+            // 标题等级（h1–h6 全量，Markdown 标准六级）
+            this.toolBtn('H1', 'h1')
+            this.toolBtn('H2', 'h2')
+            this.toolBtn('H3', 'h3')
+            this.toolBtn('H4', 'h4')
+            this.toolBtn('H5', 'h5')
+            this.toolBtn('H6', 'h6')
+            this.toolSep()
+            // 行内样式
+            this.toolBtn('B', 'bold')
+            this.toolBtn('I', 'italic')
+            this.toolBtn('S', 'strike')
+            this.toolBtn('</>', 'inlineCode')
+            this.toolBtn('高亮', 'highlight')
+            this.toolSep()
+            // 块级
+            this.toolBtn('列表', 'ul')
+            this.toolBtn('序号', 'ol')
+            this.toolBtn('任务', 'task')
+            this.toolBtn('引用', 'quote')
+            this.toolBtn('代码块', 'codeBlock')
+            this.toolBtn('缩进', 'indent')
+            this.toolBtn('减少缩进', 'outdent')
+            this.toolSep()
+            // 插入
+            this.toolBtn('链接', 'link')
+            this.toolBtn('图片', 'image')
+            this.toolBtn('表格', 'table')
+            this.toolBtn('分隔线', 'hr')
+            this.toolSep()
+            this.histBtn('撤销', 'undo')
+            this.histBtn('重做', 'redo')
+          }
         }
+        .scrollable(ScrollDirection.Horizontal)
+        .scrollBar(BarState.Auto)
         .width('100%')
+        .height(44)
       }
 
       // A2 恢复面板：外部文档读取失败/授权失效（不呈现可正常保存的空白文档）
