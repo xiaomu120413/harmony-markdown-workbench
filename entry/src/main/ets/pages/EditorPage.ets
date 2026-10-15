@@ -1042,6 +1042,7 @@ struct EditorPage {
           { text: '复制 Markdown 原文', color: that.pal.TEXT },
           { text: '复制渲染 HTML', color: that.pal.TEXT },
           { text: '导出 HTML 文件', color: that.pal.TEXT },
+          { text: '另存为 Markdown…', color: that.pal.TEXT },
         ],
       }).then((r: promptAction.ActionMenuSuccessResponse) => {
         if (r.index === 0) {
@@ -1050,6 +1051,8 @@ struct EditorPage {
           that.copyToClipboard('html');
         } else if (r.index === 2) {
           that.exportHtmlFile();
+        } else if (r.index === 3) {
+          that.saveAsMarkdown();
         }
       });
     } catch (e) {
@@ -1126,6 +1129,43 @@ struct EditorPage {
       const err: ESObject = e as ESObject;
       promptAction.showToast({ message: '导出失败' });
       this.append(`[导出] 失败：${JSON.stringify(err)}`);
+    }
+  }
+
+  /**
+   * C1：另存为 Markdown——系统保存选择器选目标位置，写入当前正文快照。
+   * 取消不改变标题/保存目标/最近列表/保存状态（C1-02）。
+   */
+  private async saveAsMarkdown(): Promise<void> {
+    const c = this.coordinator;
+    if (c === undefined) {
+      return;
+    }
+    try {
+      // 获取确定版本快照（A1 契约）
+      const snap = await this.getSnapshotData();
+      if (!snap.ok) {
+        promptAction.showToast({ message: '获取内容失败' });
+        return;
+      }
+      const fileName = HtmlExporter.exportFileName(this.docTitle).replace('.html', '.md');
+      const savePicker = new picker.DocumentViewPicker(this.ctx);
+      const uris: Array<string> = await savePicker.save({ newFileNames: [fileName] });
+      if (uris.length === 0) {
+        return; // 用户取消：一切不变
+      }
+      const file = fs.openSync(uris[0], fs.OpenMode.WRITE_ONLY);
+      if (snap.content.length > 0) {
+        fs.writeSync(file.fd, snap.content);
+      }
+      fs.fsyncSync(file.fd);
+      fs.closeSync(file.fd);
+      promptAction.showToast({ message: `已另存 ${fileName}` });
+      this.append(`[另存] ${fileName}（${snap.content.length} 字符）`);
+    } catch (e) {
+      const err: ESObject = e as ESObject;
+      promptAction.showToast({ message: '另存失败' });
+      this.append(`[另存] 失败：${JSON.stringify(err)}`);
     }
   }
 
