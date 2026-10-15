@@ -71,14 +71,26 @@ const contentWide = EditorView.theme({
   '.cm-content': { maxWidth: '860px', margin: '0 auto' },
 });
 
+// ---- 编辑会话与版本（A1 快照契约）----
+// editVersion：每次正文变更（输入/撤销重做/工具栏变换）单调递增；
+// sessionId：加载其他文档时重新生成——旧会话的异步回包不得污染新文档。
+function genSession() {
+  return 's-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+}
+let sessionId = genSession();
+let editVersion = 0;
+
 // ---- 编辑事件（自动保存 + 预览同步 + 状态栏）：用户输入 → native 'edit'
-// （程序化 setDocument/loadDocument 抑制）；光标移动 → native 'cursor'（V0.4.2 状态栏）
+// （程序化 setDocument/loadDocument 抑制通知，但版本照常递增）；光标移动 → native 'cursor'
 let suppressEdit = false;
 const editExt = EditorView.updateListener.of(function (u) {
-  if (u.docChanged && !suppressEdit) {
-    const head = u.state.selection.main.head;
-    const line = u.state.doc.lineAt(head);
-    notify('edit', { len: u.state.doc.length, line: line.number, col: head - line.from + 1 });
+  if (u.docChanged) {
+    editVersion++;
+    if (!suppressEdit) {
+      const head = u.state.selection.main.head;
+      const line = u.state.doc.lineAt(head);
+      notify('edit', { len: u.state.doc.length, line: line.number, col: head - line.from + 1, v: editVersion });
+    }
     return;
   }
   if (suppressEdit) {
@@ -121,10 +133,20 @@ window.__editorApi = {
   loadDocument(text) {
     suppressEdit = true;
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+    // 新文档：新会话 + 版本归零（旧会话的异步回包不得污染新文档，A1）
+    sessionId = genSession();
+    editVersion = 0;
     document.title = 'CM:len=' + view.state.doc.length + ':head=' + view.state.doc.toString().split('\n')[0];
   },
   getSnapshot() {
     return view ? view.state.doc.toString() : '';
+  },
+  /** A1 快照契约：会话/版本/正文一次性读取（同一次编辑器状态） */
+  getSnapshotEx() {
+    if (!view) {
+      return JSON.stringify({ ok: false, s: sessionId, v: editVersion, c: '' });
+    }
+    return JSON.stringify({ ok: true, s: sessionId, v: editVersion, c: view.state.doc.toString() });
   },
   undo() {
     undo(view);

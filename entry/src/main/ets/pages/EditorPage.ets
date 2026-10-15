@@ -11,7 +11,7 @@ import { FindSession } from '../domain/editor/FindSession';
 import { ViewModePolicy } from '../domain/editor/ViewModePolicy';
 import { HeadingOutline } from '../domain/editor/HeadingOutline';
 import { EditorBridge } from '../services/EditorBridge';
-import { SaveCoordinator, SaveCoordinatorDeps } from '../services/SaveCoordinator';
+import { SaveCoordinator, SaveCoordinatorDeps, SnapshotData } from '../services/SaveCoordinator';
 import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult } from '../domain/document/DocumentFileAdapter';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { ExternalUriFileSource } from '../infrastructure/file/ExternalUriFileSource';
@@ -60,12 +60,12 @@ interface OutlineEntry {
  * 以显式 class 注入组件闭包）。
  */
 class EditorPageDeps implements SaveCoordinatorDeps {
-  private readonly snapshotImpl: () => Promise<string>;
+  private readonly snapshotImpl: () => Promise<SnapshotData>;
   private readonly checkpointImpl: (c: string) => Promise<void>;
   private readonly persistImpl: (c: string) => Promise<WriteDocumentResult>;
 
   constructor(
-    snapshotImpl: () => Promise<string>,
+    snapshotImpl: () => Promise<SnapshotData>,
     checkpointImpl: (c: string) => Promise<void>,
     persistImpl: (c: string) => Promise<WriteDocumentResult>,
   ) {
@@ -74,7 +74,7 @@ class EditorPageDeps implements SaveCoordinatorDeps {
     this.persistImpl = persistImpl;
   }
 
-  getSnapshot(): Promise<string> {
+  getSnapshot(): Promise<SnapshotData> {
     return this.snapshotImpl();
   }
 
@@ -151,7 +151,7 @@ struct EditorPage {
     });
     // 编排器延迟创建：deps 闭包依赖组件方法（字段初始化器内不能引用 this）
     this.coordinator = new SaveCoordinator(new EditorPageDeps(
-      () => this.runJsValue('window.__editorApi.getSnapshot();'),
+      () => this.getSnapshotData(),
       (content: string) => this.doSaveCheckpoint(content),
       (content: string) => this.doPersist(content),
     ));
@@ -176,7 +176,13 @@ struct EditorPage {
         }
         const c = this.coordinator;
         if (c !== undefined) {
-          c.onEdit(Date.now());
+          // A1：编辑事件携带版本 → 保存完成只确认快照版本
+          const ver = env.payload.v as number | undefined;
+          if (ver !== undefined) {
+            c.onEdit(Date.now(), ver);
+          } else {
+            c.onEdit(Date.now());
+          }
           this.saveLabel = SaveStateMachine.label(c.state);
         }
         this.scheduleDocSync();
@@ -344,6 +350,10 @@ struct EditorPage {
       this.docLength = md.length;
       const dt = t0 > 0 ? Date.now() - t0 : -1;
       this.append(`[打开] 文档 ${md.length} 字符（打开至可编辑 ${dt}ms）`);
+      const c0 = this.coordinator;
+      if (c0 !== undefined) {
+        c0.onDocumentLoaded();
+      }
       this.syncDocNow();
     });
   }
@@ -651,6 +661,27 @@ struct EditorPage {
     router.back();
   }
 
+  /**
+   * A1 快照契约：经 getSnapshotEx 信封读取（会话/版本/正文一次返回）。
+   * 解析失败/Web 异常 → ok=false（空正文与失败可区分，原文件不被误写）。
+   */
+  private async getSnapshotData(): Promise<SnapshotData> {
+    const raw = await this.runJsValue('window.__editorApi.getSnapshotEx();');
+    try {
+      const o: ESObject = JSON.parse(raw);
+      const d: SnapshotData = {
+        ok: o.ok === true,
+        sessionId: `${o.s}`,
+        version: o.v as number,
+        content: `${o.c}`,
+      };
+      return d;
+    } catch (e) {
+      const fail: SnapshotData = { ok: false, sessionId: '', version: 0, content: '' };
+      return fail;
+    }
+  }
+
   /** 同步执行 JS 并返回结果（返回值通道，M0-03 实测可用） */
   private runJsValue(script: string): Promise<string> {
     return this.runJsValueOn(this.controller, script);
@@ -728,10 +759,16 @@ struct EditorPage {
       this.append('[保存] 无修改');
       return;
     }
-    const ran = await c.saveNow(Date.now());
+    const outcome = await c.saveNow(Date.now());
     this.saveLabel = SaveStateMachine.label(c.state);
     this.conflictVisible = c.state === SaveState.CONFLICT;
-    this.append(`[保存] ${ran ? '完成' : '未执行'} → ${this.saveLabel}`);
+    if (outcome === 'saved' || outcome === 'unchanged') {
+      this.append(`[保存] ${outcome === 'saved' ? '完成' : '无修改'} → ${this.saveLabel}`);
+    } else if (outcome === 'failed') {
+      this.append('[保存] 失败，正文与草稿检查点已保留');
+    } else if (outcome === 'busy') {
+      this.append('[保存] 已有保存在进行中，稍后自动收敛');
+    }
   }
 
   /** M4-03 冲突决策①：改用磁盘版本（编辑器内容放弃；草稿检查点保留本地，磁盘已读回） */
@@ -782,10 +819,10 @@ struct EditorPage {
     this.docTarget = copy;
     c.decideKeepLocal();
     this.conflictVisible = false;
-    const ran = await c.saveNow(Date.now());
+    const outcome = await c.saveNow(Date.now());
     this.saveLabel = SaveStateMachine.label(c.state);
     this.docTitle = name;
-    this.append(`[冲突] 副本保存${ran && c.state !== SaveState.ERROR ? '完成' : '失败'} → ${copy.relativePath}`);
+    this.append(`[冲突] 副本保存${(outcome === 'saved') ? '完成' : '失败'} → ${copy.relativePath}`);
   }
 
   /** M5-02 分享：动作菜单（复制 Markdown 原文 / 复制渲染 HTML；API 26 无 ShareKit，R-18 剪贴板降级） */

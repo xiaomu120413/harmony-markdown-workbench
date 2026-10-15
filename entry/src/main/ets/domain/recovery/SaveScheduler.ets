@@ -14,6 +14,7 @@ export class SaveScheduler {
   private _pending: boolean = false;
   private lastInputAt: number = 0;
   private cycleStart: number = 0;
+  private cycleStarted: boolean = false;
   private readonly debounceMs: number;
   private readonly maxDelayMs: number;
 
@@ -26,11 +27,15 @@ export class SaveScheduler {
     return this._pending;
   }
 
-  /** 输入事件：记录输入时刻；若尚未调度则挂起待保存（合并重复请求） */
+  /** 输入事件：记录输入时刻；首个待保存请求开启新周期（周期起点=首次输入，而非 0） */
   onInput(now: number): void {
     this.lastInputAt = now;
     if (!this._pending) {
       this._pending = true;
+      if (!this.cycleStarted) {
+        this.cycleStarted = true;
+        this.cycleStart = now;
+      }
     }
   }
 

@@ -64,5 +64,30 @@ export default function saveSchedulerTest(): void {
       s.onInput(2000);
       expect(s.dueTime()).assertEqual(3500);
     });
+
+    // ---- A1-01：真实时间戳量级下首个编辑仍满足 1.5s 防抖（R06 修复） ----
+
+    it('A1_first_edit_real_timestamp_honors_debounce', 0, () => {
+      const s = new SaveScheduler();
+      const t = 1791600000000; // Date.now() 量级
+      s.onInput(t);
+      expect(s.dueTime()).assertEqual(t + 1500);
+    });
+
+    it('A1_first_edit_real_timestamp_not_due_early', 0, () => {
+      const s = new SaveScheduler();
+      const t = 1791600000000;
+      s.onInput(t);
+      // 1499ms 时未到期（旧实现 dueTime 被钳到 10000 → 立即到期）
+      expect(s.dueTime() !== undefined && (s.dueTime() as number) > t + 1400).assertTrue();
+    });
+
+    it('A1_max_delay_from_first_input_of_cycle', 0, () => {
+      const s = new SaveScheduler();
+      const t = 1791600000000;
+      s.onInput(t);
+      s.onInput(t + 9000); // 连续输入未保存
+      expect(s.dueTime()).assertEqual(t + 10000);
+    });
   });
 }

@@ -223,3 +223,24 @@
 - ✅ 新增逻辑有自动化测试：M0-01 无业务逻辑，示例套件验证框架；
 - ✅ 失败拦截：故意失败用例产生 `ERROR: Error in ...` 断言日志（探针已验证后移除）。
 - ✅ CLI 无 code-linter/格式化任务（IDE 才有），列入风险 R-05。
+
+## 整改方案 A1：快照契约与保存调度（2026-10-15，依据 docs/reviews/2026-10-15-functional-layout-remediation-plan.md）
+
+> R01/R02/R06 修复。R01（保存中继续输入完成时清除待保存）、R02（Web 失败被
+> 当空正文，误写风险）、R06（Date.now() 量级时间戳下首次输入防抖失效，cycleStart
+> 初始 0 导致 dueTime 被钳到过去立即保存）。
+
+| 用例 | 内容 | 结果 |
+|---|---|---|
+| A1-01 | 真实时间戳（1791600000000）首次输入 dueTime = t+1500（SaveScheduler 单测 3 用例：防抖保持/不被提前钳位/最长延迟自周期首输入起算） | ✅ 单测 |
+| A1-03 | 保存挂起期间 onEdit(v2)：完成→DIRTY（非 CLEAN），pending 保持；收敛保存后 CLEAN 且落最新内容 | ✅ 单测（snapshotDelay 注入） |
+| A1-04 | 并发 saveNow 串行（persistInFlight 重叠检测 false）；tick 在保存进行中跳过 | ✅ 单测 |
+| A1-05 | 快照 ok=false：不落盘不写检查点、原内容不变、ERROR 可重试；合法空正文允许保存为空 | ✅ 单测 |
+| A1-补 | 迟到版本事件（快照 v5、事件 v7）→ 保存后仍 DIRTY；文档加载后 onDocumentLoaded 重置版本跟踪 | ✅ 单测 |
+| saveNow 语义 | saved / unchanged / conflict / failed / busy 五态（此前 boolean 无法区分"未执行"与成功） | ✅ 单测 + EditorPage 消费 |
+
+实现要点：editor.js 维护 sessionId（loadDocument 重置）+ editVersion（一切 docChanged 递增，含被抑制的程序化变更）；getSnapshotEx 一次性返回 {ok, s, v, c}；edit 事件携带 v；SaveCoordinator 版本门控（latestVersion > snap.version 或 dirtyAfterSave → CLEAN 后立即恢复 DIRTY 并按最后编辑时刻重排防抖）、手动保存经 Promise 链串行、快照失败短路；SaveScheduler 首个待保存请求初始化周期起点。
+
+真机：HAP 构建签名装机运行正常（冒烟）。中文 IME/撤销重做期间自动保存的真机专项回归按方案 9.3 待后续批次一并执行。
+
+遗留（A 批后续）：A2 外部写入 revision 检查（R03）、A3 独立草稿会话（R04/R05）、A4 编码换行契约（R07）——按方案依赖顺序 A1 → A2/A3/A4 推进。
