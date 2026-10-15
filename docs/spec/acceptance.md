@@ -260,3 +260,16 @@
 实现要点：ExternalUriFileSource.write 写入前重读磁盘按同一解码/哈希规则与基线比对（变化 → conflict，禁止先 TRUNC）；检查读取失败时按权限/IO 分类返回且**不盲写**；classify 区分 permission/io。EditorPage 增 loadState（loading/ready/loadFailed/accessExpired）状态机；reselectExternalFile 重建来源/基线/显示名；saveLocalCopyFromFailed 从编辑器现文另存资料库。
 
 保留本地路径的自动恢复语义（A2-02）：decideKeepLocal → DIRTY → 下次自动保存再次预检 → 基线不匹配 → 再次 CONFLICT（不再静默覆盖），与方案"继续保留本地编辑不恢复自动覆盖"一致。
+
+## 整改方案 A3：独立草稿会话与统一离开流程（2026-10-15）
+
+> R04（保存并离开不检查保存结果）/ R05（新建文档无目标时跳过草稿——崩溃即丢内容）。
+
+| 用例 | 内容 | 结果 |
+|---|---|---|
+| A3-01 | 新建文档首次保存前编辑 → 会话草稿（session:new）即落检查点；终止后恢复页可见"未保存的新文档"，可另存副本 | ✅ 代码 + 构建（真机终止恢复待人工） |
+| A3-03 | requestLeave：保存成功且无待保存（A1 版本门控，保存期间新编辑 → pending）才离开；失败/冲突留在页面，提供 重试保存 / 放弃修改离开 | ✅ 代码 + 构建 + 装机 |
+| A3-06 | 首次持久化/自动名升级成功后：旧名草稿 + 新名草稿 + 会话草稿三处清理，恢复页无重复遗留 | ✅ 代码（drafts.remove 三点收口） |
+| — | 恢复页会话草稿显示名"未保存的新文档"（原始 session:xxx 不再裸露）；提示引导"另存副本" | ✅ 代码 |
+
+实现要点：sessionDraftId（会话随机 ID）使新文档编辑即刻拥有草稿身份；doSaveCheckpoint 无目标时也落盘；doPersist/升级成功后统一清理会话草稿（迁移完成才删旧）；goBack 的"保存并离开"改经 requestLeave（saveNow 五态结果 + pending 门控），失败不再无条件 back。

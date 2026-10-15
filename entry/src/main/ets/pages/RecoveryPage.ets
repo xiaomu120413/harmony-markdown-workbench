@@ -127,8 +127,9 @@ struct RecoveryPage {
     }
     const d = row.draft;
     if (!d.sourceFingerprint.startsWith('internal:')) {
-      this.note('[恢复] 仅内部文档支持自动写回；外部文档请用另存副本');
-      promptAction.showToast({ message: '外部文档请使用「另存副本」' });
+      // A3：会话草稿（session:new）与外部草稿均无原位写回目标 → 另存副本
+      this.note('[恢复] 仅内部文档支持自动写回；外部/会话草稿请用另存副本');
+      promptAction.showToast({ message: '请使用「另存副本」保存到资料库' });
       return;
     }
     const rel = d.sourceFingerprint.substring('internal:'.length);
@@ -224,7 +225,7 @@ struct RecoveryPage {
           ListItem() {
             Column({ space: 4 }) {
               Row({ space: 8 }) {
-                Text(RecentFileList.displayName(row.draft.sourceFingerprint.replace('internal:library/', 'library/')))
+                Text(row.draft.sourceFingerprint === 'session:new' ? '未保存的新文档' : RecentFileList.displayName(row.draft.sourceFingerprint.replace('internal:library/', 'library/')))
                   .fontSize(12)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(this.pal.TEXT)

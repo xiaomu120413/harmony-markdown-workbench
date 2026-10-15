@@ -132,6 +132,8 @@ struct EditorPage {
   private docTarget: DocumentSource | undefined = undefined;
   private expectedRevision: FileRevisionContract = { size: 0, contentHash: '' };
   private pendingLoad: string = '';
+  /** A3：新建文档的会话草稿 ID（首次保存前即拥有草稿身份，R05） */
+  private sessionDraftId: string = `session:${Date.now()}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
   private pendingLoadAt: number = 0;
   private webReady: boolean = false;
   private previewReady: boolean = false;
@@ -605,10 +607,17 @@ struct EditorPage {
 
   // ---- 保存 / 冲突 / 分享 ----
 
-  /** 草稿检查点（FR-SAVE-003） */
+  /** 草稿检查点（FR-SAVE-003；A3：无目标的新文档也落会话草稿，R05） */
   private doSaveCheckpoint(content: string): Promise<void> {
     const target = this.docTarget;
     if (target === undefined) {
+      this.drafts.save(
+        this.sessionDraftId,
+        'session:new',
+        0,
+        '',
+        content,
+      );
       return Promise.resolve();
     }
     this.drafts.save(
@@ -618,6 +627,7 @@ struct EditorPage {
       this.expectedRevision.contentHash,
       content,
     );
+    // 首次持久化成功后会清正式草稿；会话草稿一并在 doPersist 迁移清理
     return Promise.resolve();
   }
 
@@ -643,7 +653,9 @@ struct EditorPage {
           this.docTarget = renamed;
           this.docTitle = better;
           this.expectedRevision = w.revision;
+          this.drafts.remove(this.draftIdOf(target));
           this.drafts.remove(this.draftIdOf(renamed));
+          this.drafts.remove(this.sessionDraftId);
           this.trackRecent(renamed);
           this.append(`[保存] 自动名升级 → 资料库/${better}`);
           return w;
@@ -662,6 +674,8 @@ struct EditorPage {
     if (result.ok) {
       this.expectedRevision = result.revision;
       this.drafts.remove(this.draftIdOf(target));
+      // A3：正式目标确立后清理会话草稿（迁移完成）
+      this.drafts.remove(this.sessionDraftId);
       this.trackRecent(target);
     }
     return result;
@@ -681,7 +695,53 @@ struct EditorPage {
     return `external:${(target as ExternalSource).uri}`;
   }
 
-  /** 返回前未保存保护（M2-03）：草稿检查点已保留内容 */
+  /**
+   * 统一离开流程（A3/R04）：保存成功且无新编辑才离开；失败留在页面可重试。
+   * 提示以草稿检查点确实落盘为前提（doSaveCheckpoint 在保存流程中先行执行）。
+   */
+  private async requestLeave(): Promise<void> {
+    const c = this.coordinator;
+    if (c === undefined) {
+      router.back();
+      return;
+    }
+    if (c.state === SaveState.CLEAN) {
+      router.back();
+      return;
+    }
+    const outcome = await c.saveNow(Date.now());
+    this.saveLabel = SaveStateMachine.label(c.state);
+    this.conflictVisible = c.state === SaveState.CONFLICT;
+    // saved + 无待保存（保存期间无新编辑，A1 版本门控）→ 干净离开
+    if ((outcome === 'saved' || outcome === 'unchanged') && !c.pending) {
+      router.back();
+      return;
+    }
+    // 失败/冲突/保存期间新编辑：留在页面，给出可执行下一步
+    AlertDialog.show({
+      title: '暂时无法离开',
+      message: outcome === 'conflict' || c.state === SaveState.CONFLICT
+        ? '磁盘版本已变化，请先在冲突条中选择处理方式。'
+        : '保存未完成，正文与草稿检查点已保留。可重试保存，或放弃修改离开。',
+      primaryButton: {
+        value: '重试保存',
+        action: () => {
+          this.requestLeave();
+        },
+      },
+      secondaryButton: {
+        value: '放弃修改离开',
+        action: () => {
+          router.back();
+        },
+      },
+      cancel: () => {
+        // 留在页面继续编辑
+      },
+    });
+  }
+
+  /** 返回入口：DIRTY/ERROR 先经统一离开流程 */
   private goBack(): void {
     const c = this.coordinator;
     if (c !== undefined && (c.state === SaveState.DIRTY || c.state === SaveState.ERROR)) {
@@ -691,13 +751,11 @@ struct EditorPage {
         primaryButton: {
           value: '保存并离开',
           action: () => {
-            this.save().then(() => {
-              router.back();
-            });
+            this.requestLeave();
           },
         },
         secondaryButton: {
-          value: '放弃',
+          value: '放弃修改离开',
           action: () => {
             router.back();
           },
