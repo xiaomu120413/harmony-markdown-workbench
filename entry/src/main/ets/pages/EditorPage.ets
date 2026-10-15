@@ -12,7 +12,7 @@ import { ViewModePolicy } from '../domain/editor/ViewModePolicy';
 import { HeadingOutline } from '../domain/editor/HeadingOutline';
 import { EditorBridge } from '../services/EditorBridge';
 import { SaveCoordinator, SaveCoordinatorDeps, SnapshotData } from '../services/SaveCoordinator';
-import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult } from '../domain/document/DocumentFileAdapter';
+import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult, WriteFailResult } from '../domain/document/DocumentFileAdapter';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
 import { ExternalUriFileSource } from '../infrastructure/file/ExternalUriFileSource';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
@@ -113,6 +113,8 @@ struct EditorPage {
   @State outlineEntries: OutlineEntry[] = [];
   @State cursorLine: number = 1;
   @State cursorCol: number = 1;
+  /** 文档加载状态（A2）：新文档默认 ready；外部/内部文档打开前 loading，失败分流 */
+  @State loadState: 'loading' | 'ready' | 'loadFailed' | 'accessExpired' = 'ready';
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private controller: webview.WebviewController = new webview.WebviewController();
   private previewController: webview.WebviewController = new webview.WebviewController();
@@ -312,18 +314,61 @@ struct EditorPage {
    * t0 记录请求时刻用于 M6-02 打开性能样本。 */
   private loadOpenedDoc(target: DocumentSource): void {
     const t0 = Date.now();
+    this.loadState = 'loading';
     const src: DocumentFileAdapter = target.kind === 'internal' ? this.internal : this.external;
     src.read(target).then((r) => {
       this.expectedRevision = r.revision;
       this.pendingLoad = r.content;
       this.pendingLoadAt = t0;
+      this.loadState = 'ready';
       this.trackRecent(target);
       if (this.webReady) {
         this.flushPendingLoad();
       }
     }).catch((e: ESObject) => {
-      this.append(`[打开] 失败：${JSON.stringify(e)}`);
+      // A2-04：权限失效（重启后临时授权丢失/文件被移动删除）与普通读取失败分流通
+      const msg = String(e);
+      this.loadState = msg.includes('13900001') || msg.includes('13900002') || msg.includes('permission')
+        ? 'accessExpired' : 'loadFailed';
+      this.append(`[打开] 失败（${this.loadState}）：${msg.substring(0, 200)}`);
     });
+  }
+
+  /** A2-06：重新选择文件——重建来源、基线与显示名（不依赖旧 URI 的持久权限） */
+  private async reselectExternalFile(): Promise<void> {
+    try {
+      const documentPicker = new picker.DocumentViewPicker(this.ctx);
+      const result: Array<string> = await documentPicker.select({
+        maxSelectNumber: 1,
+        fileSuffixFilters: ['.md', '.markdown', '.txt'],
+      });
+      if (result.length === 0) {
+        return; // 用户取消：保持恢复面板
+      }
+      const src: ExternalSource = { kind: 'external', uri: result[0], displayName: result[0] };
+      this.docTarget = src;
+      this.docTitle = RecentFileList.displayName(result[0]);
+      this.loadOpenedDoc(src);
+    } catch (e) {
+      this.append(`[重选] 选择器失败：${JSON.stringify(e)}`);
+    }
+  }
+
+  /** A2-04：读取失败后的本地内容另存副本（正文仍在编辑器/草稿检查点中） */
+  private async saveLocalCopyFromFailed(): Promise<void> {
+    const c = this.coordinator;
+    if (c === undefined) {
+      return;
+    }
+    const content = await this.runJsValue('window.__editorApi.getSnapshot();');
+    const name = DocumentNamer.derive(content, this.internal.listLibrary());
+    const copy: InternalSource = { kind: 'internal', relativePath: `library/${name}` };
+    this.docTarget = copy;
+    this.docTitle = name;
+    this.loadState = 'ready';
+    const outcome = await c.saveNow(Date.now());
+    this.saveLabel = SaveStateMachine.label(c.state);
+    this.append(`[恢复] 副本保存${outcome === 'saved' ? '完成' : '失败'} → ${copy.relativePath}`);
   }
 
   /** M5-01：保存/打开后更新最近文件元数据（FR-RECENT；失败不阻塞保存） */
@@ -605,6 +650,11 @@ struct EditorPage {
         }
         // 升级写入失败：按原名继续保存
       }
+    }
+    if (target.kind === 'external' && this.loadState !== 'ready') {
+      // A2：外部文档未成功加载（accessExpired/loadFailed）时禁止原位写回
+      const fail: WriteFailResult = { ok: false, reason: 'io', message: 'document not loaded; write-back blocked' };
+      return fail;
     }
     const result = target.kind === 'internal'
       ? await this.internal.write(target, content, this.expectedRevision)
@@ -1232,6 +1282,54 @@ struct EditorPage {
         .width('100%')
       }
 
+      // A2 恢复面板：外部文档读取失败/授权失效（不呈现可正常保存的空白文档）
+      if (this.loadState === 'loadFailed' || this.loadState === 'accessExpired') {
+        Column({ space: 12 }) {
+          Text(this.loadState === 'accessExpired' ? '无法访问文件' : '文件读取失败')
+            .fontSize(18)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(this.pal.TEXT)
+          Text(this.loadState === 'accessExpired'
+            ? '外部文件的访问授权已失效（重启或授权过期）。可重新选择文件，或将内容另存到资料库。'
+            : '文件可能已被移动、删除或暂时不可读。可将编辑器中的内容另存到资料库，或返回后再试。')
+            .fontSize(13)
+            .fontColor(this.pal.TEXT_SUB)
+            .lineHeight(20)
+          Row({ space: 12 }) {
+            if (this.docTarget !== undefined && this.docTarget.kind === 'external') {
+              Button('重新选择文件')
+                .fontSize(14)
+                .fontWeight(FontWeight.Medium)
+                .fontColor(this.pal.ON_PRIMARY)
+                .backgroundColor(this.pal.PRIMARY)
+                .borderRadius(20)
+                .height(40)
+                .padding({ left: 16, right: 16 })
+                .onClick(() => this.reselectExternalFile())
+            }
+            Button('另存到资料库')
+              .fontSize(14)
+              .fontColor(this.pal.TEXT)
+              .backgroundColor(this.pal.CARD)
+              .borderRadius(20)
+              .height(40)
+              .padding({ left: 16, right: 16 })
+              .onClick(() => this.saveLocalCopyFromFailed())
+            Button('返回')
+              .fontSize(14)
+              .fontColor(this.pal.TEXT_SUB)
+              .backgroundColor(Color.Transparent)
+              .borderRadius(20)
+              .height(40)
+              .padding({ left: 16, right: 16 })
+              .onClick(() => router.back())
+          }
+        }
+        .width('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
+        .padding(28)
+      } else {
       // 工作区：大纲（可选）+ 编辑器 + 预览（三端同一布局路径——
       // phone：单栏互斥切换；tablet/pc 分屏：双 Web 并排；隐藏侧 Visibility.None 不占位）
       Row({ space: 0 }) {
@@ -1337,6 +1435,7 @@ struct EditorPage {
       .layoutWeight(1)
       .width('100%')
       .alignItems(VerticalAlign.Center)
+      }
 
       // 状态栏（V0.4.2：字数 + 光标行列，备忘录式底部信息条）
       Row() {

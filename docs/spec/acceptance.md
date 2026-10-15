@@ -244,3 +244,19 @@
 真机：HAP 构建签名装机运行正常（冒烟）。中文 IME/撤销重做期间自动保存的真机专项回归按方案 9.3 待后续批次一并执行。
 
 遗留（A 批后续）：A2 外部写入 revision 检查（R03）、A3 独立草稿会话（R04/R05）、A4 编码换行契约（R07）——按方案依赖顺序 A1 → A2/A3/A4 推进。
+
+## 整改方案 A2：外部文件冲突与访问失效（2026-10-15，真机 HAD-W32）
+
+> R03（外部写入忽略 expectedRevision 直接截断）/ R08（访问失效无恢复状态）。
+
+| 用例 | 内容 | 结果 |
+|---|---|---|
+| A2-01 | 打开文档后外部修改磁盘（hdc 直接写入），应用内编辑（H2 命令）→ 自动保存触发冲突检测：**磁盘修改未被静默覆盖**，冲突条出现（用磁盘版/保留本地/另存副本） | ✅ 真机实测（notess.md，hmwb-27） |
+| A2-01' | 选择"用磁盘版"→ 编辑器重载磁盘内容，状态回 CLEAN | ✅ 真机（磁盘内容保持外部版本） |
+| A2-02' | 冲突期间草稿检查点保留本地编辑（drafts/ 有检查点文件） | ✅ 真机 |
+| A2-04 | 读取失败分流：权限失效（13900001/13900002/permission）→ accessExpired，其余 → loadFailed；恢复面板提供 重新选择文件 / 另存到资料库 / 返回 三条路径；外部文档未成功加载时**禁止原位写回**（doPersist 阻断） | ✅ 代码 + 构建（真机恢复面板待外部文件场景人工确认） |
+| A2-07 | read/stat/write 全部 fd finally 兜底关闭；写入 size 改用 UTF-8 字节长度（原 JS length 多字节下偏小） | ✅ 代码 |
+
+实现要点：ExternalUriFileSource.write 写入前重读磁盘按同一解码/哈希规则与基线比对（变化 → conflict，禁止先 TRUNC）；检查读取失败时按权限/IO 分类返回且**不盲写**；classify 区分 permission/io。EditorPage 增 loadState（loading/ready/loadFailed/accessExpired）状态机；reselectExternalFile 重建来源/基线/显示名；saveLocalCopyFromFailed 从编辑器现文另存资料库。
+
+保留本地路径的自动恢复语义（A2-02）：decideKeepLocal → DIRTY → 下次自动保存再次预检 → 基线不匹配 → 再次 CONFLICT（不再静默覆盖），与方案"继续保留本地编辑不恢复自动覆盖"一致。
