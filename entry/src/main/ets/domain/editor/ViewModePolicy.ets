@@ -31,4 +31,39 @@ export class ViewModePolicy {
     }
     return mode;
   }
+
+  // ---- B4：空间预算（侧栏 + 大纲 + 分屏的最小宽度决策） ----
+
+  static readonly SIDEBAR_W: number = 240;
+  static readonly OUTLINE_W: number = 200;
+  static readonly EDIT_MIN_W: number = 320;
+  static readonly PREVIEW_MIN_W: number = 320;
+
+  /**
+   * 分屏在扣除侧栏/大纲后是否仍有最小宽度（B4-01）。
+   * @param totalW 内容区总宽（vp）
+   * @param sidebarOpen 文档侧栏是否可见
+   * @param outlineOpen 大纲是否可见
+   */
+  static splitFits(totalW: number, sidebarOpen: boolean, outlineOpen: boolean): boolean {
+    let available = totalW;
+    if (sidebarOpen) {
+      available -= ViewModePolicy.SIDEBAR_W;
+    }
+    if (outlineOpen) {
+      available -= ViewModePolicy.OUTLINE_W;
+    }
+    return available >= ViewModePolicy.EDIT_MIN_W + ViewModePolicy.PREVIEW_MIN_W;
+  }
+
+  /**
+   * 大纲在扣除侧栏后是否仍有最小编辑宽度（B4-01）。
+   */
+  static outlineFits(totalW: number, sidebarOpen: boolean): boolean {
+    let available = totalW;
+    if (sidebarOpen) {
+      available -= ViewModePolicy.SIDEBAR_W;
+    }
+    return available - ViewModePolicy.OUTLINE_W >= ViewModePolicy.EDIT_MIN_W;
+  }
 }
