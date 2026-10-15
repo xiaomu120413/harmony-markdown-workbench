@@ -196,6 +196,16 @@ window.__editorApi = {
   },
 };
 
+// ---- C4：应用快捷键 → 桥转发到原生统一命令（与按钮同一路径） ----
+const appKeymap = keymap.of([
+  { key: 'Mod-s', preventDefault: true, run: () => { notify('command', { action: 'save' }); return true; } },
+  { key: 'Mod-f', preventDefault: true, run: () => { notify('command', { action: 'find' }); return true; } },
+  { key: 'Mod-b', preventDefault: true, run: () => { notify('command', { action: 'bold' }); return true; } },
+  { key: 'Mod-i', preventDefault: true, run: () => { notify('command', { action: 'italic' }); return true; } },
+  { key: 'Mod-Shift-f', preventDefault: true, run: () => { notify('command', { action: 'outline' }); return true; } },
+]);
+view.dispatch({ effects: EditorState.appendConfig.of([appKeymap]) });
+
 // 通知原生：Web 就绪
 console.log('HMWB_PAGE_READY bridge=' + (typeof window.__nativeBridge));
 notify('ready', { version: 1 });

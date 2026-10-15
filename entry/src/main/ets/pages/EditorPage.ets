@@ -202,6 +202,26 @@ struct EditorPage {
         this.scheduleDocSync();
         return;
       }
+      if (env.type === 'command') {
+        // C4：快捷键 → 统一命令（与按钮同一路径）
+        const action = env.payload.action as string | undefined;
+        if (action === 'save') {
+          this.save();
+        } else if (action === 'find') {
+          if (this.findVisible) {
+            this.findVisible = false;
+          } else {
+            this.openFind();
+          }
+        } else if (action === 'outline') {
+          this.toggleOutline();
+        } else if (action === 'bold') {
+          this.applyCommand('bold');
+        } else if (action === 'italic') {
+          this.applyCommand('italic');
+        }
+        return;
+      }
       if (env.type === 'cursor') {
         // 光标移动（点击/方向键）：状态栏行列更新
         const ln = env.payload.line as number | undefined;
