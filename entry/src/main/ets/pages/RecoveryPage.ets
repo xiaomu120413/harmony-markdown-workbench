@@ -1,6 +1,6 @@
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { router } from '@kit.ArkUI';
+import { router, promptAction } from '@kit.ArkUI';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { RecentFileList } from '../domain/document/RecentFileList';
@@ -13,6 +13,7 @@ import { DocumentNamer } from '../domain/document/DocumentNamer';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { ThemeMode } from '../domain/settings/AppSettings';
 import { AppTheme } from '../common/AppTheme';
+import { beginWindowMove } from '../common/WindowDrag';
 
 const DOMAIN: number = 0x0000;
 const TAG: string = 'HMWB-RECOVERY';
@@ -121,11 +122,13 @@ struct RecoveryPage {
   private async restoreRow(row: DraftRow): Promise<void> {
     if (row.decision !== RecoveryDecision.RESTORE_DRAFT) {
       this.note(`[恢复] 决策为 ${row.decisionName}，跳过自动覆盖`);
+      promptAction.showToast({ message: '磁盘已有变化，请使用「另存副本」' });
       return;
     }
     const d = row.draft;
     if (!d.sourceFingerprint.startsWith('internal:')) {
       this.note('[恢复] 仅内部文档支持自动写回；外部文档请用另存副本');
+      promptAction.showToast({ message: '外部文档请使用「另存副本」' });
       return;
     }
     const rel = d.sourceFingerprint.substring('internal:'.length);
@@ -143,6 +146,7 @@ struct RecoveryPage {
         this.note(`[恢复] 已写回 ${rel} 并清除草稿`);
       } else {
         this.note(`[恢复] 写回冲突/失败：${(result as WriteFailResult).message}（请改用另存副本）`);
+        promptAction.showToast({ message: '写回失败，请使用「另存副本」' });
       }
     } catch (e) {
       this.note(`[恢复] 写回异常：${JSON.stringify(e)}`);
@@ -164,6 +168,7 @@ struct RecoveryPage {
         this.note(`[副本] 已保存 ${rel} 并清除草稿`);
       } else {
         this.note(`[副本] 失败：${(result as WriteFailResult).message}`);
+        promptAction.showToast({ message: '另存副本失败' });
       }
     } catch (e) {
       this.note(`[副本] 异常：${JSON.stringify(e)}`);
@@ -196,6 +201,13 @@ struct RecoveryPage {
           .fontSize(18)
           .fontWeight(FontWeight.Bold)
           .fontColor(this.pal.TEXT)
+          .padding({ top: 6, bottom: 6 })
+          .onTouch((e: TouchEvent) => {
+            // 系统标题栏已隐藏：标题区接管窗口拖动
+            if (e.type === TouchType.Down) {
+              beginWindowMove(this.ctx);
+            }
+          })
         Blank()
       }
       .width('100%')
@@ -212,7 +224,7 @@ struct RecoveryPage {
           ListItem() {
             Column({ space: 4 }) {
               Row({ space: 8 }) {
-                Text(row.draft.sourceFingerprint)
+                Text(RecentFileList.displayName(row.draft.sourceFingerprint.replace('internal:library/', 'library/')))
                   .fontSize(12)
                   .fontWeight(FontWeight.Medium)
                   .fontColor(this.pal.TEXT)

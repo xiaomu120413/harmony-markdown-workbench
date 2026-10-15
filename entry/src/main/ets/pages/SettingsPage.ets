@@ -1,6 +1,7 @@
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
+import { beginWindowMove } from '../common/WindowDrag';
 import { AppSettings, SettingsValidator, ThemeMode, DefaultView } from '../domain/settings/AppSettings';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { DraftStore } from '../infrastructure/metadata/DraftStore';
@@ -116,6 +117,13 @@ struct SettingsPage {
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
             .fontColor(this.pal.TEXT)
+            .padding({ top: 6, bottom: 6 })
+            .onTouch((e: TouchEvent) => {
+              // 系统标题栏已隐藏：标题区接管窗口拖动（否则本页窗口无法移动）
+              if (e.type === TouchType.Down) {
+                beginWindowMove(this.ctx);
+              }
+            })
         }
         .width('100%')
         .padding({ left: 4, top: 2 })

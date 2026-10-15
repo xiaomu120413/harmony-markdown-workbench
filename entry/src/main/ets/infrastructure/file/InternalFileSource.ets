@@ -183,4 +183,31 @@ export class InternalFileSource implements DocumentFileAdapter {
       return false;
     }
   }
+
+  /** 枚举回收站（V0.4.4：回收站可见可恢复，兑现"回收站"承诺） */
+  listTrash(): string[] {
+    const names: string[] = [];
+    try {
+      const all = fs.listFileSync(`${this.baseDir}/library/.trash`);
+      for (let i = 0; i < all.length; i++) {
+        if (!all[i].startsWith('.')) {
+          names.push(all[i]);
+        }
+      }
+    } catch (e) {
+      // 目录不存在 → 空列表
+    }
+    return names;
+  }
+
+  /** 从回收站恢复（同名已存在时失败返回 false） */
+  restoreTrash(name: string): boolean {
+    const libDir = `${this.baseDir}/library`;
+    try {
+      fs.renameSync(`${libDir}/.trash/${name}`, `${libDir}/${name}`);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

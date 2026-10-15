@@ -234,16 +234,22 @@ struct EditorPage {
     this.settings.load().then((s: AppSettings) => {
       this.appSettings = s;
       this.viewMode = ViewModePolicy.resolveInitial(this.bp, s.defaultView);
-      const dark = s.theme === ThemeMode.DARK;
-      this.pal = AppTheme.of(dark);
-      this.runJsValue(`window.__editorApi.setTheme(${dark});`);
-      this.runJsValue(`window.__editorApi.setFontSize(${s.fontSize});`);
-      this.runJsValue(`window.__editorApi.setWrap(${s.wrap});`);
-      this.runJsValue(`window.__editorApi.setLineNumbers(${s.lineNumbers});`);
+      this.pal = AppTheme.of(s.theme === ThemeMode.DARK);
+      this.applyEditorStyle();
       this.applyPreviewStyle();
     }).catch((e: ESObject) => {
       this.append(`[设置] 读取失败：${JSON.stringify(e)}`);
     });
+  }
+
+  /** 编辑器样式跟随设置（幂等；aboutToAppear 与 Web onPageEnd 各发一次，消除加载竞态） */
+  private applyEditorStyle(): void {
+    const s = this.appSettings;
+    const dark = s.theme === ThemeMode.DARK;
+    this.runJsValue(`window.__editorApi.setTheme(${dark});`);
+    this.runJsValue(`window.__editorApi.setFontSize(${s.fontSize});`);
+    this.runJsValue(`window.__editorApi.setWrap(${s.wrap});`);
+    this.runJsValue(`window.__editorApi.setLineNumbers(${s.lineNumbers});`);
   }
 
   /** 预览样式跟随设置（就绪前跳过，onPageEnd 时补发） */
@@ -838,9 +844,11 @@ struct EditorPage {
     try {
       const record = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, payload);
       await pasteboard.getSystemPasteboard().setData(record);
+      promptAction.showToast({ message: kind === 'markdown' ? '已复制 Markdown 原文' : '已复制渲染 HTML' });
       this.append(`[分享] ${kind === 'markdown' ? 'Markdown 原文' : '渲染 HTML'}已复制（${payload.length} 字符）`);
     } catch (e) {
       const err: ESObject = e as ESObject;
+      promptAction.showToast({ message: '复制失败' });
       this.append(`[分享] 复制失败：${JSON.stringify(err)}`);
     }
   }
@@ -1015,14 +1023,28 @@ struct EditorPage {
           }
         }
 
-        this.topBtn('🔍', false, () => {
-          if (this.findVisible) {
-            this.findVisible = false;
-          } else {
-            this.openFind();
-          }
-        })
-        this.topBtn('☰', this.outlineVisible, () => this.toggleOutline())
+        Button('查找')
+          .fontSize(13)
+          .fontColor(this.findVisible ? this.pal.ON_PRIMARY : this.pal.TEXT)
+          .backgroundColor(this.findVisible ? this.pal.PRIMARY : this.pal.CARD)
+          .borderRadius(8)
+          .height(36)
+          .padding({ left: 12, right: 12 })
+          .onClick(() => {
+            if (this.findVisible) {
+              this.findVisible = false;
+            } else {
+              this.openFind();
+            }
+          })
+        Button('大纲')
+          .fontSize(13)
+          .fontColor(this.outlineVisible ? this.pal.ON_PRIMARY : this.pal.TEXT)
+          .backgroundColor(this.outlineVisible ? this.pal.PRIMARY : this.pal.CARD)
+          .borderRadius(8)
+          .height(36)
+          .padding({ left: 12, right: 12 })
+          .onClick(() => this.toggleOutline())
         Button('分享')
           .fontSize(13)
           .backgroundColor(this.pal.CARD)
@@ -1030,7 +1052,14 @@ struct EditorPage {
           .borderRadius(8)
           .height(36)
           .onClick(() => this.share())
-        this.topBtn('⌨', false, () => this.showHelp())
+        Button('帮助')
+          .fontSize(13)
+          .fontColor(this.pal.TEXT)
+          .backgroundColor(this.pal.CARD)
+          .borderRadius(8)
+          .height(36)
+          .padding({ left: 12, right: 12 })
+          .onClick(() => this.showHelp())
         Button('保存')
           .fontSize(13)
           .fontWeight(FontWeight.Medium)
@@ -1223,6 +1252,8 @@ struct EditorPage {
             })
             .onPageEnd(() => {
               this.webReady = true;
+              // 补发样式：aboutToAppear 时 Web 可能未就绪，样式命令会被吞掉
+              this.applyEditorStyle();
               if (this.pendingLoad.length > 0 || this.docTarget !== undefined) {
                 this.flushPendingLoad();
               }

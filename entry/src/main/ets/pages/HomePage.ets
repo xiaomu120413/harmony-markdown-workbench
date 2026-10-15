@@ -31,6 +31,8 @@ struct HomePage {
   @State pickingFile: boolean = false;
   @State renamingFrom: string = '';
   @State renameText: string = '';
+  @State trashFiles: string[] = [];
+  @State trashOpen: boolean = false;
   @State searchQuery: string = '';
   @State searchResults: DocSearchResult[] = [];
   @State searchBusy: boolean = false;
@@ -107,6 +109,7 @@ struct HomePage {
     try {
       const names = this.fileSource.listLibrary();
       this.libraryFiles = names;
+      this.trashFiles = this.fileSource.listTrash();
       this.note(`[资料库] ${names.length} 个文档`);
     } catch (e) {
       this.note(`[资料库] 读取失败：${JSON.stringify(e)}`);
@@ -258,6 +261,17 @@ struct HomePage {
     }
   }
 
+  /** 回收站恢复（V0.4.4：兑现"回收站"承诺——可见、可恢复） */
+  private restoreFromTrash(name: string): void {
+    if (this.fileSource.restoreTrash(name)) {
+      this.refreshLibrary();
+      this.refresh();
+      promptAction.showToast({ message: `已恢复 ${name}` });
+    } else {
+      promptAction.showToast({ message: '恢复失败（同名文档已存在？）' });
+    }
+  }
+
   /** 搜索结果行点击 → 打开对应文档 */
   private goEditorWithResult(name: string): void {
     this.goEditorWith(`library/${name}`);
@@ -322,9 +336,6 @@ struct HomePage {
         .fontSize(15)
         .fontColor(this.pal.TEXT)
         .layoutWeight(1)
-      Text('›')
-        .fontSize(16)
-        .fontColor(this.pal.TEXT_FAINT)
     }
     .width('100%')
     .height(44)
@@ -372,7 +383,7 @@ struct HomePage {
       .width('100%')
 
       if (this.libraryFiles.length === 0) {
-        Text('资料库还没有文档，先新建一个吧。')
+        Text('资料库是空的')
           .fontSize(13)
           .fontColor(this.pal.TEXT_FAINT)
           .padding(8)
@@ -433,8 +444,45 @@ struct HomePage {
         }
         .width('100%')
       }
-      .constraintSize({ maxHeight: 260 })
+      .constraintSize({ maxHeight: 200 })
       .width('100%')
+
+      // 回收站（可见、可恢复）
+      if (this.trashFiles.length > 0 || this.trashOpen) {
+        Divider().color(this.pal.DIVIDER).margin({ top: 4, bottom: 4 })
+        Row() {
+          Text(`回收站 · ${this.trashFiles.length}`)
+            .fontSize(13)
+            .fontColor(this.pal.TEXT_SUB)
+            .layoutWeight(1)
+          Text(this.trashOpen ? '收起' : '展开')
+            .fontSize(12)
+            .fontColor(this.pal.PRIMARY)
+            .onClick(() => {
+              this.trashOpen = !this.trashOpen;
+            })
+        }
+        .width('100%')
+        if (this.trashOpen) {
+          ForEach(this.trashFiles, (name: string) => {
+            Row({ space: 10 }) {
+              Text(name)
+                .fontSize(13)
+                .fontColor(this.pal.TEXT_SUB)
+                .maxLines(1)
+                .layoutWeight(1)
+              Text('恢复')
+                .fontSize(12)
+                .fontColor(this.pal.PRIMARY)
+                .padding(4)
+                .onClick(() => this.restoreFromTrash(name))
+            }
+            .width('100%')
+            .height(36)
+            .padding({ left: 12, right: 12 })
+          }, (name: string) => name)
+        }
+      }
     }
     .width('100%')
     .padding(14)
@@ -476,7 +524,7 @@ struct HomePage {
         .fontColor(this.pal.TEXT_FAINT)
         .padding({ bottom: 10 })
 
-      this.primaryBtn('＋  新建文档', () => this.goEditor())
+      this.primaryBtn('新建文档', () => this.goEditor())
 
       Column({ space: 0 }) {
         this.navRow('打开文档', () => this.openExternalFile())
@@ -536,7 +584,6 @@ struct HomePage {
 
       // 资料库全文搜索框（V0.4.3）
       Row({ space: 8 }) {
-        Text('🔍').fontSize(13)
         TextInput({ placeholder: '搜索文档内容', text: this.searchQuery })
           .fontSize(13)
           .height(34)
@@ -624,86 +671,56 @@ struct HomePage {
     .alignItems(HorizontalAlign.Start)
   }
 
-  /** 欢迎内容区（宽屏右栏） */
+  /** 欢迎内容区（宽屏右栏）：安静的起点，不抢内容的戏 */
   @Builder
   welcomePanel() {
-    Column({ space: 14 }) {
-      Blank().layoutWeight(1)
+    Column({ space: 0 }) {
+      Blank().height(120)
 
-      Column({ space: 8 }) {
-        Text('Markdown 工作台')
-          .fontSize(26)
-          .fontWeight(FontWeight.Bold)
-          .fontColor(this.pal.TEXT)
-        Text('打开的是原文件，保存后仍是原文件。')
-          .fontSize(14)
+      Text('Markdown 工作台')
+        .fontSize(24)
+        .fontWeight(FontWeight.Bold)
+        .fontColor(this.pal.TEXT)
+      Text('打开的是原文件，保存后仍是原文件。')
+        .fontSize(13)
+        .fontColor(this.pal.TEXT_FAINT)
+        .padding({ top: 6, bottom: 36 })
+
+      Button('新建文档')
+        .fontSize(15)
+        .fontWeight(FontWeight.Medium)
+        .fontColor(this.pal.ON_PRIMARY)
+        .backgroundColor(this.pal.PRIMARY)
+        .borderRadius(22)
+        .width(180)
+        .height(44)
+        .onClick(() => this.goEditor())
+
+      Text('或从左侧打开最近的文档')
+        .fontSize(12)
+        .fontColor(this.pal.TEXT_FAINT)
+        .padding({ top: 12 })
+
+      if (this.recent.length > 0) {
+        Text(`上次编辑 · ${RecentFileList.displayName(this.recent[0].documentId)} · ${this.fmtTime(this.recent[0].lastOpenedAt)}`)
+          .fontSize(12)
           .fontColor(this.pal.TEXT_SUB)
+          .padding({ top: 4 })
+          .onClick(() => this.openRecent(this.recent[0]))
       }
-      .width('100%')
-      .alignItems(HorizontalAlign.Start)
-
-      Row({ space: 12 }) {
-        this.entryTile('＋', '新建文档', '从空白文档开始', () => this.goEditor())
-        this.entryTile('⇪', '打开文档', '系统文件 .md / .txt', () => this.openExternalFile())
-        this.entryTile('▤', '资料库', `${this.libraryFiles.length} 个本地文档`, () => this.openLibraryFile())
-      }
-      .width('100%')
-      .height(130)
 
       if (this.pickingFile) {
+        Blank().height(24)
         this.libraryPanel()
       }
 
       Blank().layoutWeight(1)
-
-      Row() {
-        Text('修改自动保存 · 意外退出可找回')
-          .fontSize(12)
-          .fontColor(this.pal.TEXT_FAINT)
-        Blank()
-        Text('1.0')
-          .fontSize(12)
-          .fontColor(this.pal.TEXT_FAINT)
-      }
-      .width('100%')
     }
     .layoutWeight(1)
     .height('100%')
-    .padding(24)
+    .padding(28)
     .backgroundColor(this.pal.CONTENT)
     .alignItems(HorizontalAlign.Start)
-  }
-
-  /** 入口瓷贴（浅色调块，无描边） */
-  @Builder
-  entryTile(badge: string, title: string, sub: string, action: () => void) {
-    Column({ space: 6 }) {
-      Text(badge)
-        .fontSize(16)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.pal.PRIMARY)
-        .width(34)
-        .height(34)
-        .lineHeight(34)
-        .textAlign(TextAlign.Center)
-        .backgroundColor(this.pal.PRIMARY_SOFT)
-        .borderRadius(10)
-      Text(title)
-        .fontSize(15)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.pal.TEXT)
-      Text(sub)
-        .fontSize(11)
-        .fontColor(this.pal.TEXT_FAINT)
-        .maxLines(1)
-    }
-    .alignItems(HorizontalAlign.Start)
-    .layoutWeight(1)
-    .height('100%')
-    .padding(14)
-    .backgroundColor(this.pal.CARD)
-    .borderRadius(12)
-    .onClick(() => action())
   }
 
   /** phone：单栏（列表色调背景 + 平铺行） */
@@ -721,7 +738,7 @@ struct HomePage {
           }
         })
 
-      this.primaryBtn('＋  新建文档', () => this.goEditor())
+      this.primaryBtn('新建文档', () => this.goEditor())
 
       Row({ space: 10 }) {
         Button('打开文档')
@@ -759,7 +776,6 @@ struct HomePage {
       }
 
       Row({ space: 8 }) {
-        Text('🔍').fontSize(13)
         TextInput({ placeholder: '搜索文档内容', text: this.searchQuery })
           .fontSize(13)
           .height(36)
