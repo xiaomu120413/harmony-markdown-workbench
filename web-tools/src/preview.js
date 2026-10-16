@@ -83,6 +83,36 @@ window.__previewApi = {
     document.getElementById('out').innerHTML = safe;
     return { length: safe.length, html: safe };
   },
+  /**
+   * D1：滚动到源行号对应的预览块。
+   * markdown-it 渲染后行号信息不直接保留——用标题锚点近似定位
+   * （找到 ≤ line 的最大标题行号对应的元素，滚动到该元素）。
+   */
+  scrollToLine(line, sourceText) {
+    // 解析源文本，建立 行号 → 标题文本 映射
+    const lines = (sourceText || '').split('\n');
+    let bestHeading = '';
+    let bestLine = 0;
+    for (let i = 0; i < lines.length && i < line; i++) {
+      const m = /^#{1,6}\s+(.+)/.exec(lines[i]);
+      if (m) {
+        bestHeading = m[1].trim();
+        bestLine = i + 1;
+      }
+    }
+    if (!bestHeading) {
+      return; // 无标题锚点：不滚动
+    }
+    // 在预览 DOM 中查找匹配的标题元素
+    const out = document.getElementById('out');
+    const headings = out.querySelectorAll('h1,h2,h3,h4,h5,h6');
+    for (let i = 0; i < headings.length; i++) {
+      if (headings[i].textContent.trim() === bestHeading) {
+        headings[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+    }
+  },
   /** 最近一次渲染的 HTML（导出/复制用） */
   getHtml() {
     return lastHtml;

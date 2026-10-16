@@ -196,6 +196,19 @@ window.__editorApi = {
   },
 };
 
+// ---- D1：滚动位置上报（同步滚动数据源；顶部可视行号，防抖 100ms） ----
+let scrollNotifyTimer = 0;
+view.scrollDOM.addEventListener('scroll', function () {
+  if (scrollNotifyTimer) {
+    clearTimeout(scrollNotifyTimer);
+  }
+  scrollNotifyTimer = setTimeout(function () {
+    scrollNotifyTimer = 0;
+    const top = view.visualLineAtTop.state.doc.lineAt(top.top);
+    notify('editorScroll', { line: top.number });
+  }, 100);
+});
+
 // ---- C4：应用快捷键 → 桥转发到原生统一命令（与按钮同一路径） ----
 const appKeymap = keymap.of([
   { key: 'Mod-s', preventDefault: true, run: () => { notify('command', { action: 'save' }); return true; } },

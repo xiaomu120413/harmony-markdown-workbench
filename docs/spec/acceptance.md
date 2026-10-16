@@ -338,3 +338,10 @@
 | 用例 | 内容 | 结果 |
 |---|---|---|
 | B3-02 | 工具栏 Flex(Wrap) → Scroll(Horizontal) + Row：窄窗保持单行，水平滚动访问全部命令（不再换行成 2-3 行按钮墙侵占正文） | ✅ 构建 |
+
+## 整改方案 D1 + C2 补全（2026-10-16）
+
+| 用例 | 内容 | 结果 |
+|---|---|---|
+| D1 | 编辑器→预览同步滚动（分屏时）：editor.js scrollDOM 监听（100ms 防抖）→ editorScroll 事件 → EditorPage 桥接 → preview.scrollToLine（标题锚点近似定位，smooth 滚动） | ✅ 构建 + bundle |
+| C2 补 | 预览图片解析：resolveAttachmentRefs 在渲染前将 attachments/xxx 替换为 data:image/...;base64（≤2MB，缓存去重，MIME 推断） | ✅ 构建 |

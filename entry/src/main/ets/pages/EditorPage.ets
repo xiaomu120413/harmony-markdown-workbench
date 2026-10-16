@@ -3,6 +3,7 @@ import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, mediaquery, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
+import { util } from '@kit.ArkTS';
 import { fileIo as fs, picker } from '@kit.CoreFileKit';
 import { SaveState, SaveStateMachine } from '../domain/recovery/SaveStateMachine';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../domain/editor/MarkdownCommands';
@@ -221,6 +222,19 @@ struct EditorPage {
           this.applyCommand('bold');
         } else if (action === 'italic') {
           this.applyCommand('italic');
+        }
+        return;
+      }
+      if (env.type === 'editorScroll') {
+        // D1：编辑器滚动 → 预览同步（分屏时；防回环：仅编辑器侧触发）
+        if (this.viewMode === DefaultView.SPLIT && this.previewReady) {
+          const line = env.payload.line as number | undefined;
+          if (line !== undefined) {
+            this.runJsValue('window.__editorApi.getSnapshot();').then((md: string) => {
+              const js = `window.__previewApi.scrollToLine(${line}, ${JSON.stringify(md)});`;
+              this.previewController.runJavaScript(js);
+            });
+          }
         }
         return;
       }
@@ -525,7 +539,9 @@ struct EditorPage {
     this.runJsValue('window.__editorApi.getSnapshot();').then((md: string) => {
       if (needPreview && md !== this.lastPreviewedMd) {
         this.lastPreviewedMd = md;
-        const js = `window.__previewApi.render(${JSON.stringify(md)});`;
+        // C2：附件路径 → data URL（Web 组件无法访问应用私有目录）
+        const resolved = this.resolveAttachmentRefs(md);
+        const js = `window.__previewApi.render(${JSON.stringify(resolved)});`;
         this.previewController.runJavaScript(js, (err) => {
           if (err) {
             this.append(`[预览] 渲染失败：${JSON.stringify(err)}`);
@@ -534,6 +550,53 @@ struct EditorPage {
       }
       if (needOutline) {
         this.rebuildOutline(md);
+      }
+    });
+  }
+
+  /**
+   * C2：将 Markdown 中的 attachments/xxx 引用解析为 base64 data URL。
+   * 超过 2MB 的图片跳过（避免 data URL 过大阻塞渲染）。
+   */
+  private resolveAttachmentRefs(md: string): string {
+    const re = /\(attachments\/([^)]+)\)/g;
+    const seen = new Map<string, string>();
+    return md.replace(re, (match: string, name: string): string => {
+      const cached = seen.get(name);
+      if (cached !== undefined) {
+        return cached;
+      }
+      try {
+        const path = this.internal.attachmentPath(name);
+        const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
+        const stat = fs.statSync(file.fd);
+        if (stat.size > 2 * 1024 * 1024) {
+          fs.closeSync(file.fd);
+          seen.set(name, match);
+          return match; // 超大图片跳过
+        }
+        const buf = new ArrayBuffer(stat.size);
+        const len = fs.readSync(file.fd, buf);
+        fs.closeSync(file.fd);
+        const bytes = new Uint8Array(buf).slice(0, len);
+        // 常见图片 MIME 推断
+        let mime = 'image/png';
+        const lower = name.toLowerCase();
+        if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
+          mime = 'image/jpeg';
+        } else if (lower.endsWith('.gif')) {
+          mime = 'image/gif';
+        } else if (lower.endsWith('.webp')) {
+          mime = 'image/webp';
+        } else if (lower.endsWith('.svg')) {
+          mime = 'image/svg+xml';
+        }
+        // base64 编码（ArkTS 用 Base64Helper，无 btoa）
+        const dataUrl = `(data:${mime};base64,${new util.Base64Helper().encodeToStringSync(bytes)})`;
+        seen.set(name, dataUrl);
+        return dataUrl;
+      } catch (e) {
+        return match; // 读取失败保留原引用
       }
     });
   }
