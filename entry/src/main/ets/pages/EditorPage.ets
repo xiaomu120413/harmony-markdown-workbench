@@ -1140,6 +1140,58 @@ struct EditorPage {
   }
 
   /**
+   * C2：插入本地图片——系统图片选择器 → 复制到应用附件目录 → 插入相对引用。
+   * 取消不改变正文（C2-01）。
+   */
+  private async insertLocalImage(): Promise<void> {
+    try {
+      const photoPicker = new picker.PhotoViewPicker();
+      const result = await photoPicker.select({
+        MIMEType: picker.PhotoViewMIMETypes.IMAGE_TYPE,
+        maxSelectNumber: 1,
+      });
+      const uris: Array<string> = result.photoUris;
+      if (uris.length === 0) {
+        return; // 用户取消
+      }
+      const uri = uris[0];
+      // 从 URI 提取文件名（兜底 attachment.png）
+      const slash = uri.lastIndexOf('/');
+      let name = slash >= 0 ? uri.substring(slash + 1) : 'attachment.png';
+      if (name.length === 0 || !name.includes('.')) {
+        name = 'attachment.png';
+      }
+      // 复制到附件目录（应用私有，不依赖外部授权持久性）
+      const attPath = this.internal.copyToAttachments(uri, name);
+      if (attPath.length === 0) {
+        promptAction.showToast({ message: '图片复制失败' });
+        return;
+      }
+      // 在光标处插入 Markdown 引用（相对路径，可迁移）
+      const sel = await this.runJsValue('window.__editorApi.getSelectionRange();');
+      let parsed: ESObject;
+      try {
+        parsed = JSON.parse(sel);
+      } catch (e) {
+        parsed = { from: 0, to: 0 };
+      }
+      const at = (parsed.from as number) ?? 0;
+      const snippet = `![图片](${attPath})`;
+      await this.runJsValue(`window.__editorApi.replaceRange(${at}, ${at}, ${JSON.stringify(snippet)});`);
+      const c = this.coordinator;
+      if (c !== undefined) {
+        c.onEdit(Date.now());
+        this.saveLabel = SaveStateMachine.label(c.state);
+      }
+      this.scheduleDocSync();
+      promptAction.showToast({ message: `已插入 ${name}` });
+    } catch (e) {
+      const err: ESObject = e as ESObject;
+      this.append(`[图片] 选择失败：${JSON.stringify(err)}`);
+    }
+  }
+
+  /**
    * C1：另存为 Markdown——系统保存选择器选目标位置，写入当前正文快照。
    * 取消不改变标题/保存目标/最近列表/保存状态（C1-02）。
    */
@@ -1474,7 +1526,14 @@ struct EditorPage {
             this.toolSep()
             // 插入
             this.toolBtn('链接', 'link')
-            this.toolBtn('图片', 'image')
+            Button('图片')
+              .fontSize(13)
+              .fontColor(this.pal.TEXT)
+              .backgroundColor(this.pal.CARD)
+              .borderRadius(8)
+              .height(36)
+              .padding({ left: 10, right: 10 })
+              .onClick(() => this.insertLocalImage())
             this.toolBtn('表格', 'table')
             this.toolBtn('分隔线', 'hr')
             this.toolSep()

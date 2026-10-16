@@ -192,6 +192,62 @@ export class InternalFileSource implements DocumentFileAdapter {
     }
   }
 
+  /**
+   * C2：附件管理——复制外部图片到应用私有附件目录（attachments/）。
+   * 同名自动避让；返回附件相对路径（attachments/xxx.png），失败返回空串。
+   */
+  copyToAttachments(sourceUri: string, fileName: string): string {
+    const attDir = `${this.baseDir}/attachments`;
+    try {
+      try {
+        fs.mkdirSync(attDir);
+      } catch (e) {
+        // 已存在
+      }
+      let target = fileName;
+      const existing = this.listAttachments();
+      let n = 2;
+      while (existing.indexOf(target) !== -1) {
+        const dot = fileName.lastIndexOf('.');
+        target = dot > 0 ? `${fileName.substring(0, dot)}(${n})${fileName.substring(dot)}` : `${fileName}(${n})`;
+        n++;
+      }
+      const src = fs.openSync(sourceUri, fs.OpenMode.READ_ONLY);
+      const stat = fs.statSync(src.fd);
+      const buf = new ArrayBuffer(stat.size);
+      const len = fs.readSync(src.fd, buf);
+      fs.closeSync(src.fd);
+      const dst = fs.openSync(`${attDir}/${target}`, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
+      fs.writeSync(dst.fd, new Uint8Array(buf).slice(0, len).buffer);
+      fs.fsyncSync(dst.fd);
+      fs.closeSync(dst.fd);
+      return `attachments/${target}`;
+    } catch (e) {
+      return '';
+    }
+  }
+
+  /** 枚举附件目录 */
+  listAttachments(): string[] {
+    const names: string[] = [];
+    try {
+      const all = fs.listFileSync(`${this.baseDir}/attachments`);
+      for (let i = 0; i < all.length; i++) {
+        if (!all[i].startsWith('.')) {
+          names.push(all[i]);
+        }
+      }
+    } catch (e) {
+      // 目录不存在 → 空列表
+    }
+    return names;
+  }
+
+  /** 附件绝对路径（预览资源映射用） */
+  attachmentPath(name: string): string {
+    return `${this.baseDir}/attachments/${name}`;
+  }
+
   /** 枚举回收站（V0.4.4：回收站可见可恢复，兑现"回收站"承诺） */
   listTrash(): string[] {
     const names: string[] = [];
