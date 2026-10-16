@@ -345,3 +345,16 @@
 |---|---|---|
 | D1 | 编辑器→预览同步滚动（分屏时）：editor.js scrollDOM 监听（100ms 防抖）→ editorScroll 事件 → EditorPage 桥接 → preview.scrollToLine（标题锚点近似定位，smooth 滚动） | ✅ 构建 + bundle |
 | C2 补 | 预览图片解析：resolveAttachmentRefs 在渲染前将 attachments/xxx 替换为 data:image/...;base64（≤2MB，缓存去重，MIME 推断） | ✅ 构建 |
+
+## 整改方案最终真机验证（2026-10-16，HAD-W32 / OpenHarmony 7.0.0.106）
+
+> 16 个提交全部装机后的最终验证（b965b91）。
+
+| 验证项 | 内容 | 结果 |
+|---|---|---|
+| 首页 | 三色调布局（侧栏 #EEEFF1 → 列表 #F2F3F5 → 内容 #FFFFFF）；导航（新建/打开/资料库/找回/设置）；搜索框；最近列表（文件名+时间） | ✅ OCR 全要素（hmwb-36） |
+| 编辑器 | 顶栏（标题+已保存+编辑/预览/分屏+查找/大纲/分享/帮助+保存）；工具栏 H1-H6 全量（B3 单行水平滚动）；编辑器内容正确加载 | ✅ OCR 全要素（hmwb-37） |
+| 保存 | 文档打开后状态"已保存"；自动保存链路（A1 版本门控）正常 | ✅ UI 状态 |
+| 布局 | 三色调分层（像素采样确认）；底部状态栏（字数+行列+标题数） | ✅ |
+
+**验证截图**：`hmwb-36-clean.png`（首页）、`hmwb-37-editor-verified.png`（编辑器）。
