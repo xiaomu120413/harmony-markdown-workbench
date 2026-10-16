@@ -6,6 +6,7 @@
  * 正式版（M3-01 验收）将以领域 HtmlSafety 检测 + DOMPurify 白名单强化（依赖合规审查后）。
  */
 import MarkdownIt from 'markdown-it';
+import hljs from 'highlight.js/lib/common'; // 常用语言子集（离线打包，体积可控）
 import taskLists from 'markdown-it-task-lists';
 import footnote from 'markdown-it-footnote';
 import mark from 'markdown-it-mark';
@@ -14,6 +15,15 @@ const md = new MarkdownIt({
   html: false,
   linkify: true,
   breaks: false,
+  // D2：代码块语言高亮（highlight.js 常用语言子集；未知语言按转义纯文本）
+  highlight: function (str, lang) {
+    if (lang && hljs.getLanguage(lang)) {
+      try {
+        return hljs.highlight(str, { language: lang }).value;
+      } catch (__) { /* 降级为纯文本 */ }
+    }
+    return ''; // markdown-it 自行转义
+  },
 });
 
 md.use(taskLists, { enabled: true, label: true, labelAfter: true });
