@@ -134,6 +134,8 @@ struct EditorPage {
   private appSettings: AppSettings = SettingsValidator.defaults();
   @State pal: AppTheme = AppTheme.light();
   @State bp: Breakpoint = 'phone';
+  /** B4：内容区实际宽度（vp），onAreaChange 更新 */
+  @State contentWidthVp: number = 1000;
   private bpListeners: mediaquery.MediaQueryListener[] = [];
   private coordinator: SaveCoordinator | undefined = undefined;
   private docTarget: DocumentSource | undefined = undefined;
@@ -570,12 +572,17 @@ struct EditorPage {
     }
   }
 
-  /** 视图切换：进入预览/分屏立即同步一次（不等防抖） */
+  /** 视图切换：进入预览/分屏立即同步一次（不等防抖）；B4 空间预算 */
   private setViewMode(mode: DefaultView): void {
     if (mode === this.viewMode) {
       return;
     }
     if (mode === DefaultView.SPLIT && !ViewModePolicy.allowsSplit(this.bp)) {
+      return;
+    }
+    // B4-01：分屏需满足空间预算（扣除侧栏+大纲后 ≥ 编辑+预览最小宽度）
+    if (mode === DefaultView.SPLIT && !ViewModePolicy.splitFits(this.contentWidthVp, this.sidebarVisible, this.outlineVisible)) {
+      promptAction.showToast({ message: '空间不足，无法分屏（请收起侧栏或大纲）' });
       return;
     }
     this.viewMode = mode;
@@ -1673,5 +1680,14 @@ struct EditorPage {
     .width('100%')
     .height('100%')
     .backgroundColor(this.pal.CONTENT)
+    .onAreaChange((_old: Area, newArea: Area) => {
+      // B2-05/B4：实际 vp 尺寸驱动空间决策（不以设备类型或整块屏幕分辨率决定）
+      this.contentWidthVp = newArea.width as number;
+      // B4-01：空间不足时自动降级分屏 → 编辑（偏好不覆盖，空间恢复后可重新切换）
+      if (this.viewMode === DefaultView.SPLIT &&
+        !ViewModePolicy.splitFits(this.contentWidthVp, this.sidebarVisible, this.outlineVisible)) {
+        this.viewMode = DefaultView.EDIT;
+      }
+    })
   }
 }
