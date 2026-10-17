@@ -561,7 +561,7 @@ struct HomePage {
   @Builder
   sideBar() {
     Column({ space: 2 }) {
-      Text('Markdown 工作台')
+      Text('简墨')
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)
@@ -730,11 +730,11 @@ struct HomePage {
     Column({ space: 0 }) {
       Blank().height(120)
 
-      Text('Markdown 工作台')
+      Text('简墨')
         .fontSize(24)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)
-      Text('打开的是原文件，保存后仍是原文件。')
+      Text('完全离线的 Markdown 编辑器——打开的是原文件，保存后仍是原文件。')
         .fontSize(13)
         .fontColor(this.pal.TEXT_FAINT)
         .padding({ top: 6, bottom: 36 })
@@ -780,7 +780,7 @@ struct HomePage {
   @Builder
   phoneHome() {
     Column({ space: 10 }) {
-      Text('Markdown 工作台')
+      Text('简墨')
         .fontSize(19)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)

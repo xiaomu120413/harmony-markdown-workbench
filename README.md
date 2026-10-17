@@ -1,6 +1,6 @@
-# Harmony Markdown Workbench
+# 简墨 JianMo
 
-HarmonyOS 原生 Markdown 文件工作台（V0.1 MVP）。规格与执行合同见 `HarmonyMarkdownWorkbench-SDD.md`（SDD 1.0.0），开发遵循 Specification-Driven Development 流程。
+完全离线的 HarmonyOS Markdown 编辑器。规格与执行合同见 `HarmonyMarkdownWorkbench-SDD.md`（SDD 1.0.0），开发遵循 Specification-Driven Development 流程。
 
 **产品原则：打开的是原文件，保存后仍是原文件。**
 

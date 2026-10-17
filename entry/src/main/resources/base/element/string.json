@@ -2,15 +2,15 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "Harmony Markdown Workbench entry module"
+      "value": "简墨——编辑、预览、分屏，打开的是原文件"
     },
     {
       "name": "EntryAbility_desc",
-      "value": "Markdown file editor and previewer"
+      "value": "完全离线的 Markdown 编辑器"
     },
     {
       "name": "EntryAbility_label",
-      "value": "Markdown Workbench"
+      "value": "简墨"
     }
   ]
 }
