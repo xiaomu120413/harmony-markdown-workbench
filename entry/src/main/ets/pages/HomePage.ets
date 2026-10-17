@@ -34,6 +34,8 @@ struct HomePage {
   @State trashFiles: string[] = [];
   @State trashOpen: boolean = false;
   @State searchQuery: string = '';
+  /** 最近列表收起（宽屏）：收起后欢迎区占满 */
+  @State recentCollapsed: boolean = false;
   @State searchResults: DocSearchResult[] = [];
   @State searchBusy: boolean = false;
   private searchTimer: number = -1;
@@ -422,7 +424,7 @@ struct HomePage {
   libraryPanel() {
     Column({ space: 6 }) {
       Row() {
-        Text(`资料库 · ${this.libraryFiles.length} 个文档`)
+        Text(`我的文档 · ${this.libraryFiles.length} 个`)
           .fontSize(14)
           .fontWeight(FontWeight.Medium)
           .fontColor(this.pal.TEXT)
@@ -435,7 +437,7 @@ struct HomePage {
       .width('100%')
 
       if (this.libraryFiles.length === 0) {
-        Text('资料库是空的')
+        Text('还没有保存过文档')
           .fontSize(13)
           .fontColor(this.pal.TEXT_FAINT)
           .padding(8)
@@ -581,7 +583,7 @@ struct HomePage {
 
       Column({ space: 0 }) {
         this.navRow('打开文档', () => this.openExternalFile())
-        this.navRow('资料库', () => this.openLibraryFile())
+        this.navRow('我的文档', () => this.openLibraryFile())
         if (this.draftCount > 0) {
           this.navRow(`找回未保存内容（${this.draftCount}）`, () => this.goRecovery())
         }
@@ -590,16 +592,19 @@ struct HomePage {
       .width('100%')
       .margin({ top: 6 })
 
+      // 最近列表收起/展开（收起后欢迎区占满）
       Row() {
-        Text('最近')
+        Text('最近列表')
           .fontSize(12)
           .fontColor(this.pal.TEXT_SUB)
         Blank()
-        if (this.recent.length > 0) {
-          Text(`${this.recent.length}`)
-            .fontSize(12)
-            .fontColor(this.pal.TEXT_FAINT)
-        }
+        Text(this.recentCollapsed ? '展开' : '收起')
+          .fontSize(12)
+          .fontColor(this.pal.PRIMARY)
+          .padding(4)
+          .onClick(() => {
+            this.recentCollapsed = !this.recentCollapsed;
+          })
       }
       .width('100%')
       .padding({ top: 14, bottom: 4, left: 14, right: 12 })
@@ -802,7 +807,7 @@ struct HomePage {
           .height(38)
           .layoutWeight(1)
           .onClick(() => this.openExternalFile())
-        Button('资料库')
+        Button('我的文档')
           .fontSize(14)
           .fontColor(this.pal.TEXT)
           .backgroundColor(this.pal.CONTENT)
@@ -955,8 +960,10 @@ struct HomePage {
         Row({ space: 0 }) {
           this.sideBar()
           Divider().vertical(true).height('100%').color(this.pal.DIVIDER)
-          this.recentColumn()
-          Divider().vertical(true).height('100%').color(this.pal.DIVIDER)
+          if (!this.recentCollapsed) {
+            this.recentColumn()
+            Divider().vertical(true).height('100%').color(this.pal.DIVIDER)
+          }
           this.welcomePanel()
         }
         .width('100%')
