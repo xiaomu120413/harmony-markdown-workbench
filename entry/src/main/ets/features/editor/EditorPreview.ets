@@ -5,7 +5,7 @@ import { HeadingOutline } from '../../domain/editor/HeadingOutline';
 import { DocumentDeliveryService } from '../../services/DocumentDeliveryService';
 import { DefaultView } from '../../domain/settings/AppSettings';
 import { EditorController } from './EditorController';
-import { OutlineEntry } from './EditorTypes';
+import { OutlineEntry } from './EditorState';
 const PREVIEW_SYNC_DEBOUNCE_MS = 300;
 export class EditorPreview {
   private host: EditorController;

@@ -56,4 +56,23 @@ export class MetadataStore {
       return [];
     }
   }
+  async loadSidebarPreferredOpen(): Promise<boolean> {
+    try {
+      const prefs = await preferences.getPreferences(this.ctx, this.prefName);
+      const raw = (await prefs.get('sidebarPreferredOpen', true)) as boolean;
+      return raw === true;
+    } catch (e) {
+      return true; // 默认展开
+    }
+  }
+
+  async saveSidebarPreferredOpen(open: boolean): Promise<void> {
+    try {
+      const prefs = await preferences.getPreferences(this.ctx, this.prefName);
+      await prefs.put('sidebarPreferredOpen', open);
+      await prefs.flush();
+    } catch (e) {
+      // 持久化失败不阻塞交互
+    }
+  }
 }

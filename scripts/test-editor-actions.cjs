@@ -64,7 +64,7 @@ function fixture() {
   assert.equal(routes.pop().url, 'pages/SettingsPage'); assert.equal(dialogs.length, 0);
 
   wide.actions.sendBridge('first'); narrow.actions.sendBridge('second');
-  assert.deepEqual(wide.actions.channel.pending, ['first']); assert.deepEqual(narrow.actions.channel.pending, ['second']);
+  assert.deepEqual(wide.actions.env.bridgeMessages, ['first']); assert.deepEqual(narrow.actions.env.bridgeMessages, ['second']);
   wide.actions.env.pendingOpenUri = 'file://received.md'; assert.equal(storage.get('pendingOpenUri'), 'file://received.md');
   const home = new HomeState({ filesDir: '/test' }); const homeActions = new HomeController(home, {}, { filesDir: '/test' });
   homeActions.consumeExternalOpen(); await Promise.resolve();
@@ -75,8 +75,8 @@ function fixture() {
   wide.actions.dismissFileSheet(() => deferred++); wide.actions.env.disposed = true; wide.actions.fileSheetClosed();
   assert.equal(deferred, 1);
   wide.actions.aboutToDisappear(); wide.actions.sendBridge('late');
-  assert.deepEqual(wide.actions.channel.pending, []);
-  assert.deepEqual(narrow.actions.channel.pending, ['second']);
+  assert.deepEqual(wide.actions.env.bridgeMessages, []);
+  assert.deepEqual(narrow.actions.env.bridgeMessages, ['second']);
   const late = fixture(); late.state.bp = 'phone';
   let resolveSnapshot;
   late.actions.runJsValue = () => new Promise(resolve => { resolveSnapshot = resolve; });
@@ -84,7 +84,7 @@ function fixture() {
   late.actions.aboutToDisappear(); // The old environment stays disposed when a new mount reuses the model.
   resolveSnapshot('# stale'); await pending;
   assert.equal(late.state.fileSheetVisible, false);
-  late.actions.sendBridge('stale'); assert.deepEqual(late.actions.channel.pending, []);
+  late.actions.sendBridge('stale'); assert.deepEqual(late.actions.env.bridgeMessages, []);
   const liveFind = fixture(); delete liveFind.actions.syncDocNow;
   Object.assign(liveFind.state, { findVisible: true, findQuery: 'MatePad' });
   Object.assign(liveFind.actions.env, { webReady: true, activeSession: 'find' });
@@ -148,5 +148,15 @@ function fixture() {
   settings.actions.env.settings.load = async () => ({ fontSize: 20 });
   settings.actions.env.disposed = true; settings.actions.applyAppSettings(true); await Promise.resolve();
   assert.equal(settings.actions.env.appSettings.fontSize, 16);
-  console.log('23 editor/home controller scenarios passed (real modules, platform boundaries mocked)');
+  const web = fixture(); delete web.actions.runJsValue;
+  web.actions.env.controller.runJavaScript = (_, callback) => callback(undefined, JSON.stringify('body\ntext'));
+  assert.equal(await web.actions.runJsValue('read'), 'body\ntext');
+  assert.equal(await web.actions.runJsChecked(web.actions.env.controller, 'read'), 'body\ntext');
+  web.actions.env.controller.runJavaScript = (_, callback) => callback(Error('native failure'));
+  assert.equal(await web.actions.runJsValue('read'), '');
+  await assert.rejects(web.actions.runJsChecked(web.actions.env.controller, 'read'));
+  web.actions.env.controller.runJavaScript = () => { throw Error('unmounted'); };
+  assert.equal(await web.actions.runJsValue('read'), '');
+  await assert.rejects(web.actions.runJsChecked(web.actions.env.controller, 'read'));
+  console.log('24 editor/home controller scenarios passed (real modules, platform boundaries mocked)');
 })().catch(error => { console.error(error); process.exitCode = 1; });

@@ -1,11 +1,12 @@
 import { SaveState, SaveStateMachine } from '../../domain/recovery/SaveStateMachine';
-import { OutlineEntry } from './EditorTypes';
 import { FindMatch } from '../../domain/editor/FindReplaceEngine';
 import { DocumentSource } from '../../domain/document/DocumentFileAdapter';
 import { AppTheme } from '../../common/AppTheme';
 import { RecentEntry } from '../../domain/document/RecentFileList';
 import { Breakpoint } from '../../common/Breakpoints';
 import { DefaultView } from '../../domain/settings/AppSettings';
+
+export interface OutlineEntry { level: number; text: string; from: number; to: number; }
 
 @Observed
 export class EditorState {

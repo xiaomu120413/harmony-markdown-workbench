@@ -4,11 +4,9 @@ import { picker } from '@kit.CoreFileKit';
 import { SaveState, SaveStateMachine } from '../../domain/recovery/SaveStateMachine';
 import { DocumentImportService } from '../../services/DocumentImportService';
 import { DocumentIntake } from '../../domain/document/DocumentIntake';
-import { SaveCoordinator } from '../../services/SaveCoordinator';
 import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource } from '../../domain/document/DocumentFileAdapter';
 import { RecentFileList } from '../../domain/document/RecentFileList';
 import { EditorController } from './EditorController';
-import { EditorPageDeps } from './EditorPageDeps';
 export class EditorDocuments {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
@@ -195,9 +193,7 @@ export class EditorDocuments {
     const js = `window.__editorApi.loadDocument(${JSON.stringify(md)}, ${JSON.stringify(session)});`;
     this.host.runJsValue(js).then(() => {
       if (session !== this.host.env.activeSession || !this.host.isActive()) { return; }
-      this.host.env.coordinator = new SaveCoordinator(new EditorPageDeps(
-        () => this.host.getSnapshotData(), (content: string) => this.host.doSaveCheckpoint(content),
-        (content: string) => this.host.doPersist(content), () => this.host.clearSavedDrafts()));
+      this.host.env.coordinator = this.host.createSaveCoordinator();
       this.host.state.saveState = SaveState.CLEAN;
       this.host.state.recoveryLabel = '';
       this.host.env.lastPreviewedMd = '\u0000';

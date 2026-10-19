@@ -5,11 +5,9 @@ import { util } from '@kit.ArkTS';
 import { picker } from '@kit.CoreFileKit';
 import { SaveState } from '../../domain/recovery/SaveStateMachine';
 import { DocumentDeliveryService } from '../../services/DocumentDeliveryService';
-import { SaveCoordinator } from '../../services/SaveCoordinator';
 import { ExternalSource } from '../../domain/document/DocumentFileAdapter';
 import { HashUtil } from '../../domain/document/HashUtil';
 import { EditorController } from './EditorController';
-import { EditorPageDeps } from './EditorPageDeps';
 export class EditorDelivery {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
@@ -82,8 +80,7 @@ export class EditorDelivery {
           contentHash: HashUtil.of(snap.content) };
         this.host.env.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
         this.host.env.docValidUtf8 = true;
-        this.host.env.coordinator = new SaveCoordinator(new EditorPageDeps(() => this.host.getSnapshotData(),
-          (text: string) => this.host.doSaveCheckpoint(text), (text: string) => this.host.doPersist(text), () => this.host.clearSavedDrafts()));
+        this.host.env.coordinator = this.host.createSaveCoordinator();
         this.host.env.coordinator.onDocumentLoaded(session, snap.version);
         this.host.env.drafts.remove(previousDraftId);
         this.host.env.drafts.remove(this.host.env.sessionDraftId);

@@ -12,6 +12,7 @@
 界面一致性：[全局控件规则](docs/spec/control-system-2026-10.md) · [截图审查与验收](docs/spec/control-system-verification.md)。
 整体复查：[窄窗快捷键与帮助修正](docs/spec/final-review-2026-10.md)。
 状态与授权：[状态精简、持久授权与设置帮助](docs/spec/state-access-2026-10.md)。当前声明单文件持久访问权限 `ohos.permission.FILE_ACCESS_PERSIST`，历史“零权限”记录不代表当前版本。
+代码精简：[重复封装清理与验证](docs/spec/simplification-2026-10.md)。
 
 ## 当前状态
 

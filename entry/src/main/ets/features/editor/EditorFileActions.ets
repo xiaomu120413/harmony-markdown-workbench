@@ -1,7 +1,7 @@
 import { ControlStyle, ControlMetrics } from '../../common/ControlStyle';
 import { EditorState } from './EditorState';
 import { EditorController } from './EditorController';
-import { OutlineEntry } from './EditorTypes';
+import { OutlineEntry } from './EditorState';
 
 @Component
 export struct EditorFileActions {

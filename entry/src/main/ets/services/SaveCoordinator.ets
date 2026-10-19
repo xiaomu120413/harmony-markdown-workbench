@@ -32,10 +32,10 @@ export type SaveOutcome = 'saved' | 'unchanged' | 'conflict' | 'failed' | 'busy'
  * 纯逻辑（di 注入），可本地单测。
  */
 export interface SaveCoordinatorDeps {
-  getSnapshot(): Promise<SnapshotData>;
-  persist(content: string): Promise<WriteDocumentResult>;
-  saveCheckpoint(content: string): Promise<void>;
-  clearCheckpoint?(): Promise<void>;
+  getSnapshot: () => Promise<SnapshotData>;
+  persist: (content: string) => Promise<WriteDocumentResult>;
+  saveCheckpoint: (content: string) => Promise<void>;
+  clearCheckpoint?: () => Promise<void>;
 }
 
 export class SaveCoordinator {

@@ -23,7 +23,7 @@ export class EditorPersistence {
     }
     this.host.env.drafts.save(
       this.host.draftIdOf(target),
-      this.host.fingerprintOf(target),
+      this.host.draftIdOf(target),
       this.host.env.expectedRevision.size,
       this.host.env.expectedRevision.contentHash,
       content,
@@ -95,13 +95,6 @@ export class EditorPersistence {
   }
 
   draftIdOf(target: DocumentSource): string {
-    if (target.kind === 'internal') {
-      return `internal:${(target as InternalSource).relativePath}`;
-    }
-    return `external:${(target as ExternalSource).uri}`;
-  }
-
-  fingerprintOf(target: DocumentSource): string {
     if (target.kind === 'internal') {
       return `internal:${(target as InternalSource).relativePath}`;
     }

@@ -6,15 +6,13 @@
 |---|---|
 | `editor/EditorState` | 可观察编辑状态、选区、视图、查找和文档身份，不持有平台对象 |
 | `editor/EditorEnvironment` | 单次挂载的 Web 控制器、Repository、保存协调器与可释放句柄 |
-| `editor/EditorController` | 供页面使用的命令入口；组合功能控制器，无继承链 |
+| `editor/EditorController` | 页面命令入口、Web 调用和面板调度；直接组合功能实现，无纯运行时转发层 |
 | `editor/EditorLifecycle` | 设置同步、监听和定时任务的注册/释放 |
 | `editor/EditorDocuments` | 外部打开、拖入、文档切换与加载 |
 | `editor/EditorPersistence` | 快照、草稿、持久化、冲突和离开保护 |
 | `editor/EditorPreview` | 预览同步、大纲与窗口空间决策 |
 | `editor/EditorFind` | 查找替换及编辑状态分发，规则仍来自 domain |
-| `editor/EditorRuntime` | Web 调用、命令分发、文件面板调度与设置导航 |
 | `editor/EditorDelivery` | 另存为、导出、复制及图片插入 |
-| `editor/EditorBridgeChannel` | 每个挂载会话独立的非观察消息队列，桥回调只入队 |
 | `editor/*Screen/Header/Workspace/FindPanel/CommandBar/FileActions` | ArkUI 视图与事件转发，无持久化实现 |
 | `home/HomeState`、`home/HomeEnvironment` | 首页可观察数据与平台依赖分开 |
 | `home/HomeController` | 资料库、最近记录、搜索、重命名/回收及路由编排 |
@@ -23,6 +21,8 @@
 | `recovery/RecoveryState`、`recovery/RecoveryViewModel` | 恢复展示状态与磁盘校验、恢复/副本/清理编排；domain 决定恢复规则 |
 
 安全区域由 `infrastructure/window/WindowViewportAdapter` 发布，四个路由页面统一使用 `components/SafePage`。RESIZE 负责键盘缩放；组件不再次叠加键盘高度。设备窗口变小只改变布局状态，不重新创建控制器、Web 文档或 SaveCoordinator。
+
+桥消息队列直接由每次挂载的 EditorEnvironment 持有，退出时清空并断开回调。SaveCoordinator 的回调由 Controller 直接组装，加载与另存仍各自创建新协调器并设置真实 session/version。侧栏偏好由现有 MetadataStore 使用原键读写，不单独创建同库 Store。
 
 这里的 EditorController / HomeController 是 ViewModel 命令入口，命名不代表 MVC 的页面控制器；State 是绑定到 ArkUI 的可观察展示数据。平台对象、Promise、定时器和订阅放在非观察 Environment；纯业务规则放 domain；文件与元数据读写放 infrastructure。设置/恢复使用显式 ViewModel 命名，职责遵循相同边界。
 

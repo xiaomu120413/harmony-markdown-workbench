@@ -6,7 +6,7 @@ import { DocumentSidebar } from '../../components/DocumentSidebar';
 import { DefaultView } from '../../domain/settings/AppSettings';
 import { EditorState } from './EditorState';
 import { EditorController } from './EditorController';
-import { OutlineEntry } from './EditorTypes';
+import { OutlineEntry } from './EditorState';
 
 @Component
 export struct EditorWorkspace {

@@ -1,15 +1,12 @@
 import { MuLogger } from '../../common/MuLogger';
 import { SaveState } from '../../domain/recovery/SaveStateMachine';
 import { ViewModePolicy } from '../../domain/editor/ViewModePolicy';
-import { SaveCoordinator } from '../../services/SaveCoordinator';
 import { RecentFileList } from '../../domain/document/RecentFileList';
 import { AppTheme } from '../../common/AppTheme';
-import { WorkspaceUiStore } from '../../infrastructure/metadata/WorkspaceUiStore';
 import { RecentEntry } from '../../domain/document/RecentFileList';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../../common/Breakpoints';
 import { AppSettings, ThemeMode, DefaultView } from '../../domain/settings/AppSettings';
 import { EditorController } from './EditorController';
-import { EditorPageDeps } from './EditorPageDeps';
 export class EditorLifecycle {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
@@ -28,13 +25,8 @@ export class EditorLifecycle {
       else { this.host.state.fileSheetVisible = false; }
     });
     // 编排器延迟创建：deps 闭包依赖组件方法（字段初始化器内不能引用 this）
-    this.host.env.coordinator = new SaveCoordinator(new EditorPageDeps(
-      () => this.host.getSnapshotData(),
-      (content: string) => this.host.doSaveCheckpoint(content),
-      (content: string) => this.host.doPersist(content),
-      () => this.host.clearSavedDrafts(),
-    ));
-    this.host.channel.sink = (raw: string): void => {
+    this.host.env.coordinator = this.host.createSaveCoordinator();
+    this.host.env.bridgeSink = (raw: string): void => {
       const env = this.host.env.bridge.parseEvent(raw);
       if (env === undefined) {
         return;
@@ -119,11 +111,11 @@ export class EditorLifecycle {
       MuLogger.info(`[event] ${env.type}`);
     };
     this.host.env.flushTimer = setInterval(() => {
-      const drained = this.host.channel.pending.slice();
-      this.host.channel.pending = [];
+      const drained = this.host.env.bridgeMessages.slice();
+      this.host.env.bridgeMessages = [];
       for (let i = 0; i < drained.length; i++) {
-        if (this.host.channel.sink !== undefined) {
-          this.host.channel.sink(drained[i]);
+        if (this.host.env.bridgeSink !== undefined) {
+          this.host.env.bridgeSink(drained[i]);
         }
       }
       if (drained.some((raw: string): boolean => raw.includes('"edit"'))) {
@@ -187,8 +179,7 @@ export class EditorLifecycle {
   }
 
   initSidebar(): void {
-    const ui = new WorkspaceUiStore(this.host.env.ctx);
-    ui.loadSidebarPreferredOpen().then((open: boolean) => {
+    this.host.env.meta.loadSidebarPreferredOpen().then((open: boolean) => {
       this.host.state.sidebarVisible = open && this.host.state.bp !== 'phone';
       this.host.enforceWorkspaceBudget();
     }).catch(() => {
@@ -210,8 +201,7 @@ export class EditorLifecycle {
   toggleSidebar(): void {
     this.host.state.sidebarVisible = !this.host.state.sidebarVisible;
     this.host.enforceWorkspaceBudget();
-    const ui = new WorkspaceUiStore(this.host.env.ctx);
-    ui.saveSidebarPreferredOpen(this.host.state.sidebarVisible);
+    this.host.env.meta.saveSidebarPreferredOpen(this.host.state.sidebarVisible);
     this.host.refreshSidebarData();
   }
 
@@ -232,7 +222,7 @@ export class EditorLifecycle {
       clearTimeout(this.host.env.previewTimer);
       this.host.env.previewTimer = -1;
     }
-    this.host.channel.sink = undefined;
-    this.host.channel.pending = [];
+    this.host.env.bridgeSink = undefined;
+    this.host.env.bridgeMessages = [];
   }
 }

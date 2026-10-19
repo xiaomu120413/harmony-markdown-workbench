@@ -77,6 +77,32 @@ const { SaveCoordinator } = load(path.join(root, 'entry/src/main/ets/services/Sa
 const { DocumentIntake } = load(path.join(root, 'entry/src/main/ets/domain/document/DocumentIntake.ets'));
 const { DroppedDocumentReader } = load(path.join(root, 'entry/src/main/ets/services/DroppedDocumentReader.ets'));
 const { DocumentImportService } = load(path.join(root, 'entry/src/main/ets/services/DocumentImportService.ets'));
+const { MetadataStore } = load(path.join(root, 'entry/src/main/ets/infrastructure/metadata/MetadataStore.ets'));
+cases.push({ name: 'sidebar preference reuses legacy key and keeps recent metadata intact', async body() {
+  const original = kits['@kit.ArkData'].preferences;
+  const values = new Map([['recent', '[{"id":"library/keep.md","at":123,"pinned":true}]']]);
+  kits['@kit.ArkData'].preferences = { async getPreferences(_, name) {
+    assert.equal(name, 'hmwb_metadata');
+    return { get: async (key, fallback) => values.has(key) ? values.get(key) : fallback,
+      put: async (key, value) => values.set(key, value), flush: async () => {} };
+  } };
+  try {
+    const store = new MetadataStore({});
+    assert.equal(await store.loadSidebarPreferredOpen(), true);
+    values.set('sidebarPreferredOpen', false); assert.equal(await store.loadSidebarPreferredOpen(), false);
+    await store.saveSidebarPreferredOpen(true); assert.equal(values.get('sidebarPreferredOpen'), true);
+    assert.deepEqual(await store.loadRecent(), [{ documentId: 'library/keep.md', lastOpenedAt: 123, pinned: true }]);
+  } finally { kits['@kit.ArkData'].preferences = original; }
+} });
+cases.push({ name: 'sidebar preference failure preserves default and does not block interaction', async body() {
+  const original = kits['@kit.ArkData'].preferences;
+  kits['@kit.ArkData'].preferences = { async getPreferences() { throw Error('unavailable'); } };
+  try {
+    const store = new MetadataStore({});
+    assert.equal(await store.loadSidebarPreferredOpen(), true);
+    await store.saveSidebarPreferredOpen(false);
+  } finally { kits['@kit.ArkData'].preferences = original; }
+} });
 let viewportWidth = 0;
 const mediaListeners = [];
 kits['@kit.ArkUI'] = { mediaquery: { matchMediaSync(query) {

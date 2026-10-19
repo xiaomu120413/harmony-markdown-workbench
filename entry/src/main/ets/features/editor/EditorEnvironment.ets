@@ -14,6 +14,8 @@ import { ReadDocumentResult } from '../../domain/document/DocumentFileAdapter';
 
 /** Per-mounted-editor platform dependencies and disposable handles; never an observed UI model. */
 export class EditorEnvironment {
+  bridgeMessages: string[] = [];
+  bridgeSink: ((message: string) => void) | undefined = undefined;
   disposed: boolean = false;
   openPromptVisible: boolean = false;
   activeSession: string = '';
