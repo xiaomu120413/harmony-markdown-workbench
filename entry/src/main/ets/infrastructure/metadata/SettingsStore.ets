@@ -1,6 +1,6 @@
+import { MuLogger } from '../../common/MuLogger';
 import { preferences } from '@kit.ArkData';
 import { common, ConfigurationConstant } from '@kit.AbilityKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AppSettings, SettingsValidator, ThemeMode } from '../../domain/settings/AppSettings';
 
 /**
@@ -35,7 +35,7 @@ export class SettingsStore {
       this.ctx.getApplicationContext().setColorMode(settings.theme === ThemeMode.DARK
         ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK : ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
     } catch (e) {
-      hilog.warn(0x0000, 'HMWB-SETTINGS', 'native theme unavailable: %{public}s', String(e));
+      MuLogger.warn(`native theme unavailable: ${String(e)}`);
     }
   }
 

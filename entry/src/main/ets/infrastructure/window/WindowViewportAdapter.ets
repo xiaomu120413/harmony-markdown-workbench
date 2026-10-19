@@ -1,5 +1,5 @@
+import { MuLogger } from '../../common/MuLogger';
 import { window, KeyboardAvoidMode } from '@kit.ArkUI';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { SafeAreaPolicy } from '../../domain/editor/SafeAreaPolicy';
 
 /** Owns all window listeners. Insets exclude the keyboard, which ArkUI RESIZE owns. */
@@ -11,7 +11,7 @@ export class WindowViewportAdapter {
   private captionChanged = (): void => { this.publishCaption(); };
   private keyboardChanged = (height: number): void => {
     AppStorage.setOrCreate('keyboardVisible', height > 0);
-    hilog.info(0, 'MUMARK-VIEWPORT', 'keyboard visibility=%{public}s', String(height > 0));
+    MuLogger.info(`keyboard visibility=${String(height > 0)}`);
   };
 
   async attach(win: window.Window): Promise<void> {
@@ -27,9 +27,9 @@ export class WindowViewportAdapter {
       win.on('windowSizeChange', this.sizeChanged);
       win.on('keyboardHeightChange', this.keyboardChanged);
       win.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE);
-      hilog.info(0, 'MUMARK-VIEWPORT', 'safe insets active; keyboard mode RESIZE');
+      MuLogger.info('safe insets active; keyboard mode RESIZE');
     } catch (error) {
-      hilog.error(0, 'MUMARK-VIEWPORT', 'viewport setup failed: %{public}s', String(error));
+      MuLogger.error(`viewport setup failed: ${String(error)}`);
       // If native inset acquisition is unavailable, use the system's non-immersive safe layout.
       await this.fallback(win);
     }
@@ -38,7 +38,7 @@ export class WindowViewportAdapter {
       win.setWindowDecorVisible(false);
       this.publishCaption();
       win.on('windowTitleButtonRectChange', this.captionChanged);
-    } catch (error) { hilog.info(0, 'MUMARK-VIEWPORT', 'caption controls unavailable: %{public}s', String(error)); }
+    } catch (error) { MuLogger.info(`caption controls unavailable: ${String(error)}`); }
   }
 
   private updateInsets(): void {
@@ -49,7 +49,7 @@ export class WindowViewportAdapter {
   private async fallback(win: window.Window): Promise<void> {
     this.immersive = false;
     try { await win.setWindowLayoutFullScreen(false); }
-    catch (error) { hilog.error(0, 'MUMARK-VIEWPORT', 'safe layout fallback failed: %{public}s', String(error)); }
+    catch (error) { MuLogger.error(`safe layout fallback failed: ${String(error)}`); }
     if (this.win === win) { this.clearInsets(); }
   }
 
@@ -68,10 +68,10 @@ export class WindowViewportAdapter {
       AppStorage.setOrCreate('safeBottom', insets.bottom);
       AppStorage.setOrCreate('safeLeft', insets.left);
       AppStorage.setOrCreate('safeRight', insets.right);
-      hilog.info(0, 'MUMARK-VIEWPORT', 'insets vp=%{public}s', JSON.stringify(insets));
+      MuLogger.info(`insets vp=${JSON.stringify(insets)}`);
       return true;
     } catch (error) {
-      hilog.error(0, 'MUMARK-VIEWPORT', 'inset update failed: %{public}s', String(error));
+      MuLogger.error(`inset update failed: ${String(error)}`);
       return false;
     }
   }
@@ -85,7 +85,7 @@ export class WindowViewportAdapter {
       const right = AppStorage.get<number>('safeRight') ?? 0;
       AppStorage.setOrCreate('titleControlsBottom', rect.width > 0 ? Math.max(0, rect.top + rect.height - top) : 0);
       AppStorage.setOrCreate('titleControlsWidth', rect.width > 0 ? Math.max(0, rect.right + rect.width - right) : 0);
-    } catch (error) { hilog.info(0, 'MUMARK-VIEWPORT', 'caption update unavailable: %{public}s', String(error)); }
+    } catch (error) { MuLogger.info(`caption update unavailable: ${String(error)}`); }
   }
 
   private clearInsets(): void {
@@ -106,5 +106,5 @@ export class WindowViewportAdapter {
     AppStorage.setOrCreate('keyboardVisible', false);
   }
 
-  private noteRelease(error: Object): void { hilog.info(0, 'MUMARK-VIEWPORT', 'listener release: %{public}s', String(error)); }
+  private noteRelease(error: Object): void { MuLogger.info(`listener release: ${String(error)}`); }
 }

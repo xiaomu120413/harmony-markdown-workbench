@@ -1,3 +1,4 @@
+import { MuLogger } from '../../common/MuLogger';
 import { promptAction } from '@kit.ArkUI';
 import { ViewModePolicy } from '../../domain/editor/ViewModePolicy';
 import { HeadingOutline } from '../../domain/editor/HeadingOutline';
@@ -67,10 +68,10 @@ export class EditorPreview {
         } catch (e) { incomplete = true; }
       }
       if (!this.host.isActive() || session !== this.host.env.activeSession || md !== this.host.env.lastPreviewedMd) { return; }
-      if (incomplete) { this.host.append('[预览] 部分图片无法读取或超过限额，正文及附件未修改'); }
+      if (incomplete) { MuLogger.info('[预览] 部分图片无法读取或超过限额，正文及附件未修改'); }
       await this.host.runJsChecked(this.host.env.previewController,
         `window.__previewApi.render(${JSON.stringify(md)}, ${JSON.stringify(resources)});`);
-    } catch (e) { this.host.append('[预览] 渲染失败，请重新切换预览视图'); }
+    } catch (e) { MuLogger.info('[预览] 渲染失败，请重新切换预览视图'); }
   }
 
   rebuildOutline(md: string): void {

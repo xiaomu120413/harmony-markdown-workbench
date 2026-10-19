@@ -1,3 +1,4 @@
+import { MuLogger } from '../../common/MuLogger';
 import { router } from '@kit.ArkUI';
 import { webview } from '@kit.ArkWeb';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../../domain/editor/MarkdownCommands';
@@ -66,7 +67,7 @@ export class EditorRuntime {
       this.host.state.docLength = result.text.length;
       this.host.markEdited();
     } catch (e) {
-      this.host.append(`[命令] ${cmd} 失败：${JSON.stringify(e)}`);
+      MuLogger.info(`[命令] ${cmd} 失败：${JSON.stringify(e)}`);
     }
   }
 

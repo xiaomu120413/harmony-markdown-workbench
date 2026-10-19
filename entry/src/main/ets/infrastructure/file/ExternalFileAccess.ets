@@ -1,5 +1,5 @@
+import { MuLogger } from '../../common/MuLogger';
 import { fileShare } from '@kit.CoreFileKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 
 /** Only retain the exact URI already granted by the system picker/open-with flow. */
 export class ExternalFileAccess {
@@ -9,7 +9,7 @@ export class ExternalFileAccess {
 
   static async prepare(uri: string): Promise<boolean> {
     if (!ExternalFileAccess.supported()) {
-      hilog.info(0, 'MUMARK-ACCESS', 'persistent access unavailable; using temporary grant');
+      MuLogger.info('persistent access unavailable; using temporary grant');
       return false;
     }
     for (const mode of [fileShare.OperationMode.READ_MODE | fileShare.OperationMode.WRITE_MODE,
@@ -19,13 +19,12 @@ export class ExternalFileAccess {
         const granted = await fileShare.checkPersistentPermission(policies);
         if (granted[0] !== true) { await fileShare.persistPermission(policies); }
         await fileShare.activatePermission(policies);
-        hilog.info(0, 'MUMARK-ACCESS', 'persistent access active, mode=%{public}d', mode);
+        MuLogger.info(`persistent access active, mode=${mode}`);
         return true;
       } catch (e) {
         const error: ESObject = e as ESObject;
         // URI and platform error messages can contain private paths; log only the code.
-        hilog.warn(0, 'MUMARK-ACCESS', 'persistent access failed, mode=%{public}d code=%{public}s',
-          mode, String(error.code ?? 'unknown'));
+        MuLogger.warn(`persistent access failed, mode=${mode} code=${String(error.code ?? 'unknown')}`);
       }
     }
     return false;
@@ -39,7 +38,7 @@ export class ExternalFileAccess {
       return result[0] === true;
     } catch (e) {
       const error: ESObject = e as ESObject;
-      hilog.warn(0, 'MUMARK-ACCESS', 'persistent access check failed, code=%{public}s', String(error.code ?? 'unknown'));
+      MuLogger.warn(`persistent access check failed, code=${String(error.code ?? 'unknown')}`);
       return false;
     }
   }

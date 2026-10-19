@@ -1,13 +1,11 @@
+import { MuLogger } from '../../common/MuLogger';
 import { common } from '@kit.AbilityKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { promptAction } from '@kit.ArkUI';
 import { AppSettings, SettingsValidator, ThemeMode, DefaultView } from '../../domain/settings/AppSettings';
 import { SettingsStore } from '../../infrastructure/metadata/SettingsStore';
 import { DraftStore } from '../../infrastructure/metadata/DraftStore';
 import { AppTheme } from '../../common/AppTheme';
 import { SettingsState } from './SettingsState';
-const DOMAIN = 0;
-const TAG = 'HMWB-SETTINGS';
 export class SettingsViewModel {
   private active: boolean = true;
   private writeChain: Promise<void> = Promise.resolve();
@@ -22,9 +20,6 @@ export class SettingsViewModel {
   setLineNumbers(value: boolean): void { this.state.lineNumbers = value; this.persist(); }
   setAutoSave(value: boolean): void { this.state.autoSave = value; this.persist(); }
   setDefaultView(value: DefaultView): void { this.state.defaultView = value; this.persist(); }
-  private note(line: string): void {
-    hilog.info(DOMAIN, TAG, '%{public}s', line);
-  }
 
   async load(): Promise<void> {
     const s = await this.store.load();
@@ -55,10 +50,10 @@ export class SettingsViewModel {
       defaultView: this.state.defaultView,
     };
     this.writeChain = this.writeChain.then(() => this.store.save(s)).catch((error: Object) => {
-      hilog.error(DOMAIN, TAG, "settings save failed: %{public}s", String(error));
+      MuLogger.error(`settings save failed: ${String(error)}`);
       if (this.active) { promptAction.showToast({ message: '设置保存失败，请重试' }); }
     });
-    this.note(`[设置] theme=${s.theme} font=${s.fontSize} wrap=${s.wrap} lines=${s.lineNumbers} auto=${s.autoSave} view=${s.defaultView}`);
+    MuLogger.info(`[设置] theme=${s.theme} font=${s.fontSize} wrap=${s.wrap} lines=${s.lineNumbers} auto=${s.autoSave} view=${s.defaultView}`);
     return this.writeChain;
   }
 

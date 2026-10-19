@@ -1,3 +1,4 @@
+import { MuLogger } from '../../common/MuLogger';
 import { FindReplaceEngine, FindOptions } from '../../domain/editor/FindReplaceEngine';
 import { FindSession } from '../../domain/editor/FindSession';
 import { DefaultView } from '../../domain/settings/AppSettings';
@@ -107,7 +108,7 @@ export class EditorFind {
     // 全部替换后命中归零
     this.host.state.findMatches = [];
     this.host.state.matchIndex = -1;
-    this.host.append(`[替换] 全部替换 ${r.count} 处`);
+    MuLogger.info(`[替换] 全部替换 ${r.count} 处`);
   }
 
   markEdited(): void {

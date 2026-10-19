@@ -1,3 +1,4 @@
+import { MuLogger } from '../../common/MuLogger';
 import { ControlStyle } from '../../common/ControlStyle';
 import { WebDragStyle } from '../../common/WebDragStyle';
 import { router } from '@kit.ArkUI';
@@ -126,10 +127,10 @@ export struct EditorWorkspace {
               if (this.state.loadState === 'ready') {
                 this.actions.flushPendingLoad();
               }
-              this.actions.append('编辑器就绪');
+              MuLogger.info('编辑器就绪');
             })
             .onErrorReceive((event) => {
-              this.actions.append(`页面错误：${JSON.stringify(event.request)}`);
+              MuLogger.info(`页面错误：${JSON.stringify(event.request)}`);
             })
             .layoutWeight(1)
             .width('100%')
@@ -160,10 +161,10 @@ export struct EditorWorkspace {
               this.actions.env.previewReady = true;
               this.actions.applyPreviewStyle();
               this.actions.syncDocNow();
-              this.actions.append('预览就绪');
+              MuLogger.info('预览就绪');
             })
             .onErrorReceive((event) => {
-              this.actions.append(`预览页面错误：${JSON.stringify(event.request)}`);
+              MuLogger.info(`预览页面错误：${JSON.stringify(event.request)}`);
             })
             .layoutWeight(1)
             .width('100%')

@@ -1,3 +1,4 @@
+import { MuLogger } from '../../common/MuLogger';
 import { promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { util } from '@kit.ArkTS';
@@ -93,18 +94,18 @@ export class EditorDelivery {
         await this.host.trackRecent(source);
         this.host.refreshSidebarData();
       }
-      this.host.append(`[交付] ${action === 0 ? '保存目标已切换' : '副本导出完成'}`);
+      MuLogger.info(`[交付] ${action === 0 ? '保存目标已切换' : '副本导出完成'}`);
       promptAction.showToast({ message: `${action === 0 ? '已另存，后续保存使用新文件' : '已导出'}${result.remoteImages ? '；网络图片仍需联网查看' : ''}` });
     } catch (e) {
       if (!this.isCurrent(session)) { return; }
-      this.host.append('[交付] 操作失败，原会话及草稿保留');
+      MuLogger.info('[交付] 操作失败，原会话及草稿保留');
       AlertDialog.show({ title: '文件操作未完成', message: String(e), confirm: { value: '返回编辑', action: () => {} } });
     } finally {
       if (this.host.isActive()) { this.host.state.deliveryBusy = false; }
       if (this.host.isActive() && this.host.env.pendingOpenUri.length > 0) { this.host.onExternalOpen(); }
       if (this.isCurrent(session)) {
         this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(true);').catch(() => {
-          this.host.append('[交付] 恢复编辑失败，请保留草稿后重新打开');
+          MuLogger.info('[交付] 恢复编辑失败，请保留草稿后重新打开');
         });
       }
     }
@@ -157,7 +158,7 @@ export class EditorDelivery {
       promptAction.showToast({ message: `已插入 ${name}` });
     } catch (e) {
       const err: ESObject = e as ESObject;
-      this.host.append(`[图片] 选择失败：${JSON.stringify(err)}`);
+      MuLogger.info(`[图片] 选择失败：${JSON.stringify(err)}`);
     }
   }
 }

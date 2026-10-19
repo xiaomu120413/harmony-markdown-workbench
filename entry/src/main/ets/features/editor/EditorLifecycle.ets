@@ -1,4 +1,4 @@
-import { hilog } from '@kit.PerformanceAnalysisKit';
+import { MuLogger } from '../../common/MuLogger';
 import { SaveState } from '../../domain/recovery/SaveStateMachine';
 import { ViewModePolicy } from '../../domain/editor/ViewModePolicy';
 import { SaveCoordinator } from '../../services/SaveCoordinator';
@@ -10,14 +10,9 @@ import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../../common/B
 import { AppSettings, ThemeMode, DefaultView } from '../../domain/settings/AppSettings';
 import { EditorController } from './EditorController';
 import { EditorPageDeps } from './EditorPageDeps';
-const DOMAIN = 0;
-const TAG = 'HMWB-EDITOR';
 export class EditorLifecycle {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
-  append(line: string): void {
-    hilog.info(DOMAIN, TAG, '%{public}s', line);
-  }
 
   onCheckpointRequest(): void {
     if (this.host.isActive()) { this.host.protectDraft(); }
@@ -121,7 +116,7 @@ export class EditorLifecycle {
       if (!this.host.env.bridge.isFirstResponse(env.id)) {
         return;
       }
-      this.host.append(`[event] ${env.type}`);
+      MuLogger.info(`[event] ${env.type}`);
     };
     this.host.env.flushTimer = setInterval(() => {
       const drained = this.host.channel.pending.slice();
@@ -147,7 +142,7 @@ export class EditorLifecycle {
         if (ran) {
           this.host.state.saveState = c.state;
           if (c.state === SaveState.ERROR) {
-            this.host.append('[自动保存] 失败，保留未保存内容');
+            MuLogger.info('[自动保存] 失败，保留未保存内容');
           }
         }
       });
@@ -169,7 +164,7 @@ export class EditorLifecycle {
       this.host.applyEditorStyle();
       this.host.applyPreviewStyle();
     }).catch((e: ESObject) => {
-      this.host.append(`[设置] 读取失败：${JSON.stringify(e)}`);
+      MuLogger.info(`[设置] 读取失败：${JSON.stringify(e)}`);
     });
   }
 

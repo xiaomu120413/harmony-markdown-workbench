@@ -1,6 +1,6 @@
+import { MuLogger } from '../../common/MuLogger';
 import { common } from '@kit.AbilityKit';
 import { HomeEnvironment } from './HomeEnvironment';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, promptAction } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
 import { DocumentImportService } from '../../services/DocumentImportService';
@@ -13,8 +13,6 @@ import { AppTheme } from '../../common/AppTheme';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints, bpOf } from '../../common/Breakpoints';
 import { UIContext } from '@kit.ArkUI';
 import { HomeState } from './HomeState';
-const DOMAIN = 0;
-const TAG = 'HMWB-HOME';
 export class HomeController {
   env: HomeEnvironment;
   state: HomeState;
@@ -30,7 +28,7 @@ export class HomeController {
       promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
       AppStorage.setOrCreate('pendingOpenUri', id);
     } catch (e) {
-      this.note('[拖入] 文件获取失败');
+      MuLogger.info('[拖入] 文件获取失败');
       promptAction.showToast({ message: String(e).replace(/^Error: /, '') });
     } finally { this.state.dropBusy = false; }
   }
@@ -40,13 +38,9 @@ export class HomeController {
     const uri = this.env.pendingOpenUri;
     this.env.pendingOpenUri = '';
     router.pushUrl({ url: 'pages/EditorPage', params: DocumentIntake.route(uri) }).catch(() => {
-      this.note('[打开] 无法进入编辑页，请重新打开文件');
+      MuLogger.info('[打开] 无法进入编辑页，请重新打开文件');
       promptAction.showToast({ message: '打开失败，请重新选择文件' });
     });
-  }
-
-  note(line: string): void {
-    hilog.info(DOMAIN, TAG, '%{public}s', line);
   }
 
   aboutToAppear(): void {
@@ -110,7 +104,7 @@ export class HomeController {
       }
       return b.lastOpenedAt - a.lastOpenedAt;
     });
-    this.note(`[最近] ${this.state.recent.length} 条`);
+    MuLogger.info(`[最近] ${this.state.recent.length} 条`);
   }
 
   async refreshLibrary(): Promise<void> {
@@ -118,9 +112,9 @@ export class HomeController {
       const names = this.env.fileSource.listLibrary();
       this.state.libraryFiles = names;
       this.state.trashFiles = this.env.fileSource.listTrash();
-      this.note(`[资料库] ${names.length} 个文档`);
+      MuLogger.info(`[资料库] ${names.length} 个文档`);
     } catch (e) {
-      this.note(`[资料库] 读取失败：${JSON.stringify(e)}`);
+      MuLogger.info(`[资料库] 读取失败：${JSON.stringify(e)}`);
     }
   }
 
@@ -165,7 +159,7 @@ export class HomeController {
       }
       this.goEditorWithUri(result[0]);
     } catch (e) {
-      this.note(`[打开] 选择器失败：${JSON.stringify(e)}`);
+      MuLogger.info(`[打开] 选择器失败：${JSON.stringify(e)}`);
     }
   }
 

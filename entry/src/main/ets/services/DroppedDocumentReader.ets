@@ -1,6 +1,6 @@
+import { MuLogger } from '../common/MuLogger';
 import { unifiedDataChannel, uniformDataStruct } from '@kit.ArkData';
 import { DocumentIntake } from '../domain/document/DocumentIntake';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 
 /** 拖放必须异步获取系统授权数据，避免同步 UDMF 取数阻塞页面。 */
 export class DroppedDocumentReader {
@@ -13,7 +13,7 @@ export class DroppedDocumentReader {
         if (!finished) {
           finished = true;
           try { if (key.length > 0) { cancel(key); } }
-          catch (e) { hilog.warn(0, 'MUMARK-DROP', 'cancel data loading failed'); }
+          catch (e) { MuLogger.warn('cancel data loading failed'); }
           reject(new Error('读取拖入文件超时，请重试或使用“打开文档”'));
         }
       }, timeoutMs);
@@ -22,7 +22,7 @@ export class DroppedDocumentReader {
           destUri: destUri.length > 0 ? destUri : undefined,
           progressIndicator: unifiedDataChannel.ProgressIndicator.NONE,
           dataProgressListener: (progress: unifiedDataChannel.ProgressInfo, data: unifiedDataChannel.UnifiedData | null) => {
-            hilog.info(0, 'MUMARK-DROP', 'data status=%{public}d progress=%{public}d present=%{public}s', progress.status, progress.progress, String(data !== null));
+            MuLogger.info(`data status=${progress.status} progress=${progress.progress} present=${String(data !== null)}`);
             if (finished || progress.status === unifiedDataChannel.ListenerStatus.PROCESSING) { return; }
             finished = true;
             clearTimeout(timer);

@@ -1,3 +1,4 @@
+import { MuLogger } from '../../common/MuLogger';
 import { router, promptAction } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
 import { SaveState, SaveStateMachine } from '../../domain/recovery/SaveStateMachine';
@@ -39,7 +40,7 @@ export class EditorPersistence {
       target = src;
       this.host.state.docTarget = src;
       this.host.state.docTitle = name;
-      this.host.append(`[保存] 新建文档 → 资料库/${name}`);
+      MuLogger.info(`[保存] 新建文档 → 资料库/${name}`);
     } else if (target.kind === 'internal') {
       // 自动名升级：首次自动保存常发生在标题输入完成前，标题可用时重命名
       const currentName = (target as InternalSource).relativePath.substring('library/'.length);
@@ -55,9 +56,8 @@ export class EditorPersistence {
           this.host.env.expectedRevision = w.revision;
           // 原名草稿保留供恢复页按内容核对。
 
-
           this.host.trackRecent(renamed);
-          this.host.append(`[保存] 自动名升级 → 资料库/${better}`);
+          MuLogger.info(`[保存] 自动名升级 → 资料库/${better}`);
           return w;
         }
         // 升级写入失败：按原名继续保存
@@ -205,17 +205,17 @@ export class EditorPersistence {
       promptAction.showToast({ message: '无法确认正文快照，请重试或导出' }); return;
     }
     if (c.state === SaveState.CLEAN) {
-      this.host.append('[保存] 无修改');
+      MuLogger.info('[保存] 无修改');
       return;
     }
     const outcome = await c.saveNow(Date.now());
     this.host.state.saveState = c.state;
     if (outcome === 'saved' || outcome === 'unchanged') {
-      this.host.append(`[保存] ${outcome === 'saved' ? '完成' : '无修改'} → ${this.host.state.saveLabel}`);
+      MuLogger.info(`[保存] ${outcome === 'saved' ? '完成' : '无修改'} → ${this.host.state.saveLabel}`);
     } else if (outcome === 'failed') {
-      this.host.append('[保存] 失败，正文与草稿检查点已保留');
+      MuLogger.info('[保存] 失败，正文与草稿检查点已保留');
     } else if (outcome === 'busy') {
-      this.host.append('[保存] 已有保存在进行中，稍后自动收敛');
+      MuLogger.info('[保存] 已有保存在进行中，稍后自动收敛');
     }
   }
 
@@ -233,9 +233,9 @@ export class EditorPersistence {
       this.host.flushPendingLoad();
       c.decideKeepDisk();
       this.host.state.saveState = c.state;
-      this.host.append('[冲突] 已加载磁盘版本');
+      MuLogger.info('[冲突] 已加载磁盘版本');
     }).catch((e: ESObject) => {
-      this.host.append(`[冲突] 读取磁盘版本失败：${JSON.stringify(e)}（保留本地编辑）`);
+      MuLogger.info(`[冲突] 读取磁盘版本失败：${JSON.stringify(e)}（保留本地编辑）`);
       c.decideKeepLocal();
       this.host.state.saveState = c.state;
     });
@@ -249,7 +249,7 @@ export class EditorPersistence {
     }
     c.decideKeepLocal();
     this.host.state.saveState = c.state;
-    this.host.append('[冲突] 保留本地内容继续编辑');
+    MuLogger.info('[冲突] 保留本地内容继续编辑');
   }
 
   conflictSaveCopy(): void {
@@ -264,7 +264,7 @@ export class EditorPersistence {
         maxSelectNumber: 1, fileSuffixFilters: ['.md', '.markdown', '.txt'],
       });
       if (this.host.isActive() && session === this.host.env.activeSession && uris.length > 0) { this.host.env.pendingOpenUri = uris[0]; }
-    } catch (e) { this.host.append('[打开] 选择器未完成'); promptAction.showToast({ message: '打开失败，请重试' }); }
+    } catch (e) { MuLogger.info('[打开] 选择器未完成'); promptAction.showToast({ message: '打开失败，请重试' }); }
   }
 
   async newDocument(): Promise<void> {

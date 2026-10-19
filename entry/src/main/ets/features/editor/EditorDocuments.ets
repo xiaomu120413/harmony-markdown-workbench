@@ -1,3 +1,4 @@
+import { MuLogger } from '../../common/MuLogger';
 import { router, promptAction } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
 import { SaveState, SaveStateMachine } from '../../domain/recovery/SaveStateMachine';
@@ -17,7 +18,7 @@ export class EditorDocuments {
     const ok = await c.checkpointNow();
     if (!this.host.isActive() || c !== this.host.env.coordinator) { return false; }
     this.host.state.recoveryLabel = ok ? (c.state === SaveState.CLEAN ? '' : '恢复草稿已保留') : '恢复草稿写入失败，请立即保存或导出';
-    if (!ok) { this.host.append('[草稿] 检查点失败，保留编辑器正文'); }
+    if (!ok) { MuLogger.info('[草稿] 检查点失败，保留编辑器正文'); }
     return ok;
   }
 
@@ -63,16 +64,16 @@ export class EditorDocuments {
     this.host.state.fileHover = false;
     if (this.host.state.dropBusy || this.host.state.deliveryBusy) { promptAction.showToast({ message: '文件操作进行中，请稍后再拖入' }); return; }
     this.host.state.dropBusy = true;
-    this.host.append('[拖入] 开始异步取数');
+    MuLogger.info('[拖入] 开始异步取数');
     try {
       const uri = await new DocumentImportService(this.host.env.ctx,
         (key: string) => this.host.uiContext.getDragController().cancelDataLoading(key)).receive(event);
       if (!this.host.isActive()) { return; }
-      this.host.append('[拖入] 已取得单文档授权');
+      MuLogger.info('[拖入] 已取得单文档授权');
       promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
       this.host.env.pendingOpenUri = uri;
     } catch (e) {
-      this.host.append('[拖入] 未完成，当前正文保留');
+      MuLogger.info('[拖入] 未完成，当前正文保留');
       if (this.host.isActive()) { promptAction.showToast({ message: String(e).replace(/^Error: /, '') }); }
     } finally { this.host.state.dropBusy = false; }
   }
@@ -146,7 +147,7 @@ export class EditorDocuments {
       this.host.state.loadFailure = e.message === undefined ? msg : String(e.message);
       this.host.state.loadState = e.code === 13900001 || e.code === 13900002 || /13900001|13900002|permission|not permitted/i.test(msg)
         ? 'accessExpired' : 'loadFailed';
-      this.host.append(`[打开] 失败（${this.host.state.loadState}）`);
+      MuLogger.info(`[打开] 失败（${this.host.state.loadState}）`);
     });
   }
 
@@ -167,7 +168,7 @@ export class EditorDocuments {
       this.host.state.docTitle = RecentFileList.displayName(result[0]);
       this.host.loadOpenedDoc(src);
     } catch (e) {
-      this.host.append(`[重选] 选择器失败：${JSON.stringify(e)}`);
+      MuLogger.info(`[重选] 选择器失败：${JSON.stringify(e)}`);
     }
   }
 
@@ -202,7 +203,7 @@ export class EditorDocuments {
       this.host.env.lastPreviewedMd = '\u0000';
       this.host.state.docLength = md.length;
       const dt = t0 > 0 ? Date.now() - t0 : -1;
-      this.host.append(`[打开] 文档 ${md.length} 字符（打开至可编辑 ${dt}ms）`);
+      MuLogger.info(`[打开] 文档 ${md.length} 字符（打开至可编辑 ${dt}ms）`);
       const c0 = this.host.env.coordinator;
       if (c0 !== undefined) {
         c0.onDocumentLoaded(session);

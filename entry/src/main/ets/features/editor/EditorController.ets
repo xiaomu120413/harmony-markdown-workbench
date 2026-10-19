@@ -43,7 +43,6 @@ export class EditorController {
   }
   isActive(): boolean { return !this.env.disposed; }
   sendBridge(raw: string): void { if (this.isActive()) { this.channel.send(raw); } }
-  append(line: string): void { return this.lifecycle.append(line); }
   onCheckpointRequest(): void { return this.lifecycle.onCheckpointRequest(); }
   aboutToAppear(): void { return this.lifecycle.aboutToAppear(); }
   applyAppSettings(preserveView: boolean = false): void { return this.lifecycle.applyAppSettings(preserveView); }

@@ -1,6 +1,6 @@
+import { MuLogger } from '../common/MuLogger';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, fileUri } from '@kit.CoreFileKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { DroppedDocumentReader } from './DroppedDocumentReader';
 import { ExternalUriFileSource } from '../infrastructure/file/ExternalUriFileSource';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
@@ -30,7 +30,7 @@ export class DocumentImportService {
           if (fs.statSync(path).isFile()) { fs.unlinkSync(path); }
         }
         fs.rmdirSync(stage);
-      } catch (e) { hilog.warn(0, 'MUMARK-IMPORT', 'temporary import cleanup incomplete'); }
+      } catch (e) { MuLogger.warn('temporary import cleanup incomplete'); }
     }
   }
 

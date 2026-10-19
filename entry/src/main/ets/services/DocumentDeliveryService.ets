@@ -1,8 +1,8 @@
+import { MuLogger } from '../common/MuLogger';
 import { common } from '@kit.AbilityKit';
 import { fileIo as fs, picker } from '@kit.CoreFileKit';
 import { util } from '@kit.ArkTS';
 import { zlib } from '@kit.BasicServicesKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { AttachmentPlan } from '../domain/document/AttachmentPlan';
 import { HtmlExporter } from '../domain/document/HtmlExporter';
 import { SafeFileIO } from '../infrastructure/file/SafeFileIO';
@@ -101,7 +101,7 @@ export class DocumentDeliveryService {
         if (attachmentDir) { fs.rmdirSync(`${folder}/attachments`); }
         fs.rmdirSync(folder);
         fs.rmdirSync(root);
-      } catch (e) { hilog.warn(0, 'MUMARK-DELIVERY', 'temporary directory cleanup failed'); }
+      } catch (e) { MuLogger.warn('temporary directory cleanup failed'); }
     }
   }
 
@@ -129,6 +129,6 @@ export class DocumentDeliveryService {
 
   private remove(path: string): void {
     try { if (fs.accessSync(path)) { fs.unlinkSync(path); } }
-    catch (e) { hilog.warn(0, 'MUMARK-DELIVERY', 'temporary file cleanup failed'); }
+    catch (e) { MuLogger.warn('temporary file cleanup failed'); }
   }
 }

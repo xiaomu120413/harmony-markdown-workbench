@@ -60,6 +60,17 @@ function load(file) {
   return module.exports;
 }
 load(path.join(root, 'entry/src/test/List.test.ets')).default();
+cases.push({ name: 'MuLogger preserves levels, private formatting and literal message contents', body() {
+  const kit = kits['@kit.PerformanceAnalysisKit'], original = kit.hilog, calls = [];
+  kit.hilog = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(level =>
+    [level, (...args) => calls.push([level, ...args])]));
+  try {
+    const { MuLogger } = load(path.join(root, 'entry/src/main/ets/common/MuLogger.ets'));
+    for (const level of ['debug', 'info', 'warn', 'error']) MuLogger[level]('literal %{public}s %d\nmessage');
+    assert.deepEqual(calls, ['debug', 'info', 'warn', 'error'].map(level =>
+      [level, 0, 'MuMark', '%{private}s', 'literal %{public}s %d\nmessage']));
+  } finally { kit.hilog = original; }
+} });
 const { SafeFileIO } = load(path.join(root, 'entry/src/main/ets/infrastructure/file/SafeFileIO.ets'));
 const { DocumentDeliveryService } = load(path.join(root, 'entry/src/main/ets/services/DocumentDeliveryService.ets'));
 const { SaveCoordinator } = load(path.join(root, 'entry/src/main/ets/services/SaveCoordinator.ets'));
