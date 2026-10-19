@@ -35,7 +35,7 @@ export default function viewModePolicyTest(): void {
     // ---- B4：空间预算 ----
 
     it('B4_split_fits_wide_with_all_panels', 0, () => {
-      // 1200vp，侧栏+大纲全开：1200-240-200=760 ≥ 320+320=640 ✓
+      // 包含侧栏、大纲与分屏之间的分隔线。
       expect(ViewModePolicy.splitFits(1200, true, true)).assertTrue();
     });
 
@@ -61,6 +61,15 @@ export default function viewModePolicyTest(): void {
     it('B4_outline_does_not_fit_with_sidebar_narrow', 0, () => {
       // 500vp 侧栏开：500-240-200=60 < 320 ✗
       expect(ViewModePolicy.outlineFits(500, true)).assertFalse();
+    });
+
+    it('B4_budget_includes_dividers_at_exact_boundaries', 0, () => {
+      expect(ViewModePolicy.splitFits(640, false, false)).assertFalse();
+      expect(ViewModePolicy.splitFits(641, false, false)).assertTrue();
+      expect(ViewModePolicy.splitFits(881, true, false)).assertFalse();
+      expect(ViewModePolicy.splitFits(882, true, false)).assertTrue();
+      expect(ViewModePolicy.outlineFits(761, true)).assertFalse();
+      expect(ViewModePolicy.outlineFits(762, true)).assertTrue();
     });
   });
 }

@@ -8,8 +8,8 @@ import { mediaquery } from '@kit.ArkUI';
  */
 export type Breakpoint = 'phone' | 'tablet' | 'pc';
 
-const QUERY_PHONE = '(max-width: 599vp)';
-const QUERY_TABLET = '(min-width: 600vp) and (max-width: 959vp)';
+// 仅使用下界，覆盖缩放/分屏产生的 599.x、959.x vp。
+const QUERY_TABLET = '(min-width: 600vp)';
 const QUERY_PC = '(min-width: 960vp)';
 
 /** mediaquery 档位快照（同步） */
@@ -29,15 +29,13 @@ export function bpOf(): Breakpoint {
 export function watchBreakpoints(cb: (bp: Breakpoint) => void): mediaquery.MediaQueryListener[] {
   const pc = mediaquery.matchMediaSync(QUERY_PC);
   const tab = mediaquery.matchMediaSync(QUERY_TABLET);
-  const ph = mediaquery.matchMediaSync(QUERY_PHONE);
   const fire = (): void => {
     cb(bpOf());
   };
   pc.on('change', fire);
   tab.on('change', fire);
-  ph.on('change', fire);
   fire();
-  return [pc, tab, ph];
+  return [pc, tab];
 }
 
 export function unwatchBreakpoints(listeners: mediaquery.MediaQueryListener[]): void {

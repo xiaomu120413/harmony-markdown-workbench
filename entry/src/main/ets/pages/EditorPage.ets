@@ -1,4 +1,5 @@
 import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
+import { WebDragStyle } from '../common/WebDragStyle';
 import { webview } from '@kit.ArkWeb';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -406,6 +407,7 @@ struct EditorPage {
     this.settings.load().then((s: AppSettings) => {
       this.appSettings = s;
       this.viewMode = ViewModePolicy.resolveInitial(this.bp, s.defaultView);
+      this.enforceWorkspaceBudget();
       this.pal = AppTheme.of(s.theme === ThemeMode.DARK);
       this.applyEditorStyle();
       this.applyPreviewStyle();
@@ -439,8 +441,10 @@ struct EditorPage {
     const ui = new WorkspaceUiStore(this.ctx);
     ui.loadSidebarPreferredOpen().then((open: boolean) => {
       this.sidebarVisible = open && this.bp !== 'phone';
+      this.enforceWorkspaceBudget();
     }).catch(() => {
       this.sidebarVisible = this.bp !== 'phone';
+      this.enforceWorkspaceBudget();
     });
     this.refreshSidebarData();
   }
@@ -457,6 +461,7 @@ struct EditorPage {
   /** 侧栏开关（B2-01：手动调整持久化） */
   private toggleSidebar(): void {
     this.sidebarVisible = !this.sidebarVisible;
+    this.enforceWorkspaceBudget();
     const ui = new WorkspaceUiStore(this.ctx);
     ui.saveSidebarPreferredOpen(this.sidebarVisible);
     this.refreshSidebarData();
@@ -719,9 +724,27 @@ struct EditorPage {
       else { this.openPhoneOutline(); }
       return;
     }
+    if (!this.outlineVisible && !ViewModePolicy.outlineFits(this.contentWidthVp, this.sidebarVisible)) {
+      promptAction.showToast({ message: '空间不足，请先收起文档侧栏再打开大纲' });
+      return;
+    }
     this.outlineVisible = !this.outlineVisible;
+    this.enforceWorkspaceBudget();
     if (this.outlineVisible) {
       this.syncDocNow();
+    }
+  }
+
+  /** 收窄窗口或展开面板后重新核算，避免只在点“分屏”时校验。 */
+  private enforceWorkspaceBudget(): void {
+    const sidebarOpen = this.sidebarVisible && this.bp !== 'phone';
+    if (this.bp === 'phone' || (this.outlineVisible &&
+      !ViewModePolicy.outlineFits(this.contentWidthVp, sidebarOpen))) {
+      this.outlineVisible = false;
+    }
+    if (this.viewMode === DefaultView.SPLIT && (this.bp === 'phone' ||
+      !ViewModePolicy.splitFits(this.contentWidthVp, sidebarOpen, this.outlineVisible))) {
+      this.viewMode = DefaultView.EDIT;
     }
   }
 
@@ -1953,7 +1976,7 @@ struct EditorPage {
         Column() {
           Web({ src: $rawfile('web/editor.html'), controller: this.controller })
             .javaScriptAccess(true)
-            .enableDrag(false)
+            .attributeModifier(new WebDragStyle())
             .onDragEnter(() => { this.fileHover = true; })
             .onOverrideUrlLoading((request: WebResourceRequest): boolean => {
               return !request.getRequestUrl().endsWith('/web/editor.html');
@@ -1994,7 +2017,7 @@ struct EditorPage {
         Column() {
           Web({ src: $rawfile('web/preview.html'), controller: this.previewController })
             .javaScriptAccess(true)
-            .enableDrag(false)
+            .attributeModifier(new WebDragStyle())
             .onDragEnter(() => { this.fileHover = true; })
             .onOverrideUrlLoading((request: WebResourceRequest): boolean => {
               return !request.getRequestUrl().endsWith('/web/preview.html');
@@ -2064,12 +2087,9 @@ struct EditorPage {
     .onDrop((event: DragEvent) => { this.receiveDrop(event); }, { disableDataPrefetch: true })
     .onAreaChange((_old: Area, newArea: Area) => {
       // B2-05/B4：实际 vp 尺寸驱动空间决策（不以设备类型或整块屏幕分辨率决定）
-      this.contentWidthVp = newArea.width as number;
+      this.contentWidthVp = Math.max(0, (newArea.width as number) - 24);
       // B4-01：空间不足时自动降级分屏 → 编辑（偏好不覆盖，空间恢复后可重新切换）
-      if (this.viewMode === DefaultView.SPLIT &&
-        !ViewModePolicy.splitFits(this.contentWidthVp, this.sidebarVisible, this.outlineVisible)) {
-        this.viewMode = DefaultView.EDIT;
-      }
+      this.enforceWorkspaceBudget();
     })
   }
 }

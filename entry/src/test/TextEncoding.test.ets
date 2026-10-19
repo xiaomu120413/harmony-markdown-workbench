@@ -86,6 +86,16 @@ export default function textEncodingTest(): void {
       expect(r.lineEnding).assertEqual('lf');
     });
 
+    it('surrogate_codepoints_rejected_but_scalar_boundaries_valid', 0, () => {
+      expect(TextEncodingDetector.isValidUtf8(new Uint8Array([0xed, 0xa0, 0x80]))).assertFalse();
+      expect(TextEncodingDetector.isValidUtf8(new Uint8Array([0xed, 0xbf, 0xbf]))).assertFalse();
+      expect(TextEncodingDetector.isValidUtf8(new Uint8Array([0xed, 0x9f, 0xbf]))).assertTrue();
+      expect(TextEncodingDetector.isValidUtf8(new Uint8Array([0xee, 0x80, 0x80]))).assertTrue();
+      expect(TextEncodingDetector.isValidUtf8(utf8Of('木笺😀'))).assertTrue();
+      expect(TextEncodingDetector.isValidUtf8(new Uint8Array([0xf4, 0x8f, 0xbf, 0xbf]))).assertTrue();
+      expect(TextEncodingDetector.isValidUtf8(new Uint8Array([0xf4, 0x90, 0x80, 0x80]))).assertFalse();
+    });
+
     it('bare_cr_treated_as_lf', 0, () => {
       const r = TextEncodingDetector.detect(utf8Of('a\rb'));
       expect(r.lineEnding).assertEqual('lf');

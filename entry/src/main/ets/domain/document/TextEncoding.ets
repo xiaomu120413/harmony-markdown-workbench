@@ -21,7 +21,6 @@ const UTF8_BOM: number[] = [0xef, 0xbb, 0xbf];
 /**
  * 基于字节序列检测编码/换行。
  * @param bytes 文件原始字节
- * @param hasTrailing 是否允许不完整的多字节序列（读取中段检测时为 true）
  */
 export class TextEncodingDetector {
   static detect(bytes: Uint8Array): TextEncodingResult {
@@ -64,7 +63,7 @@ export class TextEncodingDetector {
   }
 
   /**
-   * 简化 UTF-8 合法性检查（FR-FILE-003：非 UTF-8 不静默乱码）。
+   * UTF-8 合法性检查（FR-FILE-003：非 UTF-8 不静默乱码）。
    * 覆盖：ASCII、2/3/4 字节序列、过短序列、非法续字节、超范围编码。
    */
   static isValidUtf8(bytes: Uint8Array, start: number = 0): boolean {
@@ -105,6 +104,10 @@ export class TextEncodingDetector {
         return false;
       }
       if (len === 3 && codePoint < 0x800) {
+        return false;
+      }
+      // UTF-16 代理码点不是 Unicode 标量值，不能单独编码为 UTF-8。
+      if (codePoint >= 0xd800 && codePoint <= 0xdfff) {
         return false;
       }
       if (len === 4 && (codePoint < 0x10000 || codePoint > 0x10ffff)) {

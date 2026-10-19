@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const { transformSync } = require('../web-tools/node_modules/esbuild');
+const { transformSync, buildSync } = require('../web-tools/node_modules/esbuild');
 const source = fs.readFileSync(path.join(__dirname, '../entry/src/main/ets/pages/EditorPage.ets'), 'utf8');
 
 function method(name) {
@@ -27,16 +27,26 @@ function method(name) {
 }
 
 const dialogs = [];
+const policyModule = { exports: {} };
+vm.runInNewContext(buildSync({ entryPoints: [path.join(__dirname, '../entry/src/main/ets/domain/editor/ViewModePolicy.ets')],
+  bundle: true, loader: { '.ets': 'ts' }, resolveExtensions: ['.ets', '.ts', '.js'],
+  format: 'cjs', platform: 'node', write: false }).outputFiles[0].text, { module: policyModule, exports: policyModule.exports });
+const { ViewModePolicy } = policyModule.exports;
+const DefaultView = { EDIT: 'edit', PREVIEW: 'preview', SPLIT: 'split' };
+const toasts = [];
 const fixture = `class Page {
   bp = 'pc'; outlineVisible = false; fileSheetVisible = false; fileSheetSection = 'root';
+  contentWidthVp = 1200; sidebarVisible = false; viewMode = 'edit';
   opens = 0; syncs = 0;
   openPhoneOutline() { this.opens++; this.fileSheetVisible = true; this.fileSheetSection = 'outline'; }
   syncDocNow() { this.syncs++; }
   ${method('toggleOutline')}
+  ${method('enforceWorkspaceBudget')}
   ${method('showHelp')}
 }
 module.exports = Page;`;
-const context = { module: { exports: {} }, AlertDialog: { show: d => dialogs.push(d) } };
+const context = { module: { exports: {} }, ViewModePolicy, DefaultView,
+  promptAction: { showToast: d => toasts.push(d) }, AlertDialog: { show: d => dialogs.push(d) } };
 vm.runInNewContext(transformSync(fixture, { loader: 'ts', format: 'cjs' }).code, context);
 const Page = context.module.exports;
 const wide = new Page();
@@ -64,9 +74,26 @@ narrow.toggleOutline();
 assert.equal(narrow.fileSheetSection, 'outline');
 assert.equal(narrow.opens, 2);
 
+const cramped = new Page();
+cramped.bp = 'tablet'; cramped.contentWidthVp = 676; cramped.sidebarVisible = true;
+cramped.toggleOutline();
+assert.equal(cramped.outlineVisible, false);
+assert.equal(toasts.length, 1);
+cramped.outlineVisible = true; cramped.viewMode = 'split';
+cramped.enforceWorkspaceBudget();
+assert.equal(cramped.outlineVisible, false);
+assert.equal(cramped.viewMode, 'edit');
+cramped.sidebarVisible = false; cramped.viewMode = 'split'; cramped.contentWidthVp = 1000;
+cramped.toggleOutline();
+assert.equal(cramped.outlineVisible, true);
+assert.equal(cramped.viewMode, 'split');
+cramped.contentWidthVp = 800; cramped.enforceWorkspaceBudget();
+assert.equal(cramped.outlineVisible, true);
+assert.equal(cramped.viewMode, 'edit');
+
 wide.showHelp();
 assert.equal(dialogs.length, 1);
 assert.ok(dialogs[0].message.includes('\n'));
 assert.equal(dialogs[0].message.includes('\\n'), false);
 assert.ok(dialogs[0].message.includes('Ctrl+Shift+F'));
-console.log('4 editor action scenarios passed (wide toggle, narrow toggle, panel switch, help newlines)');
+console.log('7 editor action scenarios passed (wide/narrow toggle, panel switch, help, cramped outline, resize budget, split outline)');

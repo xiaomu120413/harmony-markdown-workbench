@@ -746,7 +746,8 @@ struct HomePage {
         .scrollBar(BarState.Off)
       }
     }
-    .width(300)
+    .width(this.bp === 'pc' ? 300 : '100%')
+    .layoutWeight(this.bp === 'tablet' ? 1 : 0)
     .height('100%')
     .backgroundColor(this.pal.BG)
     .alignItems(HorizontalAlign.Start)
@@ -967,7 +968,9 @@ struct HomePage {
             this.recentColumn()
             Divider().vertical(true).height('100%').color(this.pal.DIVIDER)
           }
-          this.welcomePanel()
+          if (this.bp === 'pc' || this.recentCollapsed) {
+            this.welcomePanel()
+          }
         }
         .width('100%')
         .height('100%')

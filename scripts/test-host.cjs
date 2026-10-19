@@ -37,6 +37,7 @@ const hypium = {
   }),
 };
 const kits = {
+  '@kit.AbilityKit': {},
   '@kit.ArkData': { unifiedDataChannel: { ProgressIndicator: { NONE: 0 }, ListenerStatus: { FINISHED: 0, PROCESSING: 1 } } },
   '@kit.CoreFileKit': { fileIo: io, picker: { DocumentViewPicker: class { async save() { chooseCount++; return selection; } } } },
   '@kit.ArkTS': { util: {
@@ -65,6 +66,52 @@ const { SaveCoordinator } = load(path.join(root, 'entry/src/main/ets/services/Sa
 const { DocumentIntake } = load(path.join(root, 'entry/src/main/ets/domain/document/DocumentIntake.ets'));
 const { DroppedDocumentReader } = load(path.join(root, 'entry/src/main/ets/services/DroppedDocumentReader.ets'));
 const { DocumentImportService } = load(path.join(root, 'entry/src/main/ets/services/DocumentImportService.ets'));
+let viewportWidth = 0;
+const mediaListeners = [];
+kits['@kit.ArkUI'] = { mediaquery: { matchMediaSync(query) {
+  const min = /min-width:\s*(\d+)vp/.exec(query);
+  const max = /max-width:\s*(\d+)vp/.exec(query);
+  const listener = { get matches() { return (!min || viewportWidth >= +min[1]) && (!max || viewportWidth <= +max[1]); },
+    on(_, fn) { this.callback = fn; mediaListeners.push(this); }, off() { this.callback = undefined; } };
+  return listener;
+} } };
+const { bpOf, watchBreakpoints, unwatchBreakpoints } = load(path.join(root, 'entry/src/main/ets/common/Breakpoints.ets'));
+cases.push({ name: 'breakpoints cover fractional widths and resize in both directions', body() {
+  const observed = [];
+  const listeners = watchBreakpoints(bp => observed.push(bp));
+  for (const [width, expected] of [[320,'phone'],[599,'phone'],[599.9,'phone'],[600,'tablet'],
+    [959,'tablet'],[959.9,'tablet'],[960,'pc'],[1440,'pc'],[959.5,'tablet'],[599.5,'phone']]) {
+    viewportWidth = width;
+    assert.equal(bpOf(), expected, `width=${width}`);
+    for (const listener of mediaListeners) listener.callback?.();
+    assert.equal(observed.at(-1), expected);
+  }
+  unwatchBreakpoints(listeners);
+  assert.ok(listeners.every(l => !l.callback));
+} });
+kits['@kit.BasicServicesKit'].deviceInfo = {};
+const { WebDragStyle } = load(path.join(root, 'entry/src/main/ets/common/WebDragStyle.ets'));
+cases.push({ name: 'Web drag compatibility skips absent/unsupported API and applies only on API26', body() {
+  const modifier = new WebDragStyle();
+  modifier.applyNormalAttribute({}); // A legacy system has neither new API.
+  kits['@kit.BasicServicesKit'].deviceInfo.apiAvailable = () => false;
+  modifier.applyNormalAttribute({});
+  kits['@kit.BasicServicesKit'].deviceInfo.apiAvailable = version => { assert.equal(version, '26.0.0'); return true; };
+  let value;
+  modifier.applyNormalAttribute({ enableDrag(v) { value = v; } });
+  assert.equal(value, false);
+} });
+const { DraftStore } = load(path.join(root, 'entry/src/main/ets/infrastructure/metadata/DraftStore.ets'));
+cases.push({ name: 'draft load and recovery listing survive UTF8 short reads', body() {
+  const store = new DraftStore({ filesDir });
+  const content = '木笺😀\r\n恢复正文'.repeat(150);
+  store.save('compat-draft', 'fingerprint', 10, 'base', content);
+  readLimit = 7;
+  try {
+    assert.equal(store.load('compat-draft').content, content);
+    assert.equal(store.listAll().find(d => d.documentId === 'compat-draft').content, content);
+  } finally { readLimit = Infinity; store.remove('compat-draft'); }
+} });
 cases.push({ name: 'intake validates one local text document and preserves authorization URI', body() {
   const uri = 'file://docs/a%20b.MD?grant=1';
   assert.equal(DocumentIntake.select([uri, uri]), uri);

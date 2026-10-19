@@ -48,12 +48,12 @@ export class ViewModePolicy {
   static splitFits(totalW: number, sidebarOpen: boolean, outlineOpen: boolean): boolean {
     let available = totalW;
     if (sidebarOpen) {
-      available -= ViewModePolicy.SIDEBAR_W;
+      available -= ViewModePolicy.SIDEBAR_W + 1;
     }
     if (outlineOpen) {
-      available -= ViewModePolicy.OUTLINE_W;
+      available -= ViewModePolicy.OUTLINE_W + 1;
     }
-    return available >= ViewModePolicy.EDIT_MIN_W + ViewModePolicy.PREVIEW_MIN_W;
+    return available >= ViewModePolicy.EDIT_MIN_W + ViewModePolicy.PREVIEW_MIN_W + 1;
   }
 
   /**
@@ -62,8 +62,8 @@ export class ViewModePolicy {
   static outlineFits(totalW: number, sidebarOpen: boolean): boolean {
     let available = totalW;
     if (sidebarOpen) {
-      available -= ViewModePolicy.SIDEBAR_W;
+      available -= ViewModePolicy.SIDEBAR_W + 1;
     }
-    return available - ViewModePolicy.OUTLINE_W >= ViewModePolicy.EDIT_MIN_W;
+    return available - ViewModePolicy.OUTLINE_W - 1 >= ViewModePolicy.EDIT_MIN_W;
   }
 }

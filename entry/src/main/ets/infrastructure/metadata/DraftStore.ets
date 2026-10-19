@@ -45,13 +45,9 @@ export class DraftStore {
     const path = `${this.draftsDir}/${HashUtil.of(documentId)}.json`;
     let raw: string = '';
     try {
-      const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
-      const stat = fs.statSync(file.fd);
-      const buf = new ArrayBuffer(stat.size);
-      const len = fs.readSync(file.fd, buf);
-      fs.closeSync(file.fd);
       const decoder = util.TextDecoder.create('utf-8');
-      raw = len > 0 ? decoder.decodeToString(new Uint8Array(buf).slice(0, len)) : '';
+      // JSON 转义后可能比正文更大，不能套用普通文档的 32MiB 默认限制。
+      raw = decoder.decodeToString(SafeFileIO.readBytes(path, Number.MAX_SAFE_INTEGER));
     } catch (e) {
       return undefined;
     }
@@ -114,13 +110,8 @@ export class DraftStore {
     const path = `${this.draftsDir}/${hash}.json`;
     let raw: string = '';
     try {
-      const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
-      const stat = fs.statSync(file.fd);
-      const buf = new ArrayBuffer(stat.size);
-      const len = fs.readSync(file.fd, buf);
-      fs.closeSync(file.fd);
       const decoder = util.TextDecoder.create('utf-8');
-      raw = len > 0 ? decoder.decodeToString(new Uint8Array(buf).slice(0, len)) : '';
+      raw = decoder.decodeToString(SafeFileIO.readBytes(path, Number.MAX_SAFE_INTEGER));
     } catch (e) {
       return undefined;
     }
