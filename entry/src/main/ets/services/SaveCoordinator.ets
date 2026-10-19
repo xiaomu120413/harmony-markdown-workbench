@@ -35,6 +35,7 @@ export interface SaveCoordinatorDeps {
   getSnapshot(): Promise<SnapshotData>;
   persist(content: string): Promise<WriteDocumentResult>;
   saveCheckpoint(content: string): Promise<void>;
+  clearCheckpoint?(): Promise<void>;
 }
 
 export class SaveCoordinator {
@@ -46,6 +47,79 @@ export class SaveCoordinator {
   private latestVersion: number = 0;
   private lastEditAt: number = 0;
   private dirtyAfterSave: boolean = false;
+  private sessionId: string = '';
+  private checkpointVersion: number = -1;
+  private checkpointChain: Promise<void> = Promise.resolve();
+  private checkpointInFlight: Promise<boolean> | undefined = undefined;
+  private checkpointAgain: boolean = false;
+  private _checkpointFailed: boolean = false;
+
+  get checkpointFailed(): boolean {
+    return this._checkpointFailed;
+  }
+
+  /** 恢复保护不改变原文件保存状态，不受自动保存开关影响。每批通知合并一次。 */
+  checkpointNow(): Promise<boolean> {
+    if (this.checkpointInFlight !== undefined) {
+      this.checkpointAgain = true;
+      return this.checkpointInFlight;
+    }
+    const work = this.drainCheckpoints();
+    this.checkpointInFlight = work;
+    work.then(() => { this.checkpointInFlight = undefined; }, () => { this.checkpointInFlight = undefined; });
+    return work;
+  }
+
+  private async drainCheckpoints(): Promise<boolean> {
+    let ok = false;
+    do {
+      this.checkpointAgain = false;
+      ok = await this.captureCheckpoint();
+    } while (ok && this.checkpointAgain);
+    return ok;
+  }
+
+  private async captureCheckpoint(): Promise<boolean> {
+    try {
+      const snap = await this.deps.getSnapshot();
+      if (!this.acceptSnapshot(snap)) {
+        throw new Error('checkpoint snapshot unavailable');
+      }
+      if (snap.version > this.latestVersion) { this.onEdit(Date.now(), snap.version); }
+      if (this.sm.state === SaveState.CLEAN) { return true; }
+      await this.writeCheckpoint(snap);
+      this._checkpointFailed = false;
+      return true;
+    } catch (e) {
+      this._checkpointFailed = true;
+      return false;
+    }
+  }
+
+  private acceptSnapshot(snap: SnapshotData): boolean {
+    if (!snap.ok || snap.sessionId.length === 0 || !Number.isFinite(snap.version) || snap.version < 0) {
+      return false;
+    }
+    if (this.sessionId.length === 0) {
+      this.sessionId = snap.sessionId;
+    }
+    return snap.sessionId === this.sessionId;
+  }
+
+  private writeCheckpoint(snap: SnapshotData): Promise<void> {
+    const work = this.checkpointChain.then(async () => {
+      if (!this.acceptSnapshot(snap)) {
+        throw new Error('stale checkpoint session');
+      }
+      if (snap.version <= this.checkpointVersion) {
+        return;
+      }
+      await this.deps.saveCheckpoint(snap.content);
+      this.checkpointVersion = snap.version;
+    });
+    this.checkpointChain = work.then(() => {}, () => {});
+    return work;
+  }
 
   constructor(deps: SaveCoordinatorDeps) {
     this.sm = new SaveStateMachine();
@@ -66,9 +140,10 @@ export class SaveCoordinator {
    * dirtyAfterSave 布尔门控，不会丢内容，只会多一次收敛保存）。
    */
   onEdit(now: number, version?: number): void {
+    if (version !== undefined && version <= this.latestVersion && this.sm.state === SaveState.CLEAN) { return; }
     this.lastEditAt = now;
     if (version !== undefined) {
-      this.latestVersion = version;
+      this.latestVersion = Math.max(this.latestVersion, version);
     }
     if (this.sm.state === SaveState.CLEAN) {
       this.sm.edit();
@@ -80,10 +155,13 @@ export class SaveCoordinator {
   }
 
   /** 文档加载完成：重置版本跟踪（编辑器侧版本已归零） */
-  onDocumentLoaded(): void {
-    this.latestVersion = 0;
+  onDocumentLoaded(sessionId: string = '', version: number = 0): void {
+    this.latestVersion = version;
     this.dirtyAfterSave = false;
     this.lastEditAt = 0;
+    this.sessionId = sessionId;
+    this.checkpointVersion = -1;
+    this._checkpointFailed = false;
   }
 
   /** 外部变更（FR-FILE-004）：进入 CONFLICT，自动保存停止 */
@@ -151,23 +229,35 @@ export class SaveCoordinator {
       this.sm.saveFailure();
       return 'failed';
     }
-    if (!snap.ok) {
+    if (!this.acceptSnapshot(snap)) {
       // R02：Web 失败 ≠ 空正文。不写检查点不写文件，原文件字节不变。
       this.sm.saveFailure();
       return 'failed';
     }
     try {
-      await this.deps.saveCheckpoint(snap.content);
+      await this.writeCheckpoint(snap);
       const result = await this.deps.persist(snap.content);
       if (result.ok) {
+        // 编辑通知可能比 IO 完成晚到，重新读取同会话版本后才能确认已保存。
+        const current = await this.deps.getSnapshot();
+        const caughtUp = this.acceptSnapshot(current) && current.version === snap.version && current.content === snap.content;
         this.sm.saveSuccess();
+        this.latestVersion = Math.max(this.latestVersion, snap.version);
         this.sched.onSaveStarted(now);
         // R01/A1-03：写入完成只确认快照版本；保存期间有更新版本 → 恢复 DIRTY
-        if (this.dirtyAfterSave || this.latestVersion > snap.version) {
+        if (!caughtUp || this.dirtyAfterSave || this.latestVersion > snap.version) {
           this.dirtyAfterSave = false;
           this.sm.edit();
           // 从最后一次编辑时刻重新起防抖（可能已到期 → 下一轮 tick 立即收敛）
           this.sched.onInput(this.lastEditAt);
+          if (this.acceptSnapshot(current)) {
+            try { await this.writeCheckpoint(current); }
+            catch (e) { this._checkpointFailed = true; }
+          }
+        } else if (this.deps.clearCheckpoint !== undefined) {
+          try { await this.deps.clearCheckpoint(); }
+          catch (e) { this._checkpointFailed = true; }
+          this.checkpointVersion = -1;
         }
         return 'saved';
       }

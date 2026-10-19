@@ -13,7 +13,7 @@ export struct DocumentSidebar {
   @Prop pal: AppTheme = AppTheme.light();
   @State filter: 'recent' | 'pinned' | 'library' = 'recent';
   @State searchQuery: string = '';
-  private onDocSelected: (docId: string) => void = () => {};
+  onDocSelected: (docId: string) => void = () => {};
 
   private fmtTime(ms: number): string {
     const d = new Date(ms);
@@ -22,18 +22,18 @@ export struct DocumentSidebar {
     return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
   }
 
-  private get pinned(): RecentEntry[] {
+  private pinned(): RecentEntry[] {
     return this.recent.filter((e: RecentEntry): boolean => e.pinned);
   }
 
-  private get visibleRecent(): RecentEntry[] {
+  private visibleRecent(): RecentEntry[] {
     if (this.filter === 'pinned') {
-      return this.pinned;
+      return this.pinned();
     }
     return this.recent;
   }
 
-  private get visibleLibrary(): string[] {
+  private visibleLibrary(): string[] {
     if (this.searchQuery.trim().length > 0) {
       const q = this.searchQuery.trim().toLowerCase();
       return this.libraryFiles.filter((n: string): boolean => n.toLowerCase().includes(q));
@@ -80,7 +80,7 @@ export struct DocumentSidebar {
       // 筛选 Tab
       Row({ space: 4 }) {
         this.filterTab('最近', 'recent', this.recent.length)
-        this.filterTab('固定', 'pinned', this.pinned.length)
+        this.filterTab('固定', 'pinned', this.pinned().length)
         this.filterTab('资料库', 'library', this.libraryFiles.length)
       }
       .width('100%')
@@ -103,13 +103,13 @@ export struct DocumentSidebar {
       // 列表
       List({ space: 0 }) {
         if (this.filter === 'library') {
-          ForEach(this.visibleLibrary, (name: string) => {
+          ForEach(this.visibleLibrary(), (name: string) => {
             ListItem() {
               this.docRow(name, '资料库', `library/${name}`)
             }
           }, (name: string) => name)
         } else {
-          ForEach(this.visibleRecent, (item: RecentEntry) => {
+          ForEach(this.visibleRecent(), (item: RecentEntry) => {
             ListItem() {
               this.docRow(
                 RecentFileList.displayName(item.documentId),

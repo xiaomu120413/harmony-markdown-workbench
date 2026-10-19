@@ -15,8 +15,9 @@ window.addEventListener('error', function (e) {
  * 修复记录：此前双参数调用与原生签名不匹配，edit 事件从未到达原生侧）。
  * 原生→Web 命令经 runJavaScript 调用 __editorApi（返回值通道）。
  */
+import { inspectMarkdown, renderMarkdown } from './markdown';
 import { basicSetup } from 'codemirror';
-import { EditorView, placeholder } from '@codemirror/view';
+import { EditorView, placeholder, keymap } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { undo, redo } from '@codemirror/commands';
@@ -50,6 +51,7 @@ const themeDark = EditorView.theme({
 }, { dark: true });
 
 // 设置（M5-03）：主题/字号/自动换行/行号以 Compartment 动态切换（reconfigure 不重载文档）
+const editableC = new Compartment();
 const themeC = new Compartment();
 const fontC = new Compartment();
 const wrapC = new Compartment();
@@ -89,7 +91,7 @@ const editExt = EditorView.updateListener.of(function (u) {
     if (!suppressEdit) {
       const head = u.state.selection.main.head;
       const line = u.state.doc.lineAt(head);
-      notify('edit', { len: u.state.doc.length, line: line.number, col: head - line.from + 1, v: editVersion });
+      notify('edit', { len: u.state.doc.length, line: line.number, col: head - line.from + 1, v: editVersion, s: sessionId });
     }
     return;
   }
@@ -104,25 +106,30 @@ const editExt = EditorView.updateListener.of(function (u) {
   }
 });
 
+const appKeymap = keymap.of([
+  { key: 'Mod-s', preventDefault: true, run: () => { notify('command', { action: 'save' }); return true; } },
+  { key: 'Mod-f', preventDefault: true, run: () => { notify('command', { action: 'find' }); return true; } },
+  { key: 'Mod-b', preventDefault: true, run: () => { notify('command', { action: 'bold' }); return true; } },
+  { key: 'Mod-i', preventDefault: true, run: () => { notify('command', { action: 'italic' }); return true; } },
+  { key: 'Mod-Shift-f', preventDefault: true, run: () => { notify('command', { action: 'outline' }); return true; } },
+]);
+
+let editorOptions = { dark: false, fontSize: 15, wrap: false, lineNumbers: true };
+function createEditorState(text) {
+  return EditorState.create({ doc: text, extensions: [
+    basicSetup, markdown(), editExt, appKeymap, placeholder('开始输入…'),
+    editableC.of(EditorView.editable.of(true)),
+    themeC.of(editorOptions.dark ? themeDark : []),
+    fontC.of(EditorView.theme({ '&': { fontSize: editorOptions.fontSize + 'px' } })),
+    contentWide,
+    wrapC.of(editorOptions.wrap ? EditorView.lineWrapping : []),
+    gutterC.of(editorOptions.lineNumbers ? gutterShown : gutterHidden),
+  ] });
+}
+
 let view = null;
 try {
-  view = new EditorView({
-    parent: document.body,
-    state: EditorState.create({
-      doc: '',
-      extensions: [
-        basicSetup,
-        markdown(),
-        editExt,
-        placeholder('开始输入…'),
-        themeC.of([]),
-        fontC.of(EditorView.theme({ '&': { fontSize: '15px' } })),
-        contentWide,
-        wrapC.of([]),
-        gutterC.of(gutterShown),
-      ],
-    }),
-  });
+  view = new EditorView({ parent: document.body, state: createEditorState('') });
   document.title = 'CM-OK';
 } catch (e) {
   document.title = 'CM-ERR:' + (e && e.message ? e.message : String(e));
@@ -130,14 +137,19 @@ try {
 
 // ---- 原生 → Web 命令入口（经 runJavaScript 调用，返回值同步回传）----
 window.__editorApi = {
-  loadDocument(text) {
+  loadDocument(text, nativeSession) {
     suppressEdit = true;
-    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text } });
+    // New state isolates undo history: undo must never restore the previous file.
+    view.setState(createEditorState(text));
     // 新文档：新会话 + 版本归零（旧会话的异步回包不得污染新文档，A1）
-    sessionId = genSession();
+    sessionId = nativeSession || genSession();
     editVersion = 0;
-    document.title = 'CM:len=' + view.state.doc.length + ':head=' + view.state.doc.toString().split('\n')[0];
+    suppressEdit = false;
+    document.title = 'MuMark Editor';
   },
+  setEditable(editable) { view.dispatch({ effects: editableC.reconfigure(EditorView.editable.of(editable)) }); return 'ok'; },
+  inspectMarkdown(text) { return inspectMarkdown(text); },
+  renderMarkdown(text, resources) { return renderMarkdown(text, resources); },
   getSnapshot() {
     return view ? view.state.doc.toString() : '';
   },
@@ -155,6 +167,10 @@ window.__editorApi = {
   redo() {
     redo(view);
     return view.state.doc.toString().length;
+  },
+  replaceRange(from, to, text) {
+    view.dispatch({ changes: { from, to, insert: text } });
+    view.focus();
   },
   getSelectionRange() {
     const sel = view.state.selection.main;
@@ -177,19 +193,23 @@ window.__editorApi = {
     return to - from;
   },
   setTheme(dark) {
+    editorOptions.dark = dark;
     view.dispatch({ effects: themeC.reconfigure(dark ? themeDark : []) });
   },
   setFontSize(px) {
+    editorOptions.fontSize = px;
     view.dispatch({
       effects: fontC.reconfigure(EditorView.theme({ '&': { fontSize: px + 'px' } })),
     });
   },
   setWrap(wrap) {
+    editorOptions.wrap = wrap;
     view.dispatch({
       effects: wrapC.reconfigure(wrap ? EditorView.lineWrapping : []),
     });
   },
   setLineNumbers(show) {
+    editorOptions.lineNumbers = show;
     view.dispatch({
       effects: gutterC.reconfigure(show ? gutterShown : gutterHidden),
     });
@@ -204,21 +224,12 @@ view.scrollDOM.addEventListener('scroll', function () {
   }
   scrollNotifyTimer = setTimeout(function () {
     scrollNotifyTimer = 0;
-    const top = view.visualLineAtTop.state.doc.lineAt(top.top);
-    notify('editorScroll', { line: top.number });
+    const block = view.lineBlockAtHeight(view.scrollDOM.scrollTop);
+    notify('editorScroll', { line: view.state.doc.lineAt(block.from).number });
   }, 100);
 });
 
 // ---- C4：应用快捷键 → 桥转发到原生统一命令（与按钮同一路径） ----
-const appKeymap = keymap.of([
-  { key: 'Mod-s', preventDefault: true, run: () => { notify('command', { action: 'save' }); return true; } },
-  { key: 'Mod-f', preventDefault: true, run: () => { notify('command', { action: 'find' }); return true; } },
-  { key: 'Mod-b', preventDefault: true, run: () => { notify('command', { action: 'bold' }); return true; } },
-  { key: 'Mod-i', preventDefault: true, run: () => { notify('command', { action: 'italic' }); return true; } },
-  { key: 'Mod-Shift-f', preventDefault: true, run: () => { notify('command', { action: 'outline' }); return true; } },
-]);
-view.dispatch({ effects: EditorState.appendConfig.of([appKeymap]) });
-
 // 通知原生：Web 就绪
 console.log('HMWB_PAGE_READY bridge=' + (typeof window.__nativeBridge));
 notify('ready', { version: 1 });

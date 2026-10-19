@@ -25,6 +25,17 @@ const TAG: string = 'HMWB-HOME';
 @Entry
 @Component
 struct HomePage {
+  @StorageLink('pendingOpenUri') @Watch('consumeExternalOpen') pendingOpenUri: string = '';
+
+  private consumeExternalOpen(): void {
+    if (this.pendingOpenUri.length === 0 || router.getState().name !== 'HomePage') { return; }
+    const uri = this.pendingOpenUri;
+    this.pendingOpenUri = '';
+    router.pushUrl({ url: 'pages/EditorPage', params: { uri: uri } }).catch(() => {
+      this.note('[打开] 无法进入编辑页，请重新打开文件');
+      promptAction.showToast({ message: '打开失败，请重新选择文件' });
+    });
+  }
   @State recent: RecentEntry[] = [];
   @State libraryFiles: string[] = [];
   @State draftCount: number = 0;
@@ -70,6 +81,7 @@ struct HomePage {
 
   /** 页面每次显示（含从编辑器/设置返回、自由窗口 resize）时刷新 + 重读主题 */
   onPageShow(): void {
+    this.consumeExternalOpen();
     this.bp = bpOf();
     this.applyTheme();
     this.refresh();

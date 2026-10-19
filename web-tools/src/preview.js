@@ -5,80 +5,14 @@
  * 链接 javascript: 协议过滤；危险 iframe 由禁用 HTML 一并杜绝。
  * 正式版（M3-01 验收）将以领域 HtmlSafety 检测 + DOMPurify 白名单强化（依赖合规审查后）。
  */
-import MarkdownIt from 'markdown-it';
-import hljs from 'highlight.js/lib/common'; // 常用语言子集（离线打包，体积可控）
-import taskLists from 'markdown-it-task-lists';
-import footnote from 'markdown-it-footnote';
-import mark from 'markdown-it-mark';
-
-const md = new MarkdownIt({
-  html: false,
-  linkify: true,
-  breaks: false,
-  // D2：代码块语言高亮（highlight.js 常用语言子集；未知语言按转义纯文本）
-  highlight: function (str, lang) {
-    if (lang && hljs.getLanguage(lang)) {
-      try {
-        return hljs.highlight(str, { language: lang }).value;
-      } catch (__) { /* 降级为纯文本 */ }
-    }
-    return ''; // markdown-it 自行转义
-  },
-});
-
-md.use(taskLists, { enabled: true, label: true, labelAfter: true });
-// 脚注 [^1]（V0.4.2）与高亮 ==text==（非 GFM 核心，主流编辑器通用扩展）
-md.use(footnote);
-md.use(mark);
-
-// 删除线（~~x~~）——手写 inline 规则（token 级输出 <del>，外来 HTML 仍被 html:false 禁止）
-md.inline.ruler.after('emphasis', 'strikethrough', (state, silent) => {
-  const start = state.pos;
-  if (state.src.charCodeAt(start) !== 0x7e) {
-    return false;
-  }
-  if (state.src.charCodeAt(start + 1) !== 0x7e) {
-    return false;
-  }
-  const end = state.src.indexOf('~~', start + 2);
-  if (end === -1) {
-    return false;
-  }
-  const content = state.src.slice(start + 2, end);
-  if (content.length === 0) {
-    return false;
-  }
-  if (silent) {
-    return true;
-  }
-  const token = state.push('html_inline', '', 0);
-  token.content = '<del>' + content + '</del>';
-  state.pos = end + 2;
-  return true;
-});
-
-function sanitizeHref(url) {
-  const lower = (url || '').trim().toLowerCase();
-  if (lower.startsWith('javascript:') || lower.startsWith('vbscript:') || lower.startsWith('data:')) {
-    return '#';
-  }
-  return url;
-}
-
-// 渲染后清理危险链路（markdown-it 已禁 HTML；此处兜底 href）
-function postProcess(html) {
-  let out = html;
-  out = out.replace(/href="([^"]*)"/g, (m, u) => `href="${sanitizeHref(u)}"`);
-  return out;
-}
+import { renderMarkdown } from './markdown';
 
 let lastHtml = '';
 
 window.__previewApi = {
   version: 1,
-  render(mdText) {
-    const raw = md.render(mdText || '');
-    const safe = postProcess(raw);
+  render(mdText, resources = {}) {
+    const safe = renderMarkdown(mdText || '', resources);
     lastHtml = safe;
     document.getElementById('out').innerHTML = safe;
     return { length: safe.length, html: safe };

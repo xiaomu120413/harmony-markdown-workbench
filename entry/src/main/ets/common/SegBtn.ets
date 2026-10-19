@@ -11,7 +11,7 @@ export struct SegBtn {
   @Prop label: string = '';
   @Prop active: boolean = false;
   @Prop pal: AppTheme = AppTheme.light();
-  private action: () => void = () => {};
+  action: () => void = () => {};
 
   build() {
     Text(this.label)

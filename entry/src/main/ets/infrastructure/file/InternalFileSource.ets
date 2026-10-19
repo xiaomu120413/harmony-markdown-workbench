@@ -13,6 +13,7 @@ import { HashUtil } from '../../domain/document/HashUtil';
 import { TextEncodingDetector } from '../../domain/document/TextEncoding';
 import { TextRoundtrip, DocumentWriteFormat } from '../../domain/document/DocumentFileAdapter';
 import { util } from '@kit.ArkTS';
+import { SafeFileIO } from './SafeFileIO';
 
 /**
  * 内部资料库文件适配器（FR-FILE-001 / M1-01）。
@@ -37,10 +38,10 @@ export class InternalFileSource implements DocumentFileAdapter {
     const path = this.pathOf(source);
     const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
     const stat = fs.statSync(file.fd);
-    const raw = new ArrayBuffer(stat.size);
-    const len = fs.readSync(file.fd, raw);
-    fs.closeSync(file.fd);
-    const bytes = new Uint8Array(raw).slice(0, len);
+    let bytes: Uint8Array;
+    try { bytes = SafeFileIO.readFd(file.fd); }
+    finally { fs.closeSync(file.fd); }
+    const len = bytes.byteLength;
     const detection = TextEncodingDetector.detect(bytes);
     const decoder = util.TextDecoder.create('utf-8');
     const rawText = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
@@ -70,33 +71,19 @@ export class InternalFileSource implements DocumentFileAdapter {
         // 其他错误交由后续写入暴露
       }
     }
-    // 基线校验：已存在文件且哈希不一致 → conflict（不覆盖）
+    // 无法读取既有文件时不猜测为“文件不存在”。
     try {
-      const stat = fs.statSync(path);
-      const current = new ArrayBuffer(stat.size);
-      const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
-      const len = fs.readSync(file.fd, current);
-      fs.closeSync(file.fd);
-      const decoder = util.TextDecoder.create('utf-8');
-      const text = TextRoundtrip.normalizeToLf(decoder.decodeToString(new Uint8Array(current).slice(0, len)));
-      if (HashUtil.of(text) !== expectedRevision.contentHash) {
-        const fail: WriteFailResult = { ok: false, reason: 'conflict', message: 'revision mismatch' };
-        return fail;
+      if (fs.accessSync(path)) {
+        const current = await this.read(source);
+        if (!current.validUtf8 || current.revision.contentHash !== expectedRevision.contentHash) {
+          return { ok: false, reason: 'conflict', message: 'revision mismatch' };
+        }
+      } else if (expectedRevision.contentHash.length > 0) {
+        return { ok: false, reason: 'not_found', message: 'original document is missing' };
       }
-    } catch (e) {
-      // 文件不存在：首写，无需基线校验
-    }
-    try {
       const fmt: DocumentWriteFormat = format ?? { encoding: 'utf-8', lineEnding: 'lf' };
       const out = TextRoundtrip.applyFormat(content, fmt);
-      const tmp = `${path}.tmp`;
-      const w = fs.openSync(tmp, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
-      if (out.length > 0) {
-        fs.writeSync(w.fd, out);
-      }
-      fs.fsyncSync(w.fd);
-      fs.closeSync(w.fd);
-      fs.renameSync(tmp, path);
+      SafeFileIO.atomicText(path, out);
       const encoder = util.TextEncoder.create('utf-8');
       const byteLen = encoder.encodeInto(out).byteLength;
       const ok: WriteOkResult = {
@@ -111,15 +98,7 @@ export class InternalFileSource implements DocumentFileAdapter {
   }
 
   async stat(source: DocumentSource): Promise<FileRevisionContract> {
-    const path = this.pathOf(source);
-    const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
-    const stat = fs.statSync(file.fd);
-    const raw = new ArrayBuffer(stat.size);
-    const len = fs.readSync(file.fd, raw);
-    fs.closeSync(file.fd);
-    const decoder = util.TextDecoder.create('utf-8');
-    const text = decoder.decodeToString(new Uint8Array(raw).slice(0, len));
-    return { size: stat.size, contentHash: HashUtil.of(text), modifiedTime: stat.mtime };
+    return (await this.read(source)).revision;
   }
 
   async canPersistAccess(source: DocumentSource): Promise<boolean> {
@@ -135,7 +114,7 @@ export class InternalFileSource implements DocumentFileAdapter {
       const all = fs.listFileSync(libDir);
       for (let i = 0; i < all.length; i++) {
         const n = all[i];
-        if (!n.startsWith('.') && n !== '.trash') {
+        if (!n.startsWith('.') && n !== '.trash' && fs.statSync(`${libDir}/${n}`).isFile()) {
           names.push(n);
         }
       }
@@ -212,15 +191,11 @@ export class InternalFileSource implements DocumentFileAdapter {
         target = dot > 0 ? `${fileName.substring(0, dot)}(${n})${fileName.substring(dot)}` : `${fileName}(${n})`;
         n++;
       }
-      const src = fs.openSync(sourceUri, fs.OpenMode.READ_ONLY);
-      const stat = fs.statSync(src.fd);
-      const buf = new ArrayBuffer(stat.size);
-      const len = fs.readSync(src.fd, buf);
-      fs.closeSync(src.fd);
-      const dst = fs.openSync(`${attDir}/${target}`, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY);
-      fs.writeSync(dst.fd, new Uint8Array(buf).slice(0, len).buffer);
-      fs.fsyncSync(dst.fd);
-      fs.closeSync(dst.fd);
+      target = target.replace(/[\\/<>:"|?*\x00-\x1f]/g, '_').trim();
+      if (target === '' || target === '.' || target === '..') { return ''; }
+      if (fs.accessSync(`${attDir}/${target}`)) { target = `${Date.now()}-${target}`; }
+      const bytes = SafeFileIO.readBytes(sourceUri, 20 * 1024 * 1024);
+      SafeFileIO.atomicBytes(`${attDir}/${target}`, bytes);
       return `attachments/${target}`;
     } catch (e) {
       return '';

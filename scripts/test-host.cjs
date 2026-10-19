@@ -1,0 +1,155 @@
+/* Real domain/test sources, transpiled without changing their logic. Platform mocks test IO failures;
+ * this runner supplements, rather than replaces, ArkTS compilation and device verification. */
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const os = require('node:os');
+const { transformSync, buildSync } = require('../web-tools/node_modules/esbuild');
+const cases = [];
+const cache = new Map();
+const root = path.resolve(__dirname, '..');
+let selection = [];
+let writeLimit = Infinity;
+let readLimit = Infinity;
+let failSync = false;
+let chooseCount = 0;
+const io = {
+  OpenMode: { READ_ONLY: fs.constants.O_RDONLY, WRITE_ONLY: fs.constants.O_WRONLY,
+    CREATE: fs.constants.O_CREAT, TRUNC: fs.constants.O_TRUNC },
+  openSync: (p, flags) => ({ fd: fs.openSync(p, flags & fs.constants.O_TRUNC ? 'w' : flags) }),
+  closeSync: fs.closeSync,
+  statSync: p => { const s = typeof p === 'number' ? fs.fstatSync(p) : fs.statSync(p); return { size: s.size, mtime: s.mtimeMs }; },
+  accessSync: p => fs.existsSync(p),
+  readSync: (fd, data) => fs.readSync(fd, new Uint8Array(data), 0, Math.min(data.byteLength, readLimit)),
+  writeSync: (fd, data) => fs.writeSync(fd, new Uint8Array(data), 0, Math.min(data.byteLength, writeLimit)),
+  fsyncSync: fd => { if (failSync) throw new Error('injected fsync failure'); fs.fsyncSync(fd); },
+  renameSync: fs.renameSync, unlinkSync: fs.unlinkSync, mkdirSync: fs.mkdirSync,
+  rmdirSync: fs.rmdirSync, listFileSync: fs.readdirSync,
+};
+const hypium = {
+  describe: (_, body) => body(), it: (name, _, body) => cases.push({ name, body }),
+  expect: value => ({
+    assertEqual: wanted => assert.deepEqual(value, wanted), assertTrue: () => assert.equal(value, true),
+    assertFalse: () => assert.equal(value, false), assertUndefined: () => assert.equal(value, undefined),
+  }),
+};
+const kits = {
+  '@kit.CoreFileKit': { fileIo: io, picker: { DocumentViewPicker: class { async save() { chooseCount++; return selection; } } } },
+  '@kit.ArkTS': { util: {
+    TextEncoder: { create: () => ({ encodeInto: s => new TextEncoder().encode(s) }) },
+    TextDecoder: { create: () => ({ decodeToString: b => new TextDecoder().decode(b) }) },
+    Base64Helper: class { encodeToStringSync(b) { return Buffer.from(b).toString('base64'); } },
+  } },
+  '@kit.PerformanceAnalysisKit': { hilog: { warn() {}, info() {}, error() {} } },
+  '@kit.BasicServicesKit': { zlib: { compressFile: async () => { throw new Error('device-only compression'); } } },
+};
+function load(file) {
+  file = path.resolve(file);
+  if (!file.endsWith('.ets')) file += '.ets';
+  if (cache.has(file)) return cache.get(file).exports;
+  const module = { exports: {} }; cache.set(file, module);
+  const code = transformSync(fs.readFileSync(file, 'utf8'), { loader: 'ts', format: 'cjs', target: 'es2022' }).code;
+  const req = name => name === '@ohos/hypium' ? hypium : kits[name] ||
+    (name.startsWith('.') ? load(path.resolve(path.dirname(file), name)) : require(name));
+  vm.runInThisContext(`(function(require,module,exports){${code}\n})`, { filename: file })(req, module, module.exports);
+  return module.exports;
+}
+load(path.join(root, 'entry/src/test/List.test.ets')).default();
+const { SafeFileIO } = load(path.join(root, 'entry/src/main/ets/infrastructure/file/SafeFileIO.ets'));
+const { DocumentDeliveryService } = load(path.join(root, 'entry/src/main/ets/services/DocumentDeliveryService.ets'));
+const { SaveCoordinator } = load(path.join(root, 'entry/src/main/ets/services/SaveCoordinator.ets'));
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mumark-tests-'));
+const filesDir = path.join(dir, 'files'); fs.mkdirSync(filesDir); fs.mkdirSync(path.join(filesDir, 'attachments'));
+cases.push({ name: 'partial writes are completed, including multibyte text', body() {
+  writeLimit = 2;
+  const file = path.join(dir, 'partial.txt'); SafeFileIO.writeText(file, '木笺🙂');
+  assert.equal(fs.readFileSync(file, 'utf8'), '木笺🙂'); writeLimit = Infinity;
+} });
+cases.push({ name: 'partial reads assemble complete Unicode bytes', body() {
+  const file = path.join(dir, 'read.txt'); fs.writeFileSync(file, '木笺🙂'); readLimit = 2;
+  try { assert.equal(new TextDecoder().decode(SafeFileIO.readBytes(file)), '木笺🙂'); }
+  finally { readLimit = Infinity; }
+} });
+cases.push({ name: 'coalesced checkpoint catches edits arriving during previous write', async body() {
+  let release, started;
+  const began = new Promise(resolve => { started = resolve; });
+  const gate = new Promise(resolve => { release = resolve; });
+  let content = 'first', version = 1, writes = [];
+  const coordinator = new SaveCoordinator({
+    async getSnapshot() { return { ok: true, sessionId: 'session', version, content }; },
+    async saveCheckpoint(text) { writes.push(text); if (writes.length === 1) { started(); await gate; } },
+    async persist() { throw new Error('checkpoint must not write source'); },
+  });
+  const first = coordinator.checkpointNow(); await began;
+  content = 'second'; version = 2; const second = coordinator.checkpointNow();
+  release(); assert.equal(await first, true); assert.equal(await second, true);
+  assert.deepEqual(writes, ['first', 'second']);
+} });
+cases.push({ name: 'delivery result uses filename edited in the system picker', async body() {
+  const file = path.join(dir, 'chosen-name.md'); fs.writeFileSync(file, ''); selection = [file.replaceAll('\\', '/')];
+  const service = new DocumentDeliveryService({ filesDir, cacheDir: dir });
+  const result = await service.markdown('suggested-name', 'content');
+  assert.equal(result.fileName, 'chosen-name.md'); assert.equal(fs.readFileSync(file, 'utf8'), 'content');
+} });
+cases.push({ name: 'atomic checkpoint preserves original on fsync failure', body() {
+  const file = path.join(dir, 'draft.json'); fs.writeFileSync(file, 'old'); failSync = true;
+  try { assert.throws(() => SafeFileIO.atomicText(file, 'new')); }
+  finally { failSync = false; }
+  assert.equal(fs.readFileSync(file, 'utf8'), 'old'); assert.equal(fs.existsSync(`${file}.tmp`), false);
+} });
+cases.push({ name: 'cancelled Markdown delivery never writes output', async body() {
+  selection = []; const service = new DocumentDeliveryService({ filesDir, cacheDir: dir });
+  assert.equal(await service.markdown('title', '正文'), undefined);
+} });
+cases.push({ name: 'HTML delivery embeds local images and uses supplied fresh render', async body() {
+  fs.writeFileSync(path.join(filesDir, 'attachments', 'image.png'), Buffer.from([1, 2, 3]));
+  const file = path.join(dir, 'output.html'); fs.writeFileSync(file, ''); selection = [file];
+  const service = new DocumentDeliveryService({ filesDir, cacheDir: dir });
+  await service.html('title', '最新正文', ['attachments/image.png'], async (text, resources) =>
+    `<p>${text}</p><img src="${resources['attachments/image.png']}">`);
+  const html = fs.readFileSync(file, 'utf8'); assert.match(html, /最新正文/); assert.match(html, /data:image\/png;base64,AQID/);
+} });
+cases.push({ name: 'missing attachment blocks delivery before picker or partial output', async body() {
+  const before = chooseCount; const service = new DocumentDeliveryService({ filesDir, cacheDir: dir });
+  await assert.rejects(service.html('title', 'x', ['attachments/missing.png'], async () => 'old'));
+  assert.equal(chooseCount, before);
+} });
+cases.push({ name: 'failed export restores preexisting user file instead of deleting it', body() {
+  const file = path.join(dir, 'existing.md'); fs.writeFileSync(file, 'original');
+  let wrote = false;
+  assert.throws(() => SafeFileIO.replaceTarget(file, fd => { SafeFileIO.writeAll(fd, new TextEncoder().encode('partial')); wrote = true; throw new Error('full'); }));
+  assert.equal(wrote, true);
+  assert.equal(fs.readFileSync(file, 'utf8'), 'original');
+} });
+const markdownBundle = buildSync({ entryPoints: [path.join(root, 'web-tools/src/markdown.js')], bundle: true,
+  format: 'cjs', platform: 'node', write: false }).outputFiles[0].text;
+const markdownModule = { exports: {} };
+vm.runInThisContext(`(function(module,exports){${markdownBundle}\n})`)(markdownModule, markdownModule.exports);
+cases.push({ name: 'real Markdown parser finds reference images and ignores code fences', body() {
+  const md = '![图][photo]\n\n[photo]: attachments/a%20b.png\n\n```md\n![ignore](private.png)\n```';
+  assert.deepEqual(JSON.parse(markdownModule.exports.inspectMarkdown(md)).images, ['attachments/a%20b.png']);
+} });
+cases.push({ name: 'preview and export resolve angle-wrapped paths with spaces through parser resources', body() {
+  const md = '![图片](<attachments/a b.png>)';
+  const sources = JSON.parse(markdownModule.exports.inspectMarkdown(md)).images;
+  assert.equal(sources.length, 1);
+  const resources = { [sources[0]]: 'data:image/png;base64,AQID' };
+  const html = markdownModule.exports.renderMarkdown(md, resources);
+  assert.match(html, /src="data:image\/png;base64,AQID"/);
+} });
+cases.push({ name: 'strikethrough content remains escaped and scripts cannot render', body() {
+  const html = markdownModule.exports.renderMarkdown('~~<img src=x onerror=alert(1)>~~');
+  assert.ok(!html.includes('<img')); assert.match(html, /&lt;img/);
+} });
+(async () => {
+  let failures = 0;
+  for (const item of cases) {
+    try { await item.body(); }
+    catch (error) { failures++; console.error(`FAIL ${item.name}:`, error); }
+  }
+  // The only recursive delete is the exact directory freshly allocated above by mkdtemp.
+  fs.rmSync(dir, { recursive: true, force: true });
+  console.log(`${cases.length - failures}/${cases.length} host tests passed (platform IO mocked)`);
+  process.exitCode = failures ? 1 : 0;
+})();

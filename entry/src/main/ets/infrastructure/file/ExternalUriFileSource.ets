@@ -12,6 +12,7 @@ import { HashUtil } from '../../domain/document/HashUtil';
 import { TextEncodingDetector } from '../../domain/document/TextEncoding';
 import { TextRoundtrip, DocumentWriteFormat } from '../../domain/document/DocumentFileAdapter';
 import { util } from '@kit.ArkTS';
+import { SafeFileIO } from './SafeFileIO';
 
 /**
  * 外部 URI 文件适配器（FR-FILE-002 / M1-01；A2 重构：冲突预检与 fd 兜底）。
@@ -29,9 +30,8 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
     try {
       file = fs.openSync(uri, fs.OpenMode.READ_ONLY);
       const stat = fs.statSync(file.fd);
-      const raw = new ArrayBuffer(stat.size);
-      const len = fs.readSync(file.fd, raw);
-      const bytes = new Uint8Array(raw).slice(0, len);
+      const bytes = SafeFileIO.readFd(file.fd);
+      const len = bytes.byteLength;
       const detection = TextEncodingDetector.detect(bytes);
       const decoder = util.TextDecoder.create('utf-8');
       const rawText = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
@@ -57,39 +57,13 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
   async write(source: DocumentSource, content: string, expectedRevision: FileRevisionContract, format?: DocumentWriteFormat): Promise<WriteDocumentResult> {
     const uri = this.uriOf(source);
     // ---- A2 冲突预检（R03）：写入前重读磁盘，与打开时的基线按同一规则比对 ----
-    let check: fs.File | undefined = undefined;
     try {
-      check = fs.openSync(uri, fs.OpenMode.READ_ONLY);
-      const stat = fs.statSync(check.fd);
-      const raw = new ArrayBuffer(stat.size);
-      const len = fs.readSync(check.fd, raw);
-      fs.closeSync(check.fd);
-      check = undefined;
-      const bytes = new Uint8Array(raw).slice(0, len);
-      const detection = TextEncodingDetector.detect(bytes);
-      const decoder = util.TextDecoder.create('utf-8');
-      const rawText = len > 0 ? decoder.decodeToString(bytes.subarray(detection.bomOffset)) : '';
-      const diskHash = HashUtil.of(TextRoundtrip.normalizeToLf(rawText));
-      if (expectedRevision.contentHash !== '' && diskHash !== expectedRevision.contentHash) {
-        const conflict: WriteFailResult = { ok: false, reason: 'conflict', message: 'external file changed on disk' };
-        return conflict;
+      const current = await this.read(source);
+      if (!current.validUtf8 || (expectedRevision.contentHash !== '' && current.revision.contentHash !== expectedRevision.contentHash)) {
+        return { ok: false, reason: 'conflict', message: 'external file changed on disk' };
       }
     } catch (e) {
-      if (check !== undefined) {
-        try {
-          fs.closeSync(check.fd);
-        } catch (ignore) {
-          // 读取检查失败按权限/IO 分类返回，不继续写入
-        }
-      }
-      const reason = this.classify(e);
-      if (reason === 'permission') {
-        const fail: WriteFailResult = { ok: false, reason: reason, message: String(e) };
-        return fail;
-      }
-      // 检查读取失败（非权限）：不盲写（无法核对基线 → 原位写入不安全）
-      const fail: WriteFailResult = { ok: false, reason: 'io', message: `pre-write check failed: ${String(e)}` };
-      return fail;
+      return { ok: false, reason: this.classify(e), message: 'pre-write check failed' };
     }
     // ---- 原位写入（provider 不保证原子替换；草稿检查点已先行落盘兜底） ----
     let w: fs.File | undefined = undefined;
@@ -97,9 +71,7 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
       const fmt: DocumentWriteFormat = format ?? { encoding: 'utf-8', lineEnding: 'lf' };
       const out = TextRoundtrip.applyFormat(content, fmt);
       w = fs.openSync(uri, fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
-      if (out.length > 0) {
-        fs.writeSync(w.fd, out);
-      }
+      SafeFileIO.writeAll(w.fd, util.TextEncoder.create('utf-8').encodeInto(out));
       fs.fsyncSync(w.fd);
       fs.closeSync(w.fd);
       w = undefined;

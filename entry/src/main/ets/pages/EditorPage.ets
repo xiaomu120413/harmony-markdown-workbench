@@ -4,7 +4,7 @@ import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, mediaquery, promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { util } from '@kit.ArkTS';
-import { fileIo as fs, picker } from '@kit.CoreFileKit';
+import { picker } from '@kit.CoreFileKit';
 import { SaveState, SaveStateMachine } from '../domain/recovery/SaveStateMachine';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../domain/editor/MarkdownCommands';
 import { FindReplaceEngine, FindOptions, FindMatch } from '../domain/editor/FindReplaceEngine';
@@ -12,6 +12,7 @@ import { FindSession } from '../domain/editor/FindSession';
 import { ViewModePolicy } from '../domain/editor/ViewModePolicy';
 import { HeadingOutline } from '../domain/editor/HeadingOutline';
 import { EditorBridge } from '../services/EditorBridge';
+import { DocumentDeliveryService } from '../services/DocumentDeliveryService';
 import { SaveCoordinator, SaveCoordinatorDeps, SnapshotData } from '../services/SaveCoordinator';
 import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult, WriteFailResult, DocumentWriteFormat } from '../domain/document/DocumentFileAdapter';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
@@ -20,7 +21,7 @@ import { DraftStore } from '../infrastructure/metadata/DraftStore';
 import { MetadataStore } from '../infrastructure/metadata/MetadataStore';
 import { RecentFileList } from '../domain/document/RecentFileList';
 import { DocumentNamer } from '../domain/document/DocumentNamer';
-import { HtmlExporter } from '../domain/document/HtmlExporter';
+import { HashUtil } from '../domain/document/HashUtil';
 import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
 import { AppTheme } from '../common/AppTheme';
 import { SegBtn } from '../common/SegBtn';
@@ -66,17 +67,22 @@ interface OutlineEntry {
 class EditorPageDeps implements SaveCoordinatorDeps {
   private readonly snapshotImpl: () => Promise<SnapshotData>;
   private readonly checkpointImpl: (c: string) => Promise<void>;
+  private readonly cleanupImpl: () => Promise<void>;
   private readonly persistImpl: (c: string) => Promise<WriteDocumentResult>;
 
   constructor(
     snapshotImpl: () => Promise<SnapshotData>,
     checkpointImpl: (c: string) => Promise<void>,
     persistImpl: (c: string) => Promise<WriteDocumentResult>,
+    cleanupImpl: () => Promise<void>,
   ) {
     this.snapshotImpl = snapshotImpl;
     this.checkpointImpl = checkpointImpl;
     this.persistImpl = persistImpl;
+    this.cleanupImpl = cleanupImpl;
   }
+
+  clearCheckpoint(): Promise<void> { return this.cleanupImpl(); }
 
   getSnapshot(): Promise<SnapshotData> {
     return this.snapshotImpl();
@@ -102,6 +108,13 @@ class EditorPageDeps implements SaveCoordinatorDeps {
 @Component
 struct EditorPage {
   @State saveLabel: string = '已保存';
+  @State recoveryLabel: string = '';
+  @State deliveryBusy: boolean = false;
+  @StorageLink('checkpointRequest') @Watch('onCheckpointRequest') checkpointRequest: number = 0;
+  @StorageLink('pendingOpenUri') @Watch('onExternalOpen') pendingOpenUri: string = '';
+  private activeSession: string = '';
+  private pageActive: boolean = true;
+  private loadGeneration: number = 0;
   @State docLength: number = 0;
   @State docTitle: string = '未命名';
   @State conflictVisible: boolean = false;
@@ -119,6 +132,7 @@ struct EditorPage {
   @State cursorCol: number = 1;
   /** 文档加载状态（A2）：新文档默认 ready；外部/内部文档打开前 loading，失败分流 */
   @State loadState: 'loading' | 'ready' | 'loadFailed' | 'accessExpired' = 'ready';
+  @State loadFailure: string = '';
   // B1/B2：文档侧栏（编辑页内切换文档）
   @State sidebarVisible: boolean = false;
   @State sidebarRecent: RecentEntry[] = [];
@@ -143,6 +157,7 @@ struct EditorPage {
   private expectedRevision: FileRevisionContract = { size: 0, contentHash: '' };
   private pendingLoad: string = '';
   /** A3：新建文档的会话草稿 ID（首次保存前即拥有草稿身份，R05） */
+  private retiredDraftId: string = '';
   private sessionDraftId: string = `session:${Date.now()}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
   /** A4：文档格式（编码/换行）——读取时捕获，落盘时还原；非法 UTF-8 阻断写回 */
   private docFormat: DocumentWriteFormat = { encoding: 'utf-8', lineEnding: 'lf' };
@@ -155,6 +170,46 @@ struct EditorPage {
   private findMatches: FindMatch[] = [];
   private flushTimer: number = -1;
   private saveTimer: number = -1;
+
+  private onCheckpointRequest(): void {
+    if (this.pageActive) { this.protectDraft(); }
+  }
+
+  private async protectDraft(): Promise<boolean> {
+    const c = this.coordinator;
+    if (!this.pageActive || !this.webReady || this.loadState !== 'ready' || c === undefined) { return false; }
+    const ok = await c.checkpointNow();
+    if (!this.pageActive || c !== this.coordinator) { return false; }
+    this.recoveryLabel = ok ? (c.state === SaveState.CLEAN ? '' : '恢复草稿已保留') : '恢复草稿写入失败，请立即保存或导出';
+    if (!ok) { this.append('[草稿] 检查点失败，保留编辑器正文'); }
+    return ok;
+  }
+
+  private onExternalOpen(): void {
+    if (this.deliveryBusy) { return; }
+    if (!this.pageActive || this.pendingOpenUri.length === 0) { return; }
+    const uri = this.pendingOpenUri;
+    if (this.loadState !== 'ready' && this.docLength === 0) {
+      this.pendingOpenUri = '';
+      router.replaceUrl({ url: 'pages/EditorPage', params: { uri: uri } });
+      return;
+    }
+    AlertDialog.show({
+      title: '打开外部文档',
+      message: '先保留当前文档的恢复草稿，再打开收到的文件。',
+      primaryButton: { value: '保留草稿并打开', action: () => {
+        this.protectDraft().then((ok: boolean) => {
+          if (!ok || this.pendingOpenUri !== uri) { return; }
+          this.pendingOpenUri = '';
+          router.replaceUrl({ url: 'pages/EditorPage', params: { uri: uri } });
+        });
+      } },
+      secondaryButton: { value: '取消', action: () => { this.pendingOpenUri = ''; } },
+      cancel: () => { this.pendingOpenUri = ''; },
+    });
+  }
+
+  onBackPress(): boolean { this.goBack(); return true; }
 
   private append(line: string): void {
     hilog.info(DOMAIN, TAG, '%{public}s', line);
@@ -171,6 +226,7 @@ struct EditorPage {
       () => this.getSnapshotData(),
       (content: string) => this.doSaveCheckpoint(content),
       (content: string) => this.doPersist(content),
+      () => this.clearSavedDrafts(),
     ));
     bridgeSink = (raw: string): void => {
       const env = this.bridge.parseEvent(raw);
@@ -178,6 +234,7 @@ struct EditorPage {
         return;
       }
       if (env.type === 'edit') {
+        if (env.payload.s !== this.activeSession) { return; }
         // 用户输入（打字/粘贴/IME/撤销重做）：进入 DIRTY 并调度防抖保存与预览同步
         const len = env.payload.len as number | undefined;
         if (len !== undefined) {
@@ -263,12 +320,15 @@ struct EditorPage {
           bridgeSink(drained[i]);
         }
       }
+      if (drained.some((raw: string): boolean => raw.includes('"edit"'))) {
+        this.protectDraft();
+      }
     }, 500);
     // 自动保存检查（M4-01：防抖由 SaveScheduler 负责，轮询只触发到期保存；
     // autoSave 设置关闭时跳过自动保存，手动保存仍可用——M5-03）
     this.saveTimer = setInterval(() => {
       const c = this.coordinator;
-      if (c === undefined || !this.appSettings.autoSave) {
+      if (c === undefined || this.deliveryBusy || !this.appSettings.autoSave) {
         return;
       }
       c.tick(Date.now()).then((ran: boolean) => {
@@ -352,31 +412,31 @@ struct EditorPage {
    * B1-02：dirty 时经 A3 离开流程（保存失败/冲突阻止切换）。
    */
   private async switchToDocument(docId: string): Promise<void> {
-    if (docId.startsWith('library/')) {
-      const cur = this.docTarget;
-      if (cur !== undefined && cur.kind === 'internal' && (cur as InternalSource).relativePath === docId) {
-        return;
+    if (this.deliveryBusy || !await this.protectDraft()) { return; }
+    const current = this.docTarget;
+    if (current !== undefined && (current.kind === 'internal' ? current.relativePath : current.uri) === docId) { return; }
+    const c = this.coordinator;
+    if (c !== undefined && c.state !== SaveState.CLEAN) {
+      const outcome = await c.saveNow(Date.now());
+      this.saveLabel = SaveStateMachine.label(c.state);
+      if (!((outcome === 'saved' || outcome === 'unchanged') && SaveStateMachine.label(c.state) === '已保存' && !c.pending)) {
+        promptAction.showToast({ message: '请先保存当前文档，或保留草稿返回首页再打开' }); return;
       }
-      const c = this.coordinator;
-      if (c !== undefined && (c.state === SaveState.DIRTY || c.state === SaveState.ERROR || c.state === SaveState.CONFLICT)) {
-        const outcome = await c.saveNow(Date.now());
-        this.saveLabel = SaveStateMachine.label(c.state);
-        if (!((outcome === 'saved' || outcome === 'unchanged') && !c.pending)) {
-          promptAction.showToast({ message: '请先保存当前文档再切换' });
-          return;
-        }
-      }
-      const src: InternalSource = { kind: 'internal', relativePath: docId };
-      this.docTarget = src;
-      this.docTitle = docId.substring(docId.lastIndexOf('/') + 1);
-      this.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
-      this.docValidUtf8 = true;
-      this.loadOpenedDoc(src);
-      this.refreshSidebarData();
     }
+    const source: DocumentSource = docId.startsWith('library/')
+      ? { kind: 'internal', relativePath: docId }
+      : { kind: 'external', uri: docId, displayName: RecentFileList.displayName(docId) };
+    this.docTarget = source;
+    this.docTitle = RecentFileList.displayName(docId);
+    this.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
+    this.docValidUtf8 = true;
+    this.loadOpenedDoc(source);
+    this.refreshSidebarData();
   }
 
   aboutToDisappear(): void {
+    this.pageActive = false;
+    this.loadGeneration++;
     unwatchBreakpoints(this.bpListeners);
     this.bpListeners = [];
     if (this.flushTimer >= 0) {
@@ -420,9 +480,12 @@ struct EditorPage {
    * t0 记录请求时刻用于 M6-02 打开性能样本。 */
   private loadOpenedDoc(target: DocumentSource): void {
     const t0 = Date.now();
+    const generation = ++this.loadGeneration;
     this.loadState = 'loading';
+    this.saveLabel = '正在打开';
     const src: DocumentFileAdapter = target.kind === 'internal' ? this.internal : this.external;
     src.read(target).then((r) => {
+      if (!this.pageActive || generation !== this.loadGeneration) { return; }
       this.expectedRevision = r.revision;
       this.pendingLoad = r.content;
       this.pendingLoadAt = t0;
@@ -434,11 +497,14 @@ struct EditorPage {
         this.flushPendingLoad();
       }
     }).catch((e: ESObject) => {
+      if (!this.pageActive || generation !== this.loadGeneration) { return; }
       // A2-04：权限失效（重启后临时授权丢失/文件被移动删除）与普通读取失败分流通
       const msg = String(e);
-      this.loadState = msg.includes('13900001') || msg.includes('13900002') || msg.includes('permission')
+      this.loadFailure = e.message === undefined ? msg : String(e.message);
+      this.loadState = e.code === 13900001 || e.code === 13900002 || /13900001|13900002|permission|not permitted/i.test(msg)
         ? 'accessExpired' : 'loadFailed';
-      this.append(`[打开] 失败（${this.loadState}）：${msg.substring(0, 200)}`);
+      this.saveLabel = '未打开';
+      this.append(`[打开] 失败（${this.loadState}）`);
     });
   }
 
@@ -462,23 +528,6 @@ struct EditorPage {
     }
   }
 
-  /** A2-04：读取失败后的本地内容另存副本（正文仍在编辑器/草稿检查点中） */
-  private async saveLocalCopyFromFailed(): Promise<void> {
-    const c = this.coordinator;
-    if (c === undefined) {
-      return;
-    }
-    const content = await this.runJsValue('window.__editorApi.getSnapshot();');
-    const name = DocumentNamer.derive(content, this.internal.listLibrary());
-    const copy: InternalSource = { kind: 'internal', relativePath: `library/${name}` };
-    this.docTarget = copy;
-    this.docTitle = name;
-    this.loadState = 'ready';
-    const outcome = await c.saveNow(Date.now());
-    this.saveLabel = SaveStateMachine.label(c.state);
-    this.append(`[恢复] 副本保存${outcome === 'saved' ? '完成' : '失败'} → ${copy.relativePath}`);
-  }
-
   /** M5-01：保存/打开后更新最近文件元数据（FR-RECENT；失败不阻塞保存） */
   private async trackRecent(target: DocumentSource): Promise<void> {
     try {
@@ -498,14 +547,23 @@ struct EditorPage {
     const md = this.pendingLoad;
     this.pendingLoad = '';
     const t0 = this.pendingLoadAt;
-    const js = `window.__editorApi.loadDocument(${JSON.stringify(md)});`;
+    this.activeSession = `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const session = this.activeSession;
+    const js = `window.__editorApi.loadDocument(${JSON.stringify(md)}, ${JSON.stringify(session)});`;
     this.runJsValue(js).then(() => {
+      if (session !== this.activeSession || !this.pageActive) { return; }
+      this.coordinator = new SaveCoordinator(new EditorPageDeps(
+        () => this.getSnapshotData(), (content: string) => this.doSaveCheckpoint(content),
+        (content: string) => this.doPersist(content), () => this.clearSavedDrafts()));
+      this.saveLabel = '已保存';
+      this.recoveryLabel = '';
+      this.lastPreviewedMd = '\u0000';
       this.docLength = md.length;
       const dt = t0 > 0 ? Date.now() - t0 : -1;
       this.append(`[打开] 文档 ${md.length} 字符（打开至可编辑 ${dt}ms）`);
       const c0 = this.coordinator;
       if (c0 !== undefined) {
-        c0.onDocumentLoaded();
+        c0.onDocumentLoaded(session);
       }
       this.syncDocNow();
     });
@@ -539,14 +597,7 @@ struct EditorPage {
     this.runJsValue('window.__editorApi.getSnapshot();').then((md: string) => {
       if (needPreview && md !== this.lastPreviewedMd) {
         this.lastPreviewedMd = md;
-        // C2：附件路径 → data URL（Web 组件无法访问应用私有目录）
-        const resolved = this.resolveAttachmentRefs(md);
-        const js = `window.__previewApi.render(${JSON.stringify(resolved)});`;
-        this.previewController.runJavaScript(js, (err) => {
-          if (err) {
-            this.append(`[预览] 渲染失败：${JSON.stringify(err)}`);
-          }
-        });
+        this.renderPreview(md, this.activeSession);
       }
       if (needOutline) {
         this.rebuildOutline(md);
@@ -554,51 +605,29 @@ struct EditorPage {
     });
   }
 
-  /**
-   * C2：将 Markdown 中的 attachments/xxx 引用解析为 base64 data URL。
-   * 超过 2MB 的图片跳过（避免 data URL 过大阻塞渲染）。
-   */
-  private resolveAttachmentRefs(md: string): string {
-    const re = /\(attachments\/([^)]+)\)/g;
-    const seen = new Map<string, string>();
-    return md.replace(re, (match: string, name: string): string => {
-      const cached = seen.get(name);
-      if (cached !== undefined) {
-        return cached;
+  /** 与交付共用解析器及路径门控，支持空格、引用式图片，拒绝私有目录穿越。 */
+  private async renderPreview(md: string, session: string): Promise<void> {
+    try {
+      const images = await this.inspectImages(md);
+      const service = new DocumentDeliveryService(this.ctx);
+      const resources: Record<string, string> = {};
+      let total = 0;
+      let incomplete = false;
+      for (const source of images) {
+        try {
+          const item = service.resources([source]);
+          for (const key of Object.keys(item)) {
+            total += item[key].length;
+            if (total > 28 * 1024 * 1024) { throw new Error('preview image limit'); }
+            resources[key] = item[key];
+          }
+        } catch (e) { incomplete = true; }
       }
-      try {
-        const path = this.internal.attachmentPath(name);
-        const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
-        const stat = fs.statSync(file.fd);
-        if (stat.size > 2 * 1024 * 1024) {
-          fs.closeSync(file.fd);
-          seen.set(name, match);
-          return match; // 超大图片跳过
-        }
-        const buf = new ArrayBuffer(stat.size);
-        const len = fs.readSync(file.fd, buf);
-        fs.closeSync(file.fd);
-        const bytes = new Uint8Array(buf).slice(0, len);
-        // 常见图片 MIME 推断
-        let mime = 'image/png';
-        const lower = name.toLowerCase();
-        if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) {
-          mime = 'image/jpeg';
-        } else if (lower.endsWith('.gif')) {
-          mime = 'image/gif';
-        } else if (lower.endsWith('.webp')) {
-          mime = 'image/webp';
-        } else if (lower.endsWith('.svg')) {
-          mime = 'image/svg+xml';
-        }
-        // base64 编码（ArkTS 用 Base64Helper，无 btoa）
-        const dataUrl = `(data:${mime};base64,${new util.Base64Helper().encodeToStringSync(bytes)})`;
-        seen.set(name, dataUrl);
-        return dataUrl;
-      } catch (e) {
-        return match; // 读取失败保留原引用
-      }
-    });
+      if (!this.pageActive || session !== this.activeSession || md !== this.lastPreviewedMd) { return; }
+      if (incomplete) { this.append('[预览] 部分图片无法读取或超过限额，正文及附件未修改'); }
+      await this.runJsChecked(this.previewController,
+        `window.__previewApi.render(${JSON.stringify(md)}, ${JSON.stringify(resources)});`);
+    } catch (e) { this.append('[预览] 渲染失败，请重新切换预览视图'); }
   }
 
   /** 大纲重建：领域提取 + 行偏移映射（FR-PREVIEW-003 总装） */
@@ -713,6 +742,7 @@ struct EditorPage {
   }
 
   private async replaceCurrent(): Promise<void> {
+    if (this.deliveryBusy) { return; }
     if (this.findQuery.length === 0) {
       return;
     }
@@ -736,6 +766,7 @@ struct EditorPage {
   }
 
   private async replaceAllMatches(): Promise<void> {
+    if (this.deliveryBusy) { return; }
     if (this.findQuery.length === 0) {
       return;
     }
@@ -807,15 +838,16 @@ struct EditorPage {
       const better = DocumentNamer.upgrade(currentName, content, this.internal.listLibrary());
       if (better !== undefined) {
         const renamed: InternalSource = { kind: 'internal', relativePath: `library/${better}` };
-        const w = await this.internal.write(renamed, content, this.expectedRevision, this.docFormat);
+        const w = await this.internal.write(renamed, content, { size: 0, contentHash: '' }, this.docFormat);
         if (w.ok) {
+          this.retiredDraftId = this.draftIdOf(target);
           this.internal.remove(target);
           this.docTarget = renamed;
           this.docTitle = better;
           this.expectedRevision = w.revision;
-          this.drafts.remove(this.draftIdOf(target));
-          this.drafts.remove(this.draftIdOf(renamed));
-          this.drafts.remove(this.sessionDraftId);
+          // 原名草稿保留供恢复页按内容核对。
+
+
           this.trackRecent(renamed);
           this.append(`[保存] 自动名升级 → 资料库/${better}`);
           return w;
@@ -838,12 +870,20 @@ struct EditorPage {
       : await this.external.write(target, content, this.expectedRevision, this.docFormat);
     if (result.ok) {
       this.expectedRevision = result.revision;
-      this.drafts.remove(this.draftIdOf(target));
+      // 恢复页按实际磁盘内容清理冗余，不能在旧版本提交时删除新草稿。
       // A3：正式目标确立后清理会话草稿（迁移完成）
-      this.drafts.remove(this.sessionDraftId);
+
       this.trackRecent(target);
     }
     return result;
+  }
+
+  private clearSavedDrafts(): Promise<void> {
+    if (this.retiredDraftId.length > 0) { this.drafts.remove(this.retiredDraftId); this.retiredDraftId = ''; }
+    this.recoveryLabel = '';
+    if (this.docTarget !== undefined) { this.drafts.remove(this.draftIdOf(this.docTarget)); }
+    this.drafts.remove(this.sessionDraftId);
+    return Promise.resolve();
   }
 
   private draftIdOf(target: DocumentSource): string {
@@ -878,7 +918,7 @@ struct EditorPage {
     this.saveLabel = SaveStateMachine.label(c.state);
     this.conflictVisible = c.state === SaveState.CONFLICT;
     // saved + 无待保存（保存期间无新编辑，A1 版本门控）→ 干净离开
-    if ((outcome === 'saved' || outcome === 'unchanged') && !c.pending) {
+    if ((outcome === 'saved' || outcome === 'unchanged') && SaveStateMachine.label(c.state) === '已保存' && !c.pending) {
       router.back();
       return;
     }
@@ -887,7 +927,7 @@ struct EditorPage {
       title: '暂时无法离开',
       message: outcome === 'conflict' || c.state === SaveState.CONFLICT
         ? '磁盘版本已变化，请先在冲突条中选择处理方式。'
-        : '保存未完成，正文与草稿检查点已保留。可重试保存，或放弃修改离开。',
+        : '保存未完成，请重试或导出副本；退出前请确认恢复草稿状态。',
       primaryButton: {
         value: '重试保存',
         action: () => {
@@ -907,12 +947,16 @@ struct EditorPage {
   }
 
   /** 返回入口：DIRTY/ERROR 先经统一离开流程 */
-  private goBack(): void {
+  private async goBack(): Promise<void> {
+    if (this.deliveryBusy) { promptAction.showToast({ message: '请先完成或取消文件操作' }); return; }
+    if (this.loadState === 'ready' && this.webReady && !await this.protectDraft()) {
+      promptAction.showToast({ message: '恢复草稿未确认写入，请保存或导出后离开' }); return;
+    }
     const c = this.coordinator;
-    if (c !== undefined && (c.state === SaveState.DIRTY || c.state === SaveState.ERROR)) {
+    if (c !== undefined && c.state !== SaveState.CLEAN) {
       AlertDialog.show({
         title: '未保存修改',
-        message: '内容已由草稿检查点保留，是否在离开前保存？',
+        message: '仍有未保存内容。保存成功后离开，或保留恢复草稿后离开。',
         primaryButton: {
           value: '保存并离开',
           action: () => {
@@ -920,10 +964,8 @@ struct EditorPage {
           },
         },
         secondaryButton: {
-          value: '放弃修改离开',
-          action: () => {
-            router.back();
-          },
+          value: '保留草稿离开',
+          action: () => { this.protectDraft().then((ok: boolean) => { if (ok) { router.back(); } }); },
         },
         cancel: () => {
           // 取消：留在页面继续编辑
@@ -939,11 +981,11 @@ struct EditorPage {
    * 解析失败/Web 异常 → ok=false（空正文与失败可区分，原文件不被误写）。
    */
   private async getSnapshotData(): Promise<SnapshotData> {
-    const raw = await this.runJsValue('window.__editorApi.getSnapshotEx();');
     try {
+      const raw = await this.runJsChecked(this.controller, 'window.__editorApi.getSnapshotEx();');
       const o: ESObject = JSON.parse(raw);
       const d: SnapshotData = {
-        ok: o.ok === true,
+        ok: o.ok === true && typeof o.c === 'string' && typeof o.v === 'number' && o.s === this.activeSession,
         sessionId: `${o.s}`,
         version: o.v as number,
         content: `${o.c}`,
@@ -953,6 +995,19 @@ struct EditorPage {
       const fail: SnapshotData = { ok: false, sessionId: '', version: 0, content: '' };
       return fail;
     }
+  }
+
+  private runJsChecked(ctrl: webview.WebviewController, script: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('编辑器响应超时')), 5000);
+      try {
+        ctrl.runJavaScript(script, (err, result) => {
+          clearTimeout(timer);
+          if (err || result === undefined) { reject(new Error('编辑器读取失败')); }
+          else { resolve(EditorPage.decodeReturn(result)); }
+        });
+      } catch (e) { clearTimeout(timer); reject(new Error('编辑器暂不可用')); }
+    });
   }
 
   /** 同步执行 JS 并返回结果（返回值通道，M0-03 实测可用） */
@@ -992,6 +1047,7 @@ struct EditorPage {
 
   /** 快捷栏命令：读取选区/全文 → 领域变换 → 写回 */
   private async applyCommand(cmd: MarkdownCommandName): Promise<void> {
+    if (this.deliveryBusy) { return; }
     try {
       const selRaw = await this.runJsValue('window.__editorApi.getSelectionRange();');
       const text = await this.runJsValue('window.__editorApi.getSnapshot();');
@@ -1014,6 +1070,7 @@ struct EditorPage {
 
   /** 撤销/重做：CM 内建历史；dispatch 触发 edit 事件 → 置脏与预览同步自动生效 */
   private async applyHistory(kind: 'undo' | 'redo'): Promise<void> {
+    if (this.deliveryBusy) { return; }
     const len = await this.runJsValue(`window.__editorApi.${kind}();`);
     if (len.length > 0) {
       const n = Number(len);
@@ -1024,9 +1081,13 @@ struct EditorPage {
   }
 
   private async save(): Promise<void> {
+    if (this.deliveryBusy) { return; }
     const c = this.coordinator;
     if (c === undefined) {
       return;
+    }
+    if (!await this.protectDraft()) {
+      promptAction.showToast({ message: '无法确认正文快照，请重试或导出' }); return;
     }
     if (c.state === SaveState.CLEAN) {
       this.append('[保存] 无修改');
@@ -1046,6 +1107,7 @@ struct EditorPage {
 
   /** M4-03 冲突决策①：改用磁盘版本（编辑器内容放弃；草稿检查点保留本地，磁盘已读回） */
   private conflictKeepDisk(): void {
+    if (this.deliveryBusy) { return; }
     const c = this.coordinator;
     const target = this.docTarget;
     if (c === undefined || target === undefined) {
@@ -1070,6 +1132,7 @@ struct EditorPage {
 
   /** M4-03 冲突决策②：保留本地继续编辑（不再自动覆盖） */
   private conflictKeepLocal(): void {
+    if (this.deliveryBusy) { return; }
     const c = this.coordinator;
     if (c === undefined) {
       return;
@@ -1080,125 +1143,130 @@ struct EditorPage {
     this.append('[冲突] 保留本地内容继续编辑');
   }
 
-  /** M4-03 冲突决策③：本地内容另存副本到资料库（智能命名自动避让重名） */
-  private async conflictSaveCopy(): Promise<void> {
-    const c = this.coordinator;
-    if (c === undefined) {
-      return;
-    }
-    const content = await this.runJsValue('window.__editorApi.getSnapshot();');
-    const name = DocumentNamer.derive(content, this.internal.listLibrary());
-    const copy: InternalSource = { kind: 'internal', relativePath: `library/${name}` };
-    this.docTarget = copy;
-    c.decideKeepLocal();
-    this.conflictVisible = false;
-    const outcome = await c.saveNow(Date.now());
-    this.saveLabel = SaveStateMachine.label(c.state);
-    this.docTitle = name;
-    this.append(`[冲突] 副本保存${(outcome === 'saved') ? '完成' : '失败'} → ${copy.relativePath}`);
+  /** 冲突副本复用可靠另存链，不能提前清冲突或改目标。 */
+  private conflictSaveCopy(): void {
+    this.deliverDocument(0);
   }
 
-  /** M5-02 分享：动作菜单（复制 Markdown 原文 / 复制渲染 HTML；API 26 无 ShareKit，R-18 剪贴板降级） */
-  private async share(): Promise<void> {
-    const c = this.coordinator;
-    if (c === undefined) {
-      return;
-    }
-    try {
-      const that = this;
-      promptAction.showActionMenu({
-        title: '分享',
-        buttons: [
-          { text: '复制 Markdown 原文', color: that.pal.TEXT },
-          { text: '复制渲染 HTML', color: that.pal.TEXT },
-          { text: '导出 HTML 文件', color: that.pal.TEXT },
-          { text: '另存为 Markdown…', color: that.pal.TEXT },
-        ],
-      }).then((r: promptAction.ActionMenuSuccessResponse) => {
-        if (r.index === 0) {
-          that.copyToClipboard('markdown');
-        } else if (r.index === 1) {
-          that.copyToClipboard('html');
-        } else if (r.index === 2) {
-          that.exportHtmlFile();
-        } else if (r.index === 3) {
-          that.saveAsMarkdown();
-        }
-      });
-    } catch (e) {
-      this.append(`[分享] 菜单失败：${JSON.stringify(e)}`);
-    }
-  }
-
-  /** 剪贴板导出通道：markdown=原文；html=预览渲染结果 */
-  private async copyToClipboard(kind: 'markdown' | 'html'): Promise<void> {
-    const c = this.coordinator;
-    if (c === undefined) {
-      return;
-    }
-    // dirty 文档导出前先落盘（SDD 9.2：确保最新内容）
-    if (c.state === SaveState.DIRTY || c.state === SaveState.ERROR) {
-      await c.saveNow(Date.now());
-    }
-    this.saveLabel = SaveStateMachine.label(c.state);
-    if (c.state === SaveState.ERROR || c.state === SaveState.CONFLICT) {
-      this.conflictVisible = c.state === SaveState.CONFLICT;
-      this.append('[分享] 需要先解决保存状态（失败/冲突），避免分享过期内容');
-      return;
-    }
-    let payload = '';
-    if (kind === 'markdown') {
-      payload = await this.runJsValue('window.__editorApi.getSnapshot();');
-    } else {
-      const md = await this.runJsValue('window.__editorApi.getSnapshot();');
-      this.previewController.runJavaScript(`window.__previewApi.render(${JSON.stringify(md)});`);
-      payload = await this.runJsValueOn(this.previewController, 'window.__previewApi.getHtml();');
-    }
-    try {
-      const record = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, payload);
-      await pasteboard.getSystemPasteboard().setData(record);
-      promptAction.showToast({ message: kind === 'markdown' ? '已复制 Markdown 原文' : '已复制渲染 HTML' });
-      this.append(`[分享] ${kind === 'markdown' ? 'Markdown 原文' : '渲染 HTML'}已复制（${payload.length} 字符）`);
-    } catch (e) {
-      const err: ESObject = e as ESObject;
-      promptAction.showToast({ message: '复制失败' });
-      this.append(`[分享] 复制失败：${JSON.stringify(err)}`);
-    }
-  }
-
-  /**
-   * 导出为独立 HTML 文件（V0.4.3）：渲染当前正文 → 自包含 HTML（内联样式）
-   * → 系统保存选择器（用户选位置与文件名）→ fd 写入。
-   */
-  private async exportHtmlFile(): Promise<void> {
-    const c = this.coordinator;
-    if (c === undefined) {
-      return;
-    }
-    try {
-      const md = await this.runJsValue('window.__editorApi.getSnapshot();');
-      this.previewController.runJavaScript(`window.__previewApi.render(${JSON.stringify(md)});`);
-      const body = await this.runJsValueOn(this.previewController, 'window.__previewApi.getHtml();');
-      if (body.length === 0) {
-        promptAction.showToast({ message: '文档为空，无法导出' });
+  /** 文件菜单严格区分保存目标与副本交付。 */
+  private share(): void {
+    if (this.deliveryBusy) { return; }
+    promptAction.showActionMenu({ title: '文件与导出', buttons: [
+      { text: '另存为 Markdown…', color: this.pal.TEXT },
+      { text: '导出 Markdown 副本…', color: this.pal.TEXT },
+      { text: '导出图文 ZIP…', color: this.pal.TEXT },
+      { text: '导出 HTML（内嵌本地图片）…', color: this.pal.TEXT },
+      { text: '复制内容…', color: this.pal.TEXT },
+      { text: '查看保存位置', color: this.pal.TEXT },
+    ] }).then((r: promptAction.ActionMenuSuccessResponse) => {
+      if (r.index === 5) { this.showLocation(); return; }
+      if (r.index === 4) {
+        promptAction.showActionMenu({ title: '复制内容', buttons: [
+          { text: '复制 Markdown 原文', color: this.pal.TEXT },
+          { text: '复制渲染 HTML', color: this.pal.TEXT },
+        ] }).then((choice: promptAction.ActionMenuSuccessResponse) => this.deliverDocument(choice.index === 0 ? 4 : 7))
+          .catch(() => {});
         return;
       }
-      const html = HtmlExporter.buildStandalone(this.docTitle, body);
-      const fileName = HtmlExporter.exportFileName(this.docTitle);
-      const savePicker = new picker.DocumentViewPicker(this.ctx);
-      const uris: Array<string> = await savePicker.save({ newFileNames: [fileName] });
-      if (uris.length === 0) {
-        return; // 用户取消
+      this.deliverDocument(r.index);
+    }).catch(() => { this.append('[文件] 菜单已取消'); });
+  }
+
+  private showLocation(): void {
+    const source = this.docTarget;
+    AlertDialog.show({ title: '当前保存位置', message: source === undefined
+      ? '尚未保存到文件；恢复草稿仅在本机应用内保留。'
+      : source.kind === 'internal'
+        ? `我的文档 / ${source.relativePath.substring('library/'.length)}\n应用私有目录，卸载前请导出文档和附件。`
+        : `外部原文件（临时访问授权）\n${source.uri}\n重启后可能需要重新选择文件。`,
+      confirm: { value: '知道了', action: () => {} } });
+  }
+
+  private async inspectImages(content: string): Promise<string[]> {
+    const raw = await this.runJsChecked(this.controller,
+      `window.__editorApi.inspectMarkdown(${JSON.stringify(content)});`);
+    const parsed: ESObject = JSON.parse(raw);
+    return parsed.images as string[];
+  }
+
+  private async renderForDelivery(content: string, resources: Record<string, string>): Promise<string> {
+    return this.runJsChecked(this.controller,
+      `window.__editorApi.renderMarkdown(${JSON.stringify(content)}, ${JSON.stringify(resources)});`);
+  }
+
+  private async deliverDocument(action: number): Promise<void> {
+    const c = this.coordinator;
+    if (this.deliveryBusy || c === undefined || this.loadState !== 'ready') { return; }
+    if (c.state === SaveState.SAVING) {
+      promptAction.showToast({ message: '正在保存，请完成后再导出或另存' }); return;
+    }
+    this.deliveryBusy = true;
+    const session = this.activeSession;
+    try {
+      // 阻止选择器期间改写正文；取消后恢复编辑和原保存目标。
+      await this.runJsChecked(this.controller, 'window.__editorApi.setEditable(false);');
+      const snap = await this.getSnapshotData();
+      if (!snap.ok || session !== snap.sessionId) { throw new Error('获取正文失败，请重试'); }
+      if (!await c.checkpointNow()) { throw new Error('恢复草稿写入失败，请先检查可用空间'); }
+      const service = new DocumentDeliveryService(this.ctx);
+      const images = await this.inspectImages(snap.content);
+      if ((action === 0 || action === 1) && images.length > 0) {
+        // 单文件 Markdown 不能携带附件；用户显式选定后才输出正文副本。
+        const accepted = await new Promise<boolean>((resolve) => {
+          AlertDialog.show({ title: 'Markdown 文件不包含图片附件',
+            message: '此操作仅保存 Markdown 正文。要把图片一起带走，请取消并选择“导出图文 ZIP”。',
+            primaryButton: { value: '仅保存正文', action: () => resolve(true) },
+            secondaryButton: { value: '取消', action: () => resolve(false) }, cancel: () => resolve(false) });
+        });
+        if (!accepted) { return; }
       }
-      const file = fs.openSync(uris[0], fs.OpenMode.WRITE_ONLY);
-      fs.writeSync(file.fd, html);
-      fs.closeSync(file.fd);
-      promptAction.showToast({ message: `已导出 ${fileName}` });
-      this.append(`[导出] ${fileName}（${html.length} 字符）`);
+      if (action === 4 || action === 7) {
+        const payload = action === 4 ? snap.content : await this.renderForDelivery(snap.content, service.resources(images));
+        await pasteboard.getSystemPasteboard().setData(pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, payload));
+        promptAction.showToast({ message: action === 4 ? '已复制 Markdown 原文' : '已复制渲染 HTML' });
+        return;
+      }
+      const result = action === 0 || action === 1
+        ? await service.markdown(this.docTitle, snap.content)
+        : action === 2 ? await service.zip(this.docTitle, snap.content, images)
+          : await service.html(this.docTitle, snap.content, images,
+            (text: string, resources: Record<string, string>) => this.renderForDelivery(text, resources));
+      if (result === undefined) { return; }
+      if (!this.pageActive || session !== this.activeSession) { return; }
+      if (action === 0) {
+        // 成功后才切换目标；后续 Ctrl+S 和自动保存都写入此文件。
+        const previousDraftId = this.docTarget === undefined ? this.sessionDraftId : this.draftIdOf(this.docTarget);
+        const source: ExternalSource = { kind: 'external', uri: result.uri, displayName: result.fileName };
+        this.docTarget = source;
+        this.docTitle = result.fileName;
+        this.expectedRevision = { size: util.TextEncoder.create('utf-8').encodeInto(snap.content).byteLength,
+          contentHash: HashUtil.of(snap.content) };
+        this.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
+        this.docValidUtf8 = true;
+        this.coordinator = new SaveCoordinator(new EditorPageDeps(() => this.getSnapshotData(),
+          (text: string) => this.doSaveCheckpoint(text), (text: string) => this.doPersist(text), () => this.clearSavedDrafts()));
+        this.coordinator.onDocumentLoaded(session, snap.version);
+        this.drafts.remove(previousDraftId);
+        this.drafts.remove(this.sessionDraftId);
+        this.recoveryLabel = '';
+        this.saveLabel = '已保存';
+        this.conflictVisible = false;
+        await this.trackRecent(source);
+        this.refreshSidebarData();
+      }
+      this.append(`[交付] ${action === 0 ? '保存目标已切换' : '副本导出完成'}`);
+      promptAction.showToast({ message: `${action === 0 ? '已另存，后续保存使用新文件' : '已导出'}${result.remoteImages ? '；网络图片仍需联网查看' : ''}` });
     } catch (e) {
-      const err: ESObject = e as ESObject;
-      promptAction.showToast({ message: '导出失败' });
-      this.append(`[导出] 失败：${JSON.stringify(err)}`);
+      this.append('[交付] 操作失败，原会话及草稿保留');
+      AlertDialog.show({ title: '文件操作未完成', message: String(e), confirm: { value: '返回编辑', action: () => {} } });
+    } finally {
+      this.deliveryBusy = false;
+      if (this.pendingOpenUri.length > 0) { this.onExternalOpen(); }
+      if (this.pageActive && session === this.activeSession) {
+        this.runJsChecked(this.controller, 'window.__editorApi.setEditable(true);').catch(() => {
+          this.append('[交付] 恢复编辑失败，请保留草稿后重新打开');
+        });
+      }
     }
   }
 
@@ -1207,6 +1275,7 @@ struct EditorPage {
    * 取消不改变正文（C2-01）。
    */
   private async insertLocalImage(): Promise<void> {
+    if (this.deliveryBusy) { return; }
     try {
       const photoPicker = new picker.PhotoViewPicker();
       const result = await photoPicker.select({
@@ -1239,7 +1308,7 @@ struct EditorPage {
         parsed = { from: 0, to: 0 };
       }
       const at = (parsed.from as number) ?? 0;
-      const snippet = `![图片](${attPath})`;
+      const snippet = `![图片](<${attPath}>)`;
       await this.runJsValue(`window.__editorApi.replaceRange(${at}, ${at}, ${JSON.stringify(snippet)});`);
       const c = this.coordinator;
       if (c !== undefined) {
@@ -1251,43 +1320,6 @@ struct EditorPage {
     } catch (e) {
       const err: ESObject = e as ESObject;
       this.append(`[图片] 选择失败：${JSON.stringify(err)}`);
-    }
-  }
-
-  /**
-   * C1：另存为 Markdown——系统保存选择器选目标位置，写入当前正文快照。
-   * 取消不改变标题/保存目标/最近列表/保存状态（C1-02）。
-   */
-  private async saveAsMarkdown(): Promise<void> {
-    const c = this.coordinator;
-    if (c === undefined) {
-      return;
-    }
-    try {
-      // 获取确定版本快照（A1 契约）
-      const snap = await this.getSnapshotData();
-      if (!snap.ok) {
-        promptAction.showToast({ message: '获取内容失败' });
-        return;
-      }
-      const fileName = HtmlExporter.exportFileName(this.docTitle).replace('.html', '.md');
-      const savePicker = new picker.DocumentViewPicker(this.ctx);
-      const uris: Array<string> = await savePicker.save({ newFileNames: [fileName] });
-      if (uris.length === 0) {
-        return; // 用户取消：一切不变
-      }
-      const file = fs.openSync(uris[0], fs.OpenMode.WRITE_ONLY);
-      if (snap.content.length > 0) {
-        fs.writeSync(file.fd, snap.content);
-      }
-      fs.fsyncSync(file.fd);
-      fs.closeSync(file.fd);
-      promptAction.showToast({ message: `已另存 ${fileName}` });
-      this.append(`[另存] ${fileName}（${snap.content.length} 字符）`);
-    } catch (e) {
-      const err: ESObject = e as ESObject;
-      promptAction.showToast({ message: '另存失败' });
-      this.append(`[另存] 失败：${JSON.stringify(err)}`);
     }
   }
 
@@ -1313,7 +1345,7 @@ struct EditorPage {
         '',
         '保存：',
         '· 修改自动保存（1.5 秒防抖）',
-        '· 分享菜单：复制 Markdown/HTML、导出 HTML、另存为',
+        '· 分享菜单：另存为、导出副本、图文 ZIP、HTML、复制',
         '· 意外退出可在首页「找回未保存内容」恢复',
       ].join('\\n'),
       confirm: {
@@ -1458,7 +1490,7 @@ struct EditorPage {
           .height(36)
           .padding({ left: 12, right: 12 })
           .onClick(() => this.toggleOutline())
-        Button('分享')
+        Button('文件')
           .fontSize(13)
           .backgroundColor(this.pal.CARD)
           .fontColor(this.pal.TEXT)
@@ -1633,6 +1665,7 @@ struct EditorPage {
             .fontSize(13)
             .fontColor(this.pal.TEXT_SUB)
             .lineHeight(20)
+          Text(this.loadFailure).fontSize(12).fontColor(this.pal.DANGER).maxLines(3)
           Row({ space: 12 }) {
             if (this.docTarget !== undefined && this.docTarget.kind === 'external') {
               Button('重新选择文件')
@@ -1645,14 +1678,14 @@ struct EditorPage {
                 .padding({ left: 16, right: 16 })
                 .onClick(() => this.reselectExternalFile())
             }
-            Button('另存到资料库')
+            Button('查看恢复草稿')
               .fontSize(14)
               .fontColor(this.pal.TEXT)
               .backgroundColor(this.pal.CARD)
               .borderRadius(20)
               .height(40)
               .padding({ left: 16, right: 16 })
-              .onClick(() => this.saveLocalCopyFromFailed())
+              .onClick(() => router.pushUrl({ url: 'pages/RecoveryPage' }))
             Button('返回')
               .fontSize(14)
               .fontColor(this.pal.TEXT_SUB)
@@ -1740,7 +1773,7 @@ struct EditorPage {
               this.webReady = true;
               // 补发样式：aboutToAppear 时 Web 可能未就绪，样式命令会被吞掉
               this.applyEditorStyle();
-              if (this.pendingLoad.length > 0 || this.docTarget !== undefined) {
+              if (this.loadState === 'ready') {
                 this.flushPendingLoad();
               }
               this.append('编辑器就绪');
@@ -1790,6 +1823,7 @@ struct EditorPage {
 
       // 状态栏（V0.4.2：字数 + 光标行列，备忘录式底部信息条）
       Row() {
+        Text(this.recoveryLabel).fontSize(11).fontColor(this.pal.TEXT_SUB).maxLines(1)
         Text(`${this.docLength} 字`)
           .fontSize(11)
           .fontColor(this.pal.TEXT_FAINT)

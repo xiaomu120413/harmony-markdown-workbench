@@ -22,6 +22,10 @@ for (const e of entries) {
     format: 'iife',
     minify: true,
     target: ['chrome80'],
+    // Keep generated diffs whitespace-clean without mutating literal contents after bundling.
+    supported: { 'template-literal': false },
+    banner: { js: 'try {' },
+    footer: { js: '} catch (error) { var failure = document.createElement("p"); failure.setAttribute("role", "alert"); failure.textContent = "编辑器加载失败：" + error.name + ": " + error.message; document.body.appendChild(failure); }' },
     outfile: path.join(outDir, e.out),
     logLevel: 'info',
   });

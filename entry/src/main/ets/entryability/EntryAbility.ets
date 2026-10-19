@@ -7,7 +7,30 @@ const TAG: string = 'HMWB';
 
 export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    AppStorage.setOrCreate('checkpointRequest', 0);
+    AppStorage.setOrCreate('pendingOpenUri', '');
+    this.receiveFile(want);
     hilog.info(DOMAIN, TAG, 'EntryAbility onCreate');
+  }
+
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    this.receiveFile(want);
+  }
+
+  private receiveFile(want: Want): void {
+    if (!want.uri) { return; }
+    if (want.action !== 'ohos.want.action.viewData' || !want.uri.startsWith('file://')) {
+      hilog.warn(DOMAIN, TAG, 'unsupported file-open request');
+      return;
+    }
+    const type = want.type ?? '';
+    if (!['text/markdown', 'text/x-markdown', 'text/plain', 'general.markdown', 'general.plain-text'].includes(type) &&
+      !/\.(md|markdown|txt)(?:\?|$)/i.test(want.uri)) {
+      hilog.warn(DOMAIN, TAG, 'unsupported file type');
+      return;
+    }
+    AppStorage.setOrCreate('pendingOpenUri', want.uri);
+    hilog.info(DOMAIN, TAG, 'external file queued');
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
@@ -44,6 +67,7 @@ export default class EntryAbility extends UIAbility {
   }
 
   onBackground(): void {
+    AppStorage.setOrCreate('checkpointRequest', (AppStorage.get<number>('checkpointRequest') ?? 0) + 1);
     hilog.info(DOMAIN, TAG, 'EntryAbility onBackground');
   }
 }

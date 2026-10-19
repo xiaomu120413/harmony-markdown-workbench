@@ -3,6 +3,10 @@
 > 源文档：`HarmonyMarkdownWorkbench-SDD.md` v1.0.0。本文件提取稳定需求供开发引用；与 SDD 冲突时以 SDD 为准，并在 ADR 中记录。
 > 版本约定：MUST / SHOULD / MAY。
 
+2026-10-19 增量：产品名称为“木笺 MuMark”。本轮内容安全、文件交付和品牌约束见
+[增量规格](productization-2026-10.md)，实际结果见[验证记录](productization-verification.md)。
+历史“可发布”结论不自动适用于新版本。
+
 ## 1. 定位
 
 面向开发者、技术写作者和本地文档用户的鸿蒙原生 Markdown 文件工作台：无需账号，以标准 Markdown 文件为唯一真源，手机快速编辑、平板分屏预览，PC/2in1 预留工作区。

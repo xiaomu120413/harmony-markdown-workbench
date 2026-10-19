@@ -1,5 +1,8 @@
 # 验收用例映射（Acceptance Matrix）
 
+当前增量验收：[木笺内容安全与文件交付](productization-verification.md)。
+本页后续各节保留历史设备、版本和结果；旧“可发布”结论不替代当前增量验收。
+
 > 需求 ID → 实现任务 → 测试用例。本矩阵持续更新（SDD 14 章模板）；状态：Todo / InProgress / Done。
 > 每条 P0 需求必须有唯一 ID 和至少一个自动化或可重复执行的验收用例（门禁：阶段 1）。
 

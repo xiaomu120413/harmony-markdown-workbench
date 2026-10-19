@@ -19,6 +19,7 @@ import textRoundtripTest from './TextRoundtrip.test';
 import headingOutlineTest from './HeadingOutline.test';
 import htmlSafetyTest from './HtmlSafety.test';
 import appSettingsTest from './AppSettings.test';
+import contentSafetyTest from './ContentSafety.test';
 
 /**
  * 测试入口（hvigor 单测索引固定引用本文件，业务套件在此聚合注册）。
@@ -63,4 +64,5 @@ export default function listTest(): void {
   headingOutlineTest();
   htmlSafetyTest();
   appSettingsTest();
+  contentSafetyTest();
 }

@@ -1,5 +1,11 @@
 # 里程碑与任务计划
 
+## 当前增量（2026-10-19）
+
+本轮按内容安全、文件交付优先级实施，品牌为“木笺 MuMark”。
+任务与验收见[增量规格](spec/productization-2026-10.md)，结果见[验证记录](spec/productization-verification.md)。
+下文为原始里程碑快照，“待启动”不表示当前能力仍未实现。
+
 > 依 SDD 11.4（阶段 3 Plan）与 20 章里程碑估算。模块依赖图见下；每个任务的测试计划见 `docs/spec/acceptance.md`。
 
 ## 模块依赖图

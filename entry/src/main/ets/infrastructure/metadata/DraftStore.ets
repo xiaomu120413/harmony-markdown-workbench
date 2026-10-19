@@ -3,6 +3,7 @@ import { common } from '@kit.AbilityKit';
 import { util } from '@kit.ArkTS';
 import { RecoveryDraft } from '../../domain/recovery/DraftDecision';
 import { HashUtil } from '../../domain/document/HashUtil';
+import { SafeFileIO } from '../file/SafeFileIO';
 
 /**
  * 草稿检查点存储（FR-SAVE-003 / M4-01）。
@@ -36,13 +37,7 @@ export class DraftStore {
       appVersion: this.appVersion,
     };
     const path = `${this.draftsDir}/${HashUtil.of(documentId)}.json`;
-    const file = fs.openSync(path, fs.OpenMode.CREATE | fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
-    try {
-      fs.writeSync(file.fd, JSON.stringify(draft));
-      fs.fsyncSync(file.fd);
-    } finally {
-      fs.closeSync(file.fd);
-    }
+    SafeFileIO.atomicText(path, JSON.stringify(draft));
   }
 
   /** 读取检查点（恢复决策输入）；无草稿或损坏返回 undefined（不崩溃） */
