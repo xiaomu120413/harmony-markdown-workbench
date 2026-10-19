@@ -106,14 +106,20 @@ export class EditorController {
   renderForDelivery(content: string, resources: Record<string, string>): Promise<string> { return this.delivery.renderForDelivery(content, resources); }
   deliverDocument(action: number): Promise<void> { return this.delivery.deliverDocument(action); }
   insertLocalImage(): Promise<void> { return this.delivery.insertLocalImage(); }
-  runJsChecked(ctrl: webview.WebviewController, script: string): Promise<string> {
+  /**
+   * 带超时与错误校验的 JS 通道。读取默认不允许 undefined（读失败必须中止）；
+   * 写命令（setDocument/replaceRange 等）返回 undefined 是正常结果，传 allowEmpty。
+   */
+  runJsChecked(ctrl: webview.WebviewController, script: string, allowEmpty: boolean = false): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('编辑器响应超时')), 5000);
       try {
         ctrl.runJavaScript(script, (err, result) => {
           clearTimeout(timer);
-          if (err || result === undefined) { reject(new Error('编辑器读取失败')); }
-          else { resolve(this.decodeReturn(result)); }
+          if (err) { reject(new Error('编辑器调用失败')); }
+          else if (result === undefined) {
+            if (allowEmpty) { resolve(''); } else { reject(new Error('编辑器读取失败')); }
+          } else { resolve(this.decodeReturn(result)); }
         });
       } catch (e) { clearTimeout(timer); reject(new Error('编辑器暂不可用')); }
     });
@@ -146,14 +152,23 @@ export class EditorController {
 
   async applyCommand(cmd: MarkdownCommandName): Promise<void> {
     if (this.state.deliveryBusy) { return; }
+    const session = this.env.activeSession;
     try {
-      const selRaw = await this.runJsValue('window.__editorApi.getSelectionRange();');
-      const text = await this.runJsValue('window.__editorApi.getSnapshot();');
+      // 读取失败必须中止：空字符串会被当成全文，setDocument 将覆盖整篇正文。
+      const ctrl = this.env.controller;
+      const selRaw = await this.runJsChecked(ctrl, 'window.__editorApi.getSelectionRange();');
+      const text = await this.runJsChecked(ctrl, 'window.__editorApi.getSnapshot();');
+      if (!this.isActive() || session !== this.env.activeSession) { return; }
       const parsed: ESObject = JSON.parse(selRaw);
       const range: TextRange = { from: parsed.from as number, to: parsed.to as number };
+      if (typeof range.from !== 'number' || typeof range.to !== 'number' || !Number.isInteger(range.from) ||
+        !Number.isInteger(range.to) || range.from < 0 || range.to < range.from || range.to > text.length) {
+        throw new Error('选区无效');
+      }
       const result: TextTransformResult = MarkdownCommands.apply(text, range, cmd);
       const js = `window.__editorApi.setDocument(${JSON.stringify(result.text)}, ${result.selection.from}, ${result.selection.to});`;
-      await this.runJsValue(js);
+      await this.runJsChecked(ctrl, js, true);
+      if (!this.isActive() || session !== this.env.activeSession) { return; }
       this.state.docLength = result.text.length;
       this.markEdited();
     } catch (e) {

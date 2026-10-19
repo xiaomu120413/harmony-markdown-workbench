@@ -73,22 +73,35 @@ export class EditorFind {
     if (this.host.state.findQuery.length === 0) {
       return;
     }
-    const text = await this.host.runJsValue('window.__editorApi.getSnapshot();');
-    const from = this.host.state.matchIndex >= 0 && this.host.state.matchIndex < this.host.state.findMatches.length
-      ? this.host.state.findMatches[this.host.state.matchIndex].from
-      : 0;
-    const r = FindReplaceEngine.replaceCurrent(text, this.host.state.findQuery, this.host.state.replaceText, from, this.host.findOpts());
-    if (!r.replaced) {
-      return;
+    const session = this.host.env.activeSession;
+    const query = this.host.state.findQuery;
+    const options = this.host.findOpts();
+    try {
+      const ctrl = this.host.env.controller;
+      // 读取失败必须中止；空字符串不能当作全文去替换。
+      const text = await this.host.runJsChecked(ctrl, 'window.__editorApi.getSnapshot();');
+      if (!this.host.isActive() || session !== this.host.env.activeSession) { return; }
+      const from = this.host.state.matchIndex >= 0 && this.host.state.matchIndex < this.host.state.findMatches.length
+        ? this.host.state.findMatches[this.host.state.matchIndex].from
+        : 0;
+      const r = FindReplaceEngine.replaceCurrent(text, query, this.host.state.replaceText, from, options);
+      if (!r.replaced) {
+        return;
+      }
+      await this.host.runJsChecked(ctrl,
+        `window.__editorApi.setDocument(${JSON.stringify(r.text)}, ${r.newCursor}, ${r.newCursor});`, true);
+      if (!this.host.isActive() || session !== this.host.env.activeSession) { return; }
+      // 只有写回成功才推进保存状态与命中位置。
+      this.host.state.docLength = r.text.length;
+      this.host.markEdited();
+      // 替换改变了正文：同步重算命中（替换处已消失，从锚点前进到下一处）
+      const anchor = this.host.state.matchIndex;
+      this.host.state.findMatches = FindReplaceEngine.findAll(r.text, this.host.state.findQuery, this.host.findOpts());
+      this.host.state.matchIndex = FindSession.next(this.host.state.matchCount, Math.min(anchor, this.host.state.matchCount - 1));
+      this.host.selectCurrentMatch();
+    } catch (e) {
+      MuLogger.info(`[替换] 当前处替换失败：${JSON.stringify(e)}`);
     }
-    await this.host.runJsValue(`window.__editorApi.setDocument(${JSON.stringify(r.text)}, ${r.newCursor}, ${r.newCursor});`);
-    this.host.state.docLength = r.text.length;
-    this.host.markEdited();
-    // 替换改变了正文：同步重算命中（替换处已消失，从锚点前进到下一处）
-    const anchor = this.host.state.matchIndex;
-    this.host.state.findMatches = FindReplaceEngine.findAll(r.text, this.host.state.findQuery, this.host.findOpts());
-    this.host.state.matchIndex = FindSession.next(this.host.state.matchCount, Math.min(anchor, this.host.state.matchCount - 1));
-    this.host.selectCurrentMatch();
   }
 
   async replaceAllMatches(): Promise<void> {
@@ -96,19 +109,30 @@ export class EditorFind {
     if (this.host.state.findQuery.length === 0) {
       return;
     }
-    const text = await this.host.runJsValue('window.__editorApi.getSnapshot();');
-    const r = FindReplaceEngine.replaceAll(text, this.host.state.findQuery, this.host.state.replaceText, this.host.findOpts());
-    if (r.count === 0) {
-      return;
+    const session = this.host.env.activeSession;
+    const query = this.host.state.findQuery;
+    const options = this.host.findOpts();
+    try {
+      const ctrl = this.host.env.controller;
+      const text = await this.host.runJsChecked(ctrl, 'window.__editorApi.getSnapshot();');
+      if (!this.host.isActive() || session !== this.host.env.activeSession) { return; }
+      const r = FindReplaceEngine.replaceAll(text, query, this.host.state.replaceText, options);
+      if (r.count === 0) {
+        return;
+      }
+      const pos = r.undos.length > 0 ? r.undos[0].from : 0;
+      await this.host.runJsChecked(ctrl,
+        `window.__editorApi.setDocument(${JSON.stringify(r.text)}, ${pos}, ${pos});`, true);
+      if (!this.host.isActive() || session !== this.host.env.activeSession) { return; }
+      this.host.state.docLength = r.text.length;
+      this.host.markEdited();
+      // 全部替换后命中归零
+      this.host.state.findMatches = [];
+      this.host.state.matchIndex = -1;
+      MuLogger.info(`[替换] 全部替换 ${r.count} 处`);
+    } catch (e) {
+      MuLogger.info(`[替换] 全部替换失败：${JSON.stringify(e)}`);
     }
-    const pos = r.undos.length > 0 ? r.undos[0].from : 0;
-    await this.host.runJsValue(`window.__editorApi.setDocument(${JSON.stringify(r.text)}, ${pos}, ${pos});`);
-    this.host.state.docLength = r.text.length;
-    this.host.markEdited();
-    // 全部替换后命中归零
-    this.host.state.findMatches = [];
-    this.host.state.matchIndex = -1;
-    MuLogger.info(`[替换] 全部替换 ${r.count} 处`);
   }
 
   markEdited(): void {

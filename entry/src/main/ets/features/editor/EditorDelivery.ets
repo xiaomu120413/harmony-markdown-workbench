@@ -61,7 +61,7 @@ export class EditorDelivery {
     const session = this.host.env.activeSession;
     this.host.state.deliveryBusy = true;
     try {
-      await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(false);');
+      await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(false);', true);
       if (id === undefined) {
         const uris = await new picker.DocumentViewPicker(this.host.env.ctx).select({ maxSelectNumber: 1, fileSuffixFilters: ['.html', '.htm'] });
         if (!this.isCurrent(session) || uris.length === 0) { return; }
@@ -80,9 +80,10 @@ export class EditorDelivery {
       if (!fs.accessSync(folder)) { fs.mkdirSync(folder); }
       const name = `html-${Date.now()}-${Math.floor(Math.random() * 0xffffff)}.html`;
       SafeFileIO.atomicBytes(`${folder}/${name}`, bytes);
-      await this.insertAttachment(`attachments/${name}`, 'HTML', session);
-      if (this.isCurrent(session)) { promptAction.showToast({ message: 'HTML 已插入光标处，可切换预览查看' }); }
-    } catch (e) {
+      const inserted = await this.insertAttachment(`attachments/${name}`, 'HTML', session);
+      if (inserted && this.isCurrent(session)) {
+        promptAction.showToast({ message: 'HTML 已插入光标处，可切换预览查看' });
+      }    } catch (e) {
       MuLogger.warn('HTML insertion incomplete');
       const error: ESObject = e as ESObject;
       if (this.isCurrent(session) && error.code !== 1006 && error.code !== 1007) {
@@ -91,7 +92,7 @@ export class EditorDelivery {
     } finally {
       if (this.host.isActive()) { this.host.state.deliveryBusy = false; }
       if (this.isCurrent(session)) {
-        this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(true);').catch(() => {
+        this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(true);', true).catch(() => {
           MuLogger.warn('HTML insertion editor restore failed');
         });
       }
@@ -99,19 +100,21 @@ export class EditorDelivery {
     }
   }
 
-  private async insertAttachment(path: string, label: string, session: string): Promise<void> {
+  private async insertAttachment(path: string, label: string, session: string): Promise<boolean> {
     const raw = await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.getSelectionRange();');
+    if (!this.isCurrent(session)) { return false; }
     const selection: ESObject = JSON.parse(raw);
     const at = selection.from as number;
-    if (!this.isCurrent(session)) { return; }
     if (typeof at !== 'number' || !Number.isInteger(at) || at < 0) { throw new Error('无法获取插入位置，请重新定位光标'); }
     const snippet = label === 'HTML' ? `\n\n![HTML](<${path}>)\n\n` : `![图片](<${path}>)`;
     await this.host.runJsChecked(this.host.env.controller,
-      `window.__editorApi.replaceRange(${at}, ${at}, ${JSON.stringify(snippet)});`);
-    if (!this.isCurrent(session)) { return; }
+      `window.__editorApi.replaceRange(${at}, ${at}, ${JSON.stringify(snippet)});`, true);
+    if (!this.isCurrent(session)) { return false; }
+    // 写回成功后才推进保存状态；失败时调用方不得提示成功。
     this.host.env.coordinator?.onEdit(Date.now());
     this.host.state.saveState = this.host.env.coordinator?.state ?? SaveState.DIRTY;
     this.host.scheduleDocSync();
+    return true;
   }
   async inspectImages(content: string): Promise<string[]> {
     const raw = await this.host.runJsChecked(this.host.env.controller,
@@ -135,7 +138,7 @@ export class EditorDelivery {
     const session = this.host.env.activeSession;
     try {
       // 阻止选择器期间改写正文；取消后恢复编辑和原保存目标。
-      await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(false);');
+      await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(false);', true);
       if (!this.isCurrent(session)) { return; }
       const snap = await this.host.getSnapshotData();
       if (!this.isCurrent(session)) { return; }
@@ -200,7 +203,7 @@ export class EditorDelivery {
       if (this.host.isActive()) { this.host.state.deliveryBusy = false; }
       if (this.host.isActive() && this.host.env.pendingOpenUri.length > 0) { this.host.onExternalOpen(); }
       if (this.isCurrent(session)) {
-        this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(true);').catch(() => {
+        this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(true);', true).catch(() => {
           MuLogger.info('[交付] 恢复编辑失败，请保留草稿后重新打开');
         });
       }
@@ -233,8 +236,18 @@ export class EditorDelivery {
         promptAction.showToast({ message: '图片复制失败' });
         return;
       }
-      await this.insertAttachment(attPath, '图片', session);
-      promptAction.showToast({ message: `已插入 ${name}` });
+      let inserted = false;
+      try {
+        inserted = await this.insertAttachment(attPath, '图片', session);
+      } catch (e) {
+        const err: ESObject = e as ESObject;
+        MuLogger.info(`[图片] 插入失败：${JSON.stringify(err)}`);
+        if (this.isCurrent(session)) { promptAction.showToast({ message: '图片插入失败，请重试' }); }
+        return;
+      }
+      if (inserted && this.isCurrent(session)) {
+        promptAction.showToast({ message: `已插入 ${name}` });
+      }
     } catch (e) {
       const err: ESObject = e as ESObject;
       MuLogger.info(`[图片] 选择失败：${JSON.stringify(err)}`);
