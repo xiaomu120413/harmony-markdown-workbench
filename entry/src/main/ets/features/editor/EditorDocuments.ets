@@ -31,6 +31,13 @@ export class EditorDocuments {
     }
     this.host.env.openPromptVisible = true;
     if (!await this.host.protectDraft() || !this.host.isActive()) { this.host.env.openPromptVisible = false; return; }
+    if (DocumentIntake.isHtml(uri)) {
+      this.host.env.openPromptVisible = false;
+      if (this.host.env.pendingOpenUri !== uri) { this.host.onExternalOpen(); return; }
+      this.host.env.pendingOpenUri = '';
+      this.openReceivedDocument(uri);
+      return;
+    }
     if (this.host.env.coordinator?.state === SaveState.CLEAN) {
       this.host.env.openPromptVisible = false;
       if (this.host.env.pendingOpenUri !== uri) { this.host.onExternalOpen(); return; }
@@ -55,6 +62,10 @@ export class EditorDocuments {
   }
 
   openReceivedDocument(id: string): void {
+    if (DocumentIntake.isHtml(id)) {
+      router.pushUrl({ url: DocumentIntake.page(id), params: DocumentIntake.route(id) });
+      return;
+    }
     router.replaceUrl({ url: 'pages/EditorPage', params: DocumentIntake.route(id) });
   }
 
@@ -68,7 +79,7 @@ export class EditorDocuments {
         (key: string) => this.host.uiContext.getDragController().cancelDataLoading(key)).receive(event);
       if (!this.host.isActive()) { return; }
       MuLogger.info('[拖入] 已取得单文档授权');
-      promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
+      promptAction.showToast({ message: DocumentIntake.isHtml(uri) ? '已导入 HTML 副本，只读预览' : '已导入“我的文档”，编辑的是副本' });
       this.host.env.pendingOpenUri = uri;
     } catch (e) {
       MuLogger.info('[拖入] 未完成，当前正文保留');
@@ -78,6 +89,7 @@ export class EditorDocuments {
 
   async switchToDocument(docId: string): Promise<void> {
     if (this.host.state.deliveryBusy || !await this.host.protectDraft()) { return; }
+    if (DocumentIntake.isHtml(docId)) { this.openReceivedDocument(docId); return; }
     const current = this.host.state.docTarget;
     if (current !== undefined && (current.kind === 'internal' ? current.relativePath : current.uri) === docId) { return; }
     const c = this.host.env.coordinator;

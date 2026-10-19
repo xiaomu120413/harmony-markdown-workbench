@@ -254,7 +254,7 @@ export class EditorPersistence {
     const session = this.host.env.activeSession;
     try {
       const uris = await new picker.DocumentViewPicker(this.host.env.ctx).select({
-        maxSelectNumber: 1, fileSuffixFilters: ['.md', '.markdown', '.txt'],
+        maxSelectNumber: 1, fileSuffixFilters: ['.md', '.markdown', '.txt', '.html', '.htm'],
       });
       if (this.host.isActive() && session === this.host.env.activeSession && uris.length > 0) { this.host.env.pendingOpenUri = uris[0]; }
     } catch (e) { MuLogger.info('[打开] 选择器未完成'); promptAction.showToast({ message: '打开失败，请重试' }); }

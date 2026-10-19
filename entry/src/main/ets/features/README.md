@@ -19,6 +19,7 @@
 | `home/*Screen/Compact/Navigation/RecentList/Welcome/LibraryPanel` | 首页分区展示；共享 HomeState |
 | `settings/SettingsState`、`settings/SettingsViewModel` | 设置展示状态与加载、校验、串行保存编排；页面无 Preferences/DraftStore 操作 |
 | `recovery/RecoveryState`、`recovery/RecoveryViewModel` | 恢复展示状态与磁盘校验、恢复/副本/清理编排；domain 决定恢复规则 |
+| `preview/HtmlPreviewState`、`preview/HtmlPreviewViewModel` | HTML 只读状态与读取、独立 Web 装载；不接入 Markdown 保存或 JSBridge |
 
 安全区域由 `infrastructure/window/WindowViewportAdapter` 发布，四个路由页面统一使用 `components/SafePage`。RESIZE 负责键盘缩放；组件不再次叠加键盘高度。设备窗口变小只改变布局状态，不重新创建控制器、Web 文档或 SaveCoordinator。
 

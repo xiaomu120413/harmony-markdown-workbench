@@ -39,6 +39,8 @@
               "ohos.want.action.viewData"
             ],
             "uris": [
+              { "scheme": "file", "type": "text/html", "linkFeature": "FileOpen" },
+              { "scheme": "file", "type": "general.html", "linkFeature": "FileOpen" },
               {
                 "scheme": "file",
                 "type": "text/markdown",

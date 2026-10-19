@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-19",
+  "captures": [
+    {
+      "file": "pc-preview.jpg",
+      "source": "screenshot_20261019_180101.jpeg",
+      "crop": [
+        76,
+        76,
+        2166,
+        1470
+      ]
+    },
+    {
+      "file": "phone-preview.jpg",
+      "source": "screenshot_20261019_180103.jpeg",
+      "crop": null
+    },
+    {
+      "file": "pc-returned.jpg",
+      "source": "screenshot_20261019_175817.jpeg",
+      "crop": [
+        76,
+        76,
+        2166,
+        1470
+      ]
+    }
+  ],
+  "operation": "specified crop followed by proportional resize only",
+  "fixtureBytes": 613,
+  "fixtureSha256": "5cda7dc8cda77fccbf63c976a1fcfdd06fff29291c53acfe0c2f503b549a85d6",
+  "hapSha256": "24886cb39d529c523844b4defa4787e9a04b65a3264e513c06912ae62409dba4",
+  "byteChecks": {
+    "html_copy_exact": true,
+    "markdown_unchanged": true,
+    "phone_html_unchanged": true
+  }
+}

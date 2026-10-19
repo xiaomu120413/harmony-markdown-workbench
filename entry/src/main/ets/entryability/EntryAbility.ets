@@ -25,8 +25,8 @@ export default class EntryAbility extends UIAbility {
       return;
     }
     const type = want.type ?? '';
-    if (!['text/markdown', 'text/x-markdown', 'text/plain', 'general.markdown', 'general.plain-text'].includes(type) &&
-      !/\.(md|markdown|txt)(?:\?|$)/i.test(want.uri)) {
+    if (!['text/markdown', 'text/x-markdown', 'text/plain', 'general.markdown', 'general.plain-text', 'text/html', 'general.html'].includes(type) &&
+      !/\.(md|markdown|txt|html|htm)(?:\?|$)/i.test(want.uri)) {
       MuLogger.warn('unsupported file type');
       return;
     }

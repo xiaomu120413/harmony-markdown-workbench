@@ -25,7 +25,7 @@ export class HomeController {
       const id = await new DocumentImportService(this.env.ctx,
         (key: string) => this.uiContext.getDragController().cancelDataLoading(key)).receive(event);
       if (!this.env.active) { return; }
-      promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
+      promptAction.showToast({ message: DocumentIntake.isHtml(id) ? '已导入 HTML 副本，只读预览' : '已导入“我的文档”，编辑的是副本' });
       AppStorage.setOrCreate('pendingOpenUri', id);
     } catch (e) {
       MuLogger.info('[拖入] 文件获取失败');
@@ -37,7 +37,7 @@ export class HomeController {
     if (this.env.pendingOpenUri.length === 0 || router.getState().name !== 'HomePage') { return; }
     const uri = this.env.pendingOpenUri;
     this.env.pendingOpenUri = '';
-    router.pushUrl({ url: 'pages/EditorPage', params: DocumentIntake.route(uri) }).catch(() => {
+    router.pushUrl({ url: DocumentIntake.page(uri), params: DocumentIntake.route(uri) }).catch(() => {
       MuLogger.info('[打开] 无法进入编辑页，请重新打开文件');
       promptAction.showToast({ message: '打开失败，请重新选择文件' });
     });
@@ -124,12 +124,12 @@ export class HomeController {
 
   goEditorWith(name: string): void {
     const params: ESObject = { name: name } as ESObject;
-    router.pushUrl({ url: 'pages/EditorPage', params: params });
+    router.pushUrl({ url: DocumentIntake.page(name), params: params });
   }
 
   goEditorWithUri(uri: string): void {
     const params: ESObject = { uri: uri } as ESObject;
-    router.pushUrl({ url: 'pages/EditorPage', params: params });
+    router.pushUrl({ url: DocumentIntake.page(uri), params: params });
   }
 
   openRecent(item: RecentEntry): void {
@@ -152,7 +152,7 @@ export class HomeController {
       const documentPicker = new picker.DocumentViewPicker(this.env.ctx);
       const result: Array<string> = await documentPicker.select({
         maxSelectNumber: 1,
-        fileSuffixFilters: ['.md', '.markdown', '.txt'],
+        fileSuffixFilters: ['.md', '.markdown', '.txt', '.html', '.htm'],
       });
       if (result.length === 0) {
         return; // 用户取消
@@ -188,7 +188,9 @@ export class HomeController {
     if (oldName.length === 0 || newName.length === 0 || newName === oldName) {
       return;
     }
-    if (!newName.endsWith('.md')) {
+    if (DocumentIntake.isHtml(oldName)) {
+      if (!DocumentIntake.isHtml(newName)) { newName += oldName.substring(oldName.lastIndexOf('.')); }
+    } else if (!newName.endsWith('.md')) {
       newName = `${newName}.md`;
     }
     if (newName.indexOf('/') >= 0 || this.env.fileSource.listLibrary().indexOf(newName) !== -1) {

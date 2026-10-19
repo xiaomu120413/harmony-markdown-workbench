@@ -50,6 +50,7 @@ jobs:
           node scripts/test-external-access.cjs
           node scripts/test-page-viewmodels.cjs
           node scripts/test-window-viewport.cjs
+          node scripts/test-html-preview.cjs
       - name: Assert committed bundles unchanged
         run: |
           git diff --exit-code -- entry/src/main/resources/rawfile/web/ \

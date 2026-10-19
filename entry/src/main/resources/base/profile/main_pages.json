@@ -3,6 +3,7 @@
     "pages/HomePage",
     "pages/EditorPage",
     "pages/RecoveryPage",
-    "pages/SettingsPage"
+    "pages/SettingsPage",
+    "pages/HtmlPreviewPage"
   ]
 }

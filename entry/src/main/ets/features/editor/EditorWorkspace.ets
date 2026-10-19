@@ -182,7 +182,7 @@ export struct EditorWorkspace {
       if (this.state.fileHover) {
         Column({ space: 10 }) {
           Text('松开以导入文档').fontSize(20).fontWeight(FontWeight.Medium).fontColor(this.state.pal.PRIMARY)
-          Text('Markdown / txt · 副本保存在“我的文档”').fontSize(14).fontColor(this.state.pal.TEXT_SUB)
+          Text('Markdown / txt / HTML · 副本保存在“我的文档”').fontSize(14).fontColor(this.state.pal.TEXT_SUB)
         }
         .justifyContent(FlexAlign.Center)
         .width('100%').height('100%').backgroundColor(this.state.pal.PRIMARY_SOFT)
