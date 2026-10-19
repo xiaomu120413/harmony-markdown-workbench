@@ -493,6 +493,62 @@ cases.push({ name: 'image picker reports success only after the insert write res
   assert.deepEqual(toasts, ['已插入 picked.png']);
   assert.equal(host.calls.edits, 1);
 } });
+// ---- 资料库重命名：复用 FileNameValidator，非法名不得进入文件操作 ----
+const { HomeController } = load(path.join(root, 'entry/src/main/ets/features/home/HomeController.ets'));
+function homeHost(renamingFrom, renameText, library) {
+  const host = Object.create(HomeController.prototype);
+  host.state = { renamingFrom, renameText, searchQuery: '' };
+  const renamed = [];
+  host.env = {
+    fileSource: {
+      listLibrary: () => library.slice(),
+      renameLibrary: (from, to) => { renamed.push(`${from}>${to}`); return true; },
+    },
+    meta: { loadRecent: async () => [], saveRecent: async () => {} },
+  };
+  host.uiContext = {};
+  host.refresh = () => {};
+  host.refreshLibrary = () => {};
+  host.runSearch = () => {};
+  return { host, renamed };
+}
+cases.push({ name: 'library rename rejects hidden, control and separator names', async body() {
+  for (const item of [['.hidden', '文件名不能以点开头'], ['bad\u0000name', '文件名不能包含控制字符'],
+    ['../evil', '文件名不能包含路径分隔符']]) {
+    toasts.length = 0;
+    const { host, renamed } = homeHost('old.md', item[0], ['old.md']);
+    await host.confirmRename();
+    assert.equal(renamed.length, 0, item[0]);
+    assert.deepEqual(toasts, [item[1]], item[0]);
+  }
+} });
+cases.push({ name: 'library rename keeps duplicate-name rejection', async body() {
+  toasts.length = 0;
+  const { host, renamed } = homeHost('old.md', 'taken', ['old.md', 'taken.md']);
+  await host.confirmRename();
+  assert.equal(renamed.length, 0);
+  assert.deepEqual(toasts, ['名称已存在']);
+} });
+cases.push({ name: 'library rename appends markdown extension and renames once', async body() {
+  toasts.length = 0;
+  const { host, renamed } = homeHost('old.md', 'new name', ['old.md']);
+  await host.confirmRename();
+  assert.deepEqual(renamed, ['old.md>new name.md']);
+  assert.deepEqual(toasts, ['已重命名为 new name.md']);
+} });
+cases.push({ name: 'library rename keeps HTML extension for an HTML document', async body() {
+  toasts.length = 0;
+  const { host, renamed } = homeHost('page.html', 'newpage', ['page.html']);
+  await host.confirmRename();
+  assert.deepEqual(renamed, ['page.html>newpage.html']);
+} });
+cases.push({ name: 'library rename to the same normalized name is a silent no-op', async body() {
+  toasts.length = 0;
+  const { host, renamed } = homeHost('old.md', 'old', ['old.md']);
+  await host.confirmRename();
+  assert.equal(renamed.length, 0);
+  assert.deepEqual(toasts, []);
+} });
 (async () => {
   let failures = 0;
   for (const item of cases) {

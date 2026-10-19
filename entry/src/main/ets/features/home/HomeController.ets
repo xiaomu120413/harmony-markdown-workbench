@@ -12,6 +12,7 @@ import { ThemeMode } from '../../domain/settings/AppSettings';
 import { AppTheme } from '../../common/AppTheme';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints, bpOf } from '../../common/Breakpoints';
 import { UIContext } from '@kit.ArkUI';
+import { FileNameValidator } from '../../domain/document/FileNameValidator';
 import { HomeState } from './HomeState';
 export class HomeController {
   env: HomeEnvironment;
@@ -193,8 +194,16 @@ export class HomeController {
     } else if (!newName.endsWith('.md')) {
       newName = `${newName}.md`;
     }
-    if (newName.indexOf('/') >= 0 || this.env.fileSource.listLibrary().indexOf(newName) !== -1) {
-      promptAction.showToast({ message: '名称不可用或已存在' });
+    if (newName === oldName) {
+      return;
+    }
+    const invalid = FileNameValidator.validate(newName);
+    if (invalid !== undefined) {
+      promptAction.showToast({ message: invalid });
+      return;
+    }
+    if (this.env.fileSource.listLibrary().indexOf(newName) !== -1) {
+      promptAction.showToast({ message: '名称已存在' });
       return;
     }
     if (this.env.fileSource.renameLibrary(oldName, newName)) {
