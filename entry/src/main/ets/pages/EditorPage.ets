@@ -26,6 +26,12 @@ struct EditorPage {
   }
   aboutToDisappear(): void { this.actions?.aboutToDisappear(); }
   onPageShow(): void { this.actions?.applyAppSettings(true); }
+  /** 系统返回键统一走保存保护：有未保存修改时拦截确认，干净时由 goBack 放行。 */
+  onBackPress(): boolean {
+    if (this.actions === undefined) { return false; }
+    this.actions.goBack();
+    return true;
+  }
   build() {
     if (this.actions !== undefined) {
       SafePage() { EditorScreen({ state: this.state, actions: this.actions }) }
