@@ -713,6 +713,12 @@ struct EditorPage {
   }
 
   private toggleOutline(): void {
+    if (this.bp === 'phone') {
+      this.outlineVisible = false;
+      if (this.fileSheetVisible && this.fileSheetSection === 'outline') { this.fileSheetVisible = false; }
+      else { this.openPhoneOutline(); }
+      return;
+    }
     this.outlineVisible = !this.outlineVisible;
     if (this.outlineVisible) {
       this.syncDocNow();
@@ -1401,7 +1407,7 @@ struct EditorPage {
       Blank()
       Button('大纲', { type: ButtonType.Normal })
         .attributeModifier(new ControlStyle(this.pal, 'quiet'))
-        .onClick(() => { this.openPhoneOutline(); })
+        .onClick(() => { this.toggleOutline(); })
       Button('查找', { type: ButtonType.Normal })
         .attributeModifier(new ControlStyle(this.pal, 'quiet'))
         .onClick(() => { this.openFind(); })
@@ -1695,7 +1701,7 @@ struct EditorPage {
         '· 修改自动保存（1.5 秒防抖）',
         '· 文档菜单：另存为、导出副本、图文 ZIP、HTML、复制',
         '· 意外退出可在首页「找回未保存内容」恢复',
-      ].join('\\n'),
+      ].join('\n'),
       confirm: {
         value: '知道了',
         action: () => {
@@ -1902,7 +1908,7 @@ struct EditorPage {
         }
 
         // 大纲侧栏（FR-PREVIEW-003 总装：点击跳转标题行）
-        if (this.outlineVisible) {
+        if (this.outlineVisible && this.bp !== 'phone') {
           Column() {
             Text('大纲')
               .fontSize(12)
