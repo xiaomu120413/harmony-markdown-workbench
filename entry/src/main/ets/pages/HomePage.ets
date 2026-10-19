@@ -1,3 +1,4 @@
+import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, mediaquery, promptAction } from '@kit.ArkUI';
@@ -369,17 +370,16 @@ struct HomePage {
   /** 侧栏导航行（备忘录式纯文字行） */
   @Builder
   navRow(label: string, action: () => void) {
-    Row({ space: 8 }) {
-      Text(label)
-        .fontSize(15)
-        .fontColor(this.pal.TEXT)
-        .layoutWeight(1)
+    Button({ type: ButtonType.Normal }) {
+      Row({ space: 8 }) {
+        Text(label)
+          .fontSize(ControlMetrics.FONT)
+          .fontColor(this.pal.TEXT)
+          .layoutWeight(1)
+      }.width('100%')
     }
-    .width('100%')
-    .height(44)
-    .padding({ left: 14, right: 12 })
-    .borderRadius(10)
-    .onClick(() => action())
+      .attributeModifier(new ControlStyle(this.pal)).width('100%')
+      .onClick(() => action())
   }
 
   /** 回收名（原名.<时间戳>）→ 显示原名 */
@@ -460,9 +460,10 @@ struct HomePage {
           .fontWeight(FontWeight.Medium)
           .fontColor(this.pal.TEXT)
           .layoutWeight(1)
-        Text('✕')
-          .fontSize(14)
-          .fontColor(this.pal.TEXT_SUB)
+        Button({ type: ButtonType.Normal }) {
+          SymbolGlyph($r('sys.symbol.xmark')).fontSize(20).fontColor([this.pal.TEXT])
+        }
+          .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('关闭')
           .onClick(() => { this.pickingFile = false; })
       }
       .width('100%')
@@ -480,7 +481,7 @@ struct HomePage {
               Row({ space: 8 }) {
                 TextInput({ text: this.renameText })
                   .fontSize(14)
-                  .height(36)
+                  .height(ControlMetrics.HEIGHT)
                   .padding({ left: 8, right: 8 })
                   .backgroundColor(this.pal.CONTENT)
                   .borderRadius(8)
@@ -489,15 +490,15 @@ struct HomePage {
                     this.renameText = v;
                   })
                   .onSubmit(() => this.confirmRename())
-                Text('✓')
-                  .fontSize(15)
-                  .fontColor(this.pal.PRIMARY)
-                  .padding(6)
+                Button({ type: ButtonType.Normal }) {
+                  SymbolGlyph($r('sys.symbol.checkmark')).fontSize(20).fontColor([this.pal.TEXT])
+                }
+                  .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('确认')
                   .onClick(() => this.confirmRename())
-                Text('✕')
-                  .fontSize(15)
-                  .fontColor(this.pal.TEXT_SUB)
-                  .padding(6)
+                Button({ type: ButtonType.Normal }) {
+                  SymbolGlyph($r('sys.symbol.xmark')).fontSize(20).fontColor([this.pal.TEXT])
+                }
+                  .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('关闭')
                   .onClick(() => {
                     this.renamingFrom = '';
                   })
@@ -511,14 +512,14 @@ struct HomePage {
                   .fontColor(this.pal.TEXT)
                   .maxLines(1)
                   .layoutWeight(1)
-                Text('⋯')
-                  .fontSize(16)
-                  .fontColor(this.pal.TEXT_FAINT)
-                  .padding({ left: 6, right: 2 })
+                Button({ type: ButtonType.Normal }) {
+                  SymbolGlyph($r('sys.symbol.ellipsis_circle')).fontSize(20).fontColor([this.pal.TEXT])
+                }
+                  .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('更多操作')
                   .onClick(() => this.libraryRowMenu(name))
               }
               .width('100%')
-              .height(42)
+              .height(ControlMetrics.HEIGHT)
               .padding({ left: 12, right: 12 })
               .onClick(() => {
                 this.pickingFile = false;
@@ -541,9 +542,8 @@ struct HomePage {
             .fontSize(13)
             .fontColor(this.pal.TEXT_SUB)
             .layoutWeight(1)
-          Text(this.trashOpen ? '收起' : '展开')
-            .fontSize(12)
-            .fontColor(this.pal.PRIMARY)
+          Button(this.trashOpen ? '收起' : '展开', { type: ButtonType.Normal })
+            .attributeModifier(new ControlStyle(this.pal, 'quiet'))
             .onClick(() => {
               this.trashOpen = !this.trashOpen;
             })
@@ -557,14 +557,12 @@ struct HomePage {
                 .fontColor(this.pal.TEXT_SUB)
                 .maxLines(1)
                 .layoutWeight(1)
-              Text('恢复')
-                .fontSize(12)
-                .fontColor(this.pal.PRIMARY)
-                .padding(4)
+              Button('恢复', { type: ButtonType.Normal })
+                .attributeModifier(new ControlStyle(this.pal, 'quiet'))
                 .onClick(() => this.restoreFromTrash(trashName))
             }
             .width('100%')
-            .height(36)
+            .height(ControlMetrics.HEIGHT)
             .padding({ left: 12, right: 12 })
           }, (trashName: string) => trashName)
         }
@@ -576,17 +574,12 @@ struct HomePage {
     .borderRadius(12)
   }
 
-  /** 主按钮（HarmonyOS 胶囊样式） */
+  /** 全局主操作，与编辑页保存共用尺寸和配色。 */
   @Builder
   primaryBtn(label: string, action: () => void) {
-    Button(label)
-      .fontSize(15)
-      .fontWeight(FontWeight.Medium)
-      .fontColor(this.pal.ON_PRIMARY)
-      .backgroundColor(this.pal.PRIMARY)
-      .borderRadius(22)
+    Button(label, { type: ButtonType.Normal })
       .width('100%')
-      .height(44)
+      .attributeModifier(new ControlStyle(this.pal, 'primary'))
       .onClick(() => action())
   }
 
@@ -605,7 +598,7 @@ struct HomePage {
             beginWindowMove(this.ctx);
           }
         })
-      Text('完全离线 · 只在你本机')
+      Text('本机 Markdown 文档')
         .fontSize(11)
         .fontColor(this.pal.TEXT_FAINT)
         .padding({ bottom: 10 })
@@ -629,10 +622,8 @@ struct HomePage {
           .fontSize(12)
           .fontColor(this.pal.TEXT_SUB)
         Blank()
-        Text(this.recentCollapsed ? '展开' : '收起')
-          .fontSize(12)
-          .fontColor(this.pal.PRIMARY)
-          .padding(4)
+        Button(this.recentCollapsed ? '展开' : '收起', { type: ButtonType.Normal })
+          .attributeModifier(new ControlStyle(this.pal, 'quiet'))
           .onClick(() => {
             this.recentCollapsed = !this.recentCollapsed;
           })
@@ -675,7 +666,7 @@ struct HomePage {
       Row({ space: 8 }) {
         TextInput({ placeholder: '搜索文档内容', text: this.searchQuery })
           .fontSize(13)
-          .height(34)
+          .height(ControlMetrics.HEIGHT)
           .padding({ left: 0, right: 8 })
           .backgroundColor(Color.Transparent)
           .layoutWeight(1)
@@ -684,9 +675,10 @@ struct HomePage {
             this.scheduleSearch();
           })
         if (this.searchQuery.length > 0) {
-          Text('✕')
-            .fontSize(13)
-            .fontColor(this.pal.TEXT_SUB)
+          Button({ type: ButtonType.Normal }) {
+            SymbolGlyph($r('sys.symbol.xmark')).fontSize(20).fontColor([this.pal.TEXT])
+          }
+            .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('关闭')
             .onClick(() => {
               this.searchQuery = '';
               this.searchResults = [];
@@ -766,23 +758,18 @@ struct HomePage {
     Column({ space: 0 }) {
       Blank().height(120)
 
-      Text('木笺')
+      Text('开始写作')
         .fontSize(24)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)
-      Text('完全离线的 Markdown 编辑器——打开的是原文件，保存后仍是原文件。')
+      Text('打开已有文档，或新建一份 Markdown。')
         .fontSize(13)
         .fontColor(this.pal.TEXT_FAINT)
         .padding({ top: 6, bottom: 36 })
 
-      Button('新建文档')
-        .fontSize(15)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.pal.ON_PRIMARY)
-        .backgroundColor(this.pal.PRIMARY)
-        .borderRadius(22)
+      Button('新建文档', { type: ButtonType.Normal })
         .width(180)
-        .height(44)
+        .attributeModifier(new ControlStyle(this.pal, 'secondary'))
         .onClick(() => this.goEditor())
 
       Text('或从左侧打开最近的文档')
@@ -830,34 +817,19 @@ struct HomePage {
       this.primaryBtn('新建文档', () => this.goEditor())
 
       Row({ space: 10 }) {
-        Button('打开文档')
-          .fontSize(14)
-          .fontColor(this.pal.TEXT)
-          .backgroundColor(this.pal.CONTENT)
-          .borderRadius(20)
-          .height(38)
+        Button('打开文档', { type: ButtonType.Normal })
           .layoutWeight(1)
+          .attributeModifier(new ControlStyle(this.pal, 'quiet'))
           .onClick(() => this.openExternalFile())
-        Button('我的文档')
-          .fontSize(14)
-          .fontColor(this.pal.TEXT)
-          .backgroundColor(this.pal.CONTENT)
-          .borderRadius(20)
-          .height(38)
+        Button('我的文档', { type: ButtonType.Normal })
           .layoutWeight(1)
+          .attributeModifier(new ControlStyle(this.pal, 'quiet'))
           .onClick(() => this.openLibraryFile())
       }
       .width('100%')
 
       if (this.draftCount > 0) {
-        Text(`⚠ 找回未保存内容（${this.draftCount}）`)
-          .fontSize(13)
-          .fontColor(this.pal.AMBER)
-          .width('100%')
-          .padding({ top: 8, bottom: 8, left: 14, right: 14 })
-          .backgroundColor(this.pal.AMBER_SOFT)
-          .borderRadius(10)
-          .onClick(() => this.goRecovery())
+        this.navRow(`找回未保存内容（${this.draftCount}）`, () => this.goRecovery())
       }
 
       if (this.pickingFile) {
@@ -867,20 +839,20 @@ struct HomePage {
       Row({ space: 8 }) {
         TextInput({ placeholder: '搜索文档内容', text: this.searchQuery })
           .fontSize(13)
-          .height(36)
+          .height(ControlMetrics.HEIGHT)
           .padding({ left: 0, right: 8 })
           .backgroundColor(this.pal.CONTENT)
-          .borderRadius(10)
+          .borderRadius(ControlMetrics.RADIUS)
           .layoutWeight(1)
           .onChange((v: string) => {
             this.searchQuery = v;
             this.scheduleSearch();
           })
         if (this.searchQuery.length > 0) {
-          Text('✕')
-            .fontSize(13)
-            .fontColor(this.pal.TEXT_SUB)
-            .padding(4)
+          Button({ type: ButtonType.Normal }) {
+            SymbolGlyph($r('sys.symbol.xmark')).fontSize(20).fontColor([this.pal.TEXT])
+          }
+            .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('关闭')
             .onClick(() => {
               this.searchQuery = '';
               this.searchResults = [];

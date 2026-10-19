@@ -1,5 +1,6 @@
 import { RecentFileList, RecentEntry } from '../domain/document/RecentFileList';
 import { AppTheme } from '../common/AppTheme';
+import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
 
 /**
  * 文档侧栏（B1/B2：编辑页内切换文档，不必返回首页）。
@@ -43,13 +44,9 @@ export struct DocumentSidebar {
 
   @Builder
   filterTab(label: string, mode: 'recent' | 'pinned' | 'library', count: number) {
-    Text(mode === this.filter ? `${label} ${count}` : label)
-      .fontSize(12)
-      .fontWeight(this.filter === mode ? FontWeight.Medium : FontWeight.Normal)
-      .fontColor(this.filter === mode ? this.pal.PRIMARY : this.pal.TEXT_SUB)
-      .padding({ left: 8, right: 8, top: 5, bottom: 5 })
-      .borderRadius(6)
-      .backgroundColor(this.filter === mode ? this.pal.PRIMARY_SOFT : Color.Transparent)
+    Button(label, { type: ButtonType.Normal })
+      .attributeModifier(new ControlStyle(this.pal, this.filter === mode ? 'selected' : 'quiet'))
+      .accessibilityText(`${label}，${count} 个文档`).accessibilitySelected(this.filter === mode)
       .onClick(() => {
         this.filter = mode;
       })
@@ -91,7 +88,7 @@ export struct DocumentSidebar {
       // 搜索框
       TextInput({ placeholder: '搜索文档', text: this.searchQuery })
         .fontSize(12)
-        .height(32)
+        .height(ControlMetrics.HEIGHT)
         .padding({ left: 10, right: 8 })
         .backgroundColor(this.pal.CARD)
         .borderRadius(8)

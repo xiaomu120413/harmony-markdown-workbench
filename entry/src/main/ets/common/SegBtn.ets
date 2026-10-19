@@ -1,4 +1,5 @@
 import { AppTheme } from './AppTheme';
+import { ControlStyle } from './ControlStyle';
 
 /**
  * 分段选择按钮（V0.2.2）。
@@ -14,12 +15,9 @@ export struct SegBtn {
   action: () => void = () => {};
 
   build() {
-    Text(this.label)
-      .fontSize(13)
-      .padding({ left: 14, right: 14, top: 7, bottom: 7 })
-      .fontColor(this.active ? this.pal.ON_PRIMARY : this.pal.TEXT)
-      .backgroundColor(this.active ? this.pal.PRIMARY : this.pal.CARD)
-      .borderRadius(8)
+    Button(this.label, { type: ButtonType.Normal })
+      .attributeModifier(new ControlStyle(this.pal, this.active ? 'selected' : 'quiet', this.label === '−' || this.label === '+'))
+      .accessibilitySelected(this.active)
       .onClick(() => this.action())
   }
 }

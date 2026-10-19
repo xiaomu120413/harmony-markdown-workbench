@@ -10,6 +10,7 @@ export default class EntryAbility extends UIAbility {
     AppStorage.setOrCreate('checkpointRequest', 0);
     AppStorage.setOrCreate('pendingOpenUri', '');
     AppStorage.setOrCreate('titleControlsBottom', 0);
+    AppStorage.setOrCreate('titleControlsWidth', 0);
     this.receiveFile(want);
     hilog.info(DOMAIN, TAG, 'EntryAbility onCreate');
   }
@@ -53,6 +54,7 @@ export default class EntryAbility extends UIAbility {
           win.setWindowDecorVisible(false);
           const updateTitleControls = (rect: window.TitleButtonRect): void => {
             AppStorage.setOrCreate('titleControlsBottom', rect.width > 0 ? rect.top + rect.height : 0);
+            AppStorage.setOrCreate('titleControlsWidth', rect.width > 0 ? rect.right + rect.width : 0);
           };
           updateTitleControls(win.getTitleButtonRect());
           win.on('windowTitleButtonRectChange', updateTitleControls);

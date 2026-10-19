@@ -1,3 +1,4 @@
+import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
 import { webview } from '@kit.ArkWeb';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -117,6 +118,7 @@ struct EditorPage {
   @State fileMenuVisible: boolean = false;
   @State fileSheetVisible: boolean = false;
   @StorageLink('titleControlsBottom') titleControlsBottom: number = 0;
+  @StorageLink('titleControlsWidth') titleControlsWidth: number = 0;
   @State fileSheetSection: string = 'root';
   private afterFileSheet: (() => void) | undefined = undefined;
   @State activeToolMenu: string = '';
@@ -1279,7 +1281,7 @@ struct EditorPage {
     Button({ type: ButtonType.Normal }) {
       Row({ space: 12 }) {
         Column({ space: 3 }) {
-          Text(label).fontSize(16).fontColor(this.pal.TEXT).maxLines(1)
+          Text(label).fontSize(ControlMetrics.FONT).fontColor(this.pal.TEXT).maxLines(1)
           if (detail.length > 0) {
             Text(detail).fontSize(12).fontColor(this.pal.TEXT_SUB).maxLines(2)
           }
@@ -1288,7 +1290,7 @@ struct EditorPage {
       }.width('100%')
     }
     .width('100%').constraintSize({ minHeight: 56 }).padding({ left: 12, right: 12, top: 10, bottom: 10 })
-    .backgroundColor(Color.Transparent).borderRadius(10).hoverEffect(HoverEffect.Highlight)
+    .backgroundColor(Color.Transparent).borderRadius(ControlMetrics.RADIUS).hoverEffect(HoverEffect.Highlight)
     .accessibilityText(`${label}，${detail}`).onClick(action)
   }
 
@@ -1297,13 +1299,13 @@ struct EditorPage {
     Column({ space: 8 }) {
       Row({ space: 8 }) {
         if (this.fileSheetSection !== 'root') {
-          Button('返回').fontSize(14).fontColor(this.pal.PRIMARY).backgroundColor(Color.Transparent)
-            .height(44).onClick(() => { this.fileSheetSection = 'root'; })
+          Button('返回', { type: ButtonType.Normal })
+            .attributeModifier(new ControlStyle(this.pal, 'quiet')).onClick(() => { this.fileSheetSection = 'root'; })
         }
         Text(this.fileSheetSection === 'root' ? '文档操作' : this.fileSheetSection === 'export' ? '导出副本' : this.fileSheetSection === 'outline' ? '文档大纲' : '复制内容')
           .fontSize(20).fontWeight(FontWeight.Medium).fontColor(this.pal.TEXT).layoutWeight(1)
-        Button('关闭').fontSize(14).fontColor(this.pal.TEXT_SUB).backgroundColor(Color.Transparent)
-          .height(44).onClick(() => { this.fileSheetVisible = false; })
+        Button('关闭', { type: ButtonType.Normal })
+          .attributeModifier(new ControlStyle(this.pal, 'quiet')).onClick(() => { this.fileSheetVisible = false; })
       }.width('100%')
       Column({ space: 4 }) {
         Text(this.docTitle).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.pal.TEXT)
@@ -1356,9 +1358,9 @@ struct EditorPage {
         }
       }
     }
-    .height(44).constraintSize({ minWidth: 44 }).padding({ left: 12, right: 12 }).borderRadius(10)
-    .backgroundColor(this.fileMenuVisible || this.fileSheetVisible ? this.pal.PRIMARY_SOFT : Color.Transparent)
-    .hoverEffect(HoverEffect.Highlight).accessibilityText('文档操作').id('document-actions')
+      .attributeModifier(new ControlStyle(this.pal,
+      this.fileMenuVisible || this.fileSheetVisible ? 'selected' : 'quiet', this.bp === 'phone'))
+    .accessibilityText('文档操作').id('document-actions')
     .enabled(!this.deliveryBusy && !this.dropBusy)
     .onClick(() => {
       if (this.bp === 'phone') { this.fileSheetSection = 'root'; this.fileSheetVisible = true; }
@@ -1382,23 +1384,26 @@ struct EditorPage {
     Row({ space: 4 }) {
       Button({ type: ButtonType.Normal }) {
         SymbolGlyph($r('sys.symbol.chevron_left')).fontSize(20).fontColor([this.pal.TEXT])
-      }.width(44).height(44).backgroundColor(Color.Transparent).accessibilityText('返回首页').onClick(() => this.goBack())
+      }.attributeModifier(new ControlStyle(this.pal, 'quiet', true))
+        .accessibilityText('返回首页').onClick(() => this.goBack())
       Column({ space: 2 }) {
         Text(this.docTitle).fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.pal.TEXT)
           .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(this.saveLabel).fontSize(11).fontColor(this.saveLabel === '已保存' ? this.pal.OK : this.pal.AMBER)
+        Text(this.saveLabel).fontSize(12).fontColor(this.saveStatusColor())
       }.layoutWeight(1).alignItems(HorizontalAlign.Start)
-      Button('保存').fontSize(14).fontColor(this.pal.PRIMARY).backgroundColor(Color.Transparent)
-        .height(44).padding({ left: 10, right: 10 }).onClick(() => this.save())
+      Button('保存', { type: ButtonType.Normal })
+        .attributeModifier(new ControlStyle(this.pal, 'primary')).onClick(() => this.save())
       this.fileEntry()
     }.width('100%')
     Row({ space: 6 }) {
       SegBtn({ label: '编辑', active: this.viewMode === DefaultView.EDIT, pal: this.pal, action: () => this.setViewMode(DefaultView.EDIT) })
       SegBtn({ label: '预览', active: this.viewMode === DefaultView.PREVIEW, pal: this.pal, action: () => this.setViewMode(DefaultView.PREVIEW) })
       Blank()
-      Button('大纲').fontSize(13).fontColor(this.pal.TEXT).backgroundColor(Color.Transparent).height(40)
+      Button('大纲', { type: ButtonType.Normal })
+        .attributeModifier(new ControlStyle(this.pal, 'quiet'))
         .onClick(() => { this.openPhoneOutline(); })
-      Button('查找').fontSize(13).fontColor(this.pal.TEXT).backgroundColor(Color.Transparent).height(40)
+      Button('查找', { type: ButtonType.Normal })
+        .attributeModifier(new ControlStyle(this.pal, 'quiet'))
         .onClick(() => { this.openFind(); })
     }.width('100%')
   }
@@ -1409,6 +1414,54 @@ struct EditorPage {
       MenuItem({ content: 'Markdown 原文' }).onClick(() => this.deliverDocument(4))
       MenuItem({ content: '渲染 HTML' }).onClick(() => this.deliverDocument(7))
     }
+  }
+
+  private saveStatusColor(): string {
+    return this.saveLabel === '已保存' ? this.pal.TEXT_SUB
+      : this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER : this.pal.AMBER;
+  }
+
+  @Builder
+  wideHeader() {
+    Row({ space: 4 }) {
+      Button({ type: ButtonType.Normal }) {
+        SymbolGlyph($r('sys.symbol.chevron_left')).fontSize(20).fontColor([this.pal.TEXT])
+      }.attributeModifier(new ControlStyle(this.pal, 'quiet', true))
+        .accessibilityText('返回首页').onClick(() => this.goBack())
+      Button({ type: ButtonType.Normal }) {
+        SymbolGlyph($r('sys.symbol.line_3_horizontal')).fontSize(20).fontColor([this.pal.TEXT])
+      }.attributeModifier(new ControlStyle(this.pal, this.sidebarVisible ? 'selected' : 'quiet', true))
+        .accessibilityText('文档侧栏').onClick(() => this.toggleSidebar())
+      Column({ space: 2 }) {
+        Text(this.docTitle).fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.pal.TEXT)
+          .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis }).width('100%')
+        Text(this.saveLabel).fontSize(12).fontColor(this.saveStatusColor())
+      }.layoutWeight(1).alignItems(HorizontalAlign.Start).padding({ left: 8 })
+        .onTouch((e: TouchEvent) => { if (e.type === TouchType.Down) { beginWindowMove(this.ctx); } })
+      this.fileEntry()
+      Button('保存', { type: ButtonType.Normal })
+        .attributeModifier(new ControlStyle(this.pal, 'primary')).onClick(() => this.save())
+    }.width('100%').height(ControlMetrics.HEIGHT)
+      .padding({ right: this.titleControlsWidth > 0 ? this.titleControlsWidth + 8 : 0 })
+  }
+
+  @Builder
+  viewControls() {
+    SegBtn({ label: '编辑', active: this.viewMode === DefaultView.EDIT, pal: this.pal, action: () => this.setViewMode(DefaultView.EDIT) })
+    SegBtn({ label: '预览', active: this.viewMode === DefaultView.PREVIEW, pal: this.pal, action: () => this.setViewMode(DefaultView.PREVIEW) })
+    SegBtn({ label: '分屏', active: this.viewMode === DefaultView.SPLIT, pal: this.pal, action: () => this.setViewMode(DefaultView.SPLIT) })
+  }
+
+  @Builder
+  navigationTools() {
+    Button('查找', { type: ButtonType.Normal })
+      .attributeModifier(new ControlStyle(this.pal, this.findVisible ? 'selected' : 'quiet'))
+      .onClick(() => { if (this.findVisible) { this.findVisible = false; } else { this.openFind(); } })
+    Button('大纲', { type: ButtonType.Normal })
+      .attributeModifier(new ControlStyle(this.pal, this.outlineVisible ? 'selected' : 'quiet'))
+      .onClick(() => this.toggleOutline())
+    Button('帮助', { type: ButtonType.Normal })
+      .attributeModifier(new ControlStyle(this.pal)).onClick(() => this.showHelp())
   }
 
   @Builder
@@ -1455,9 +1508,9 @@ struct EditorPage {
 
   @Builder
   toolGroup(label: string) {
-    Button(label).fontSize(13).fontColor(this.pal.TEXT).backgroundColor(this.pal.CARD)
-      .borderRadius(8).height(36).padding({ left: 14, right: 14 })
+    Button(label, { type: ButtonType.Normal })
       .enabled(!this.deliveryBusy)
+      .attributeModifier(new ControlStyle(this.pal, this.activeToolMenu === label ? 'selected' : 'quiet'))
       .onClick(() => { this.activeToolMenu = label; })
       .bindMenu(this.activeToolMenu === label, this.activeCommandMenu, {
         showInSubWindow: false, onDisappear: () => { this.activeToolMenu = ''; },
@@ -1636,11 +1689,11 @@ struct EditorPage {
         '',
         '视图：',
         '· 编辑/预览/分屏 顶栏切换（平板与电脑支持分屏）',
-        '· ☰ 侧栏　大纲面板 点击标题跳转',
+        '· 文档侧栏　大纲面板点击标题跳转',
         '',
         '保存：',
         '· 修改自动保存（1.5 秒防抖）',
-        '· 分享菜单：另存为、导出副本、图文 ZIP、HTML、复制',
+        '· 文档菜单：另存为、导出副本、图文 ZIP、HTML、复制',
         '· 意外退出可在首页「找回未保存内容」恢复',
       ].join('\\n'),
       confirm: {
@@ -1653,20 +1706,7 @@ struct EditorPage {
 
   // ---- 视图构建 ----
 
-  /** 快捷栏命令按钮（中文/短码标签，等高圆角，宽随文字） */
-  @Builder
-  toolBtn(label: string, cmd: MarkdownCommandName) {
-    Button(label)
-      .fontSize(13)
-      .fontColor(this.pal.TEXT)
-      .backgroundColor(this.pal.CARD)
-      .borderRadius(8)
-      .height(36)
-      .padding({ left: 10, right: 10 })
-      .onClick(() => this.applyCommand(cmd))
-  }
-
-  /** 快捷栏分组竖分隔线 */
+  /** 命令组之间的轻量分隔。 */
   @Builder
   toolSep() {
     Divider()
@@ -1679,40 +1719,17 @@ struct EditorPage {
   /** 历史按钮（撤销/重做） */
   @Builder
   histBtn(label: string, kind: 'undo' | 'redo') {
-    Button(label)
-      .fontSize(13)
-      .fontColor(this.pal.TEXT)
-      .backgroundColor(this.pal.CARD)
-      .borderRadius(8)
-      .height(36)
-      .padding({ left: 10, right: 10 })
+    Button(label, { type: ButtonType.Normal })
+      .attributeModifier(new ControlStyle(this.pal, 'quiet'))
       .onClick(() => this.applyHistory(kind))
   }
 
-  /** 顶栏小图标按钮 */
-  @Builder
-  topBtn(label: string, active: boolean, action: () => void) {
-    Text(label)
-      .fontSize(14)
-      .fontColor(active ? this.pal.ON_PRIMARY : this.pal.TEXT)
-      .backgroundColor(active ? this.pal.PRIMARY : this.pal.CARD)
-      .borderRadius(8)
-      .width(36)
-      .height(36)
-      .lineHeight(36)
-      .textAlign(TextAlign.Center)
-      .onClick(() => action())
-  }
-
-  /** 面板小按钮 */
+  /** 查找面板的同宽操作。 */
   @Builder
   panelBtn(label: string, action: () => void) {
-    Button(label)
-      .fontSize(12)
-      .fontColor(this.pal.TEXT)
-      .backgroundColor(this.pal.CARD)
-      .borderRadius(6)
-      .height(30)
+    Button(label, { type: ButtonType.Normal })
+      .attributeModifier(new ControlStyle(this.pal, 'quiet'))
+      .width(96)
       .onClick(() => action())
   }
 
@@ -1721,103 +1738,17 @@ struct EditorPage {
       if (this.bp === 'phone') {
         this.phoneHeader()
       } else {
-      // 顶栏：返回 | 文档名+保存状态 | （弹性） | 视图分段 | 查找/大纲/分享 | 保存（wrap 适配窄窗）
-      Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
-        Button('‹')
-          .fontSize(20)
-          .fontColor(this.pal.TEXT)
-          .backgroundColor(Color.Transparent)
-          .borderRadius(10)
-          .width(38)
-          .height(38)
-          .onClick(() => this.goBack())
-        this.topBtn('☰', this.sidebarVisible, () => this.toggleSidebar())
-
-        Row({ space: 8 }) {
-          Text(this.docTitle)
-            .fontSize(15)
-            .fontWeight(FontWeight.Medium)
-            .fontColor(this.pal.TEXT)
-            .maxLines(1)
-            .textOverflow({ overflow: TextOverflow.Ellipsis })
-            .constraintSize({ maxWidth: 220 })
-            .padding({ top: 8, bottom: 8 })
-            .onTouch((e: TouchEvent) => {
-              // 系统标题栏已隐藏：文档标题区接管窗口拖动（startMoving 热区）
-              if (e.type === TouchType.Down) {
-                beginWindowMove(this.ctx);
-              }
-            })
-          Text(this.saveLabel)
-            .fontSize(11)
-            .padding({ left: 8, right: 8, top: 3, bottom: 3 })
-            .fontColor(this.saveLabel === '已保存' ? this.pal.OK : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER : this.pal.AMBER))
-            .backgroundColor(this.saveLabel === '已保存' ? this.pal.OK_SOFT : (this.saveLabel === '外部冲突' || this.saveLabel === '保存失败' ? this.pal.DANGER_SOFT : this.pal.AMBER_SOFT))
-            .borderRadius(8)
-        }
-        .alignItems(VerticalAlign.Center)
-
-        // 视图模式分段（三端核心交互；phone 无分屏档；SegBtn 保证 active/palette 动态刷新）
-        Row({ space: 4 }) {
-          SegBtn({ label: '编辑', active: this.viewMode === DefaultView.EDIT, pal: this.pal, action: () => this.setViewMode(DefaultView.EDIT) })
-          SegBtn({ label: '预览', active: this.viewMode === DefaultView.PREVIEW, pal: this.pal, action: () => this.setViewMode(DefaultView.PREVIEW) })
-          if (ViewModePolicy.allowsSplit(this.bp)) {
-            SegBtn({ label: '分屏', active: this.viewMode === DefaultView.SPLIT, pal: this.pal, action: () => this.setViewMode(DefaultView.SPLIT) })
-          }
-        }
-
-        Button('查找')
-          .fontSize(13)
-          .fontColor(this.findVisible ? this.pal.ON_PRIMARY : this.pal.TEXT)
-          .backgroundColor(this.findVisible ? this.pal.PRIMARY : this.pal.CARD)
-          .borderRadius(8)
-          .height(36)
-          .padding({ left: 12, right: 12 })
-          .onClick(() => {
-            if (this.findVisible) {
-              this.findVisible = false;
-            } else {
-              this.openFind();
-            }
-          })
-        Button('大纲')
-          .fontSize(13)
-          .fontColor(this.outlineVisible ? this.pal.ON_PRIMARY : this.pal.TEXT)
-          .backgroundColor(this.outlineVisible ? this.pal.PRIMARY : this.pal.CARD)
-          .borderRadius(8)
-          .height(36)
-          .padding({ left: 12, right: 12 })
-          .onClick(() => this.toggleOutline())
-        this.fileEntry()
-        Button('帮助')
-          .fontSize(13)
-          .fontColor(this.pal.TEXT)
-          .backgroundColor(this.pal.CARD)
-          .borderRadius(8)
-          .height(36)
-          .padding({ left: 12, right: 12 })
-          .onClick(() => this.showHelp())
-        Button('保存')
-          .fontSize(13)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.pal.ON_PRIMARY)
-          .backgroundColor(this.pal.PRIMARY)
-          .borderRadius(8)
-          .height(36)
-          .onClick(() => this.save())
-      }
-      .width('100%')
+        this.wideHeader()
       }
 
-      // 查找替换面板（FR-EDIT-004；wrap 适配窄屏）
       if (this.findVisible) {
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
           TextInput({ placeholder: '查找', text: this.findQuery })
             .fontSize(13)
-            .height(32)
+            .height(ControlMetrics.HEIGHT)
             .padding({ left: 8, right: 8 })
             .backgroundColor(this.pal.CARD)
-            .borderRadius(6)
+            .borderRadius(ControlMetrics.RADIUS)
             .constraintSize({ minWidth: 120, maxWidth: 220 })
             .onChange((v: string) => {
               this.findQuery = v;
@@ -1826,10 +1757,10 @@ struct EditorPage {
             .onSubmit(() => this.jumpNext())
           TextInput({ placeholder: '替换为', text: this.replaceText })
             .fontSize(13)
-            .height(32)
+            .height(ControlMetrics.HEIGHT)
             .padding({ left: 8, right: 8 })
             .backgroundColor(this.pal.CARD)
-            .borderRadius(6)
+            .borderRadius(ControlMetrics.RADIUS)
             .constraintSize({ minWidth: 120, maxWidth: 220 })
             .onChange((v: string) => {
               this.replaceText = v;
@@ -1843,29 +1774,22 @@ struct EditorPage {
           this.panelBtn('替换', () => this.replaceCurrent())
           this.panelBtn('全部替换', () => this.replaceAllMatches())
           Row({ space: 4 }) {
-            Text('Aa').fontSize(12)
-              .fontColor(this.findCase ? this.pal.ON_PRIMARY : this.pal.TEXT)
-              .backgroundColor(this.findCase ? this.pal.PRIMARY : this.pal.CARD)
-              .borderRadius(6)
-              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            Button('Aa', { type: ButtonType.Normal })
+              .attributeModifier(new ControlStyle(this.pal, this.findCase ? 'selected' : 'quiet'))
               .onClick(() => {
                 this.findCase = !this.findCase;
                 this.refreshFind();
               })
-            Text('全词').fontSize(12)
-              .fontColor(this.findWord ? this.pal.ON_PRIMARY : this.pal.TEXT)
-              .backgroundColor(this.findWord ? this.pal.PRIMARY : this.pal.CARD)
-              .borderRadius(6)
-              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            Button('全词', { type: ButtonType.Normal })
+              .attributeModifier(new ControlStyle(this.pal, this.findWord ? 'selected' : 'quiet'))
               .onClick(() => {
                 this.findWord = !this.findWord;
                 this.refreshFind();
               })
-            Text('✕').fontSize(12)
-              .fontColor(this.pal.TEXT_SUB)
-              .backgroundColor(this.pal.CARD)
-              .borderRadius(6)
-              .padding({ left: 8, right: 8, top: 4, bottom: 4 })
+            Button({ type: ButtonType.Normal }) {
+              SymbolGlyph($r('sys.symbol.xmark')).fontSize(20).fontColor([this.pal.TEXT])
+            }
+              .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('关闭')
               .onClick(() => {
                 this.findVisible = false;
               })
@@ -1884,9 +1808,12 @@ struct EditorPage {
           Text('⚠ 磁盘版本已变化（自动保存已停止）')
             .fontSize(12)
             .fontColor(this.pal.DANGER)
-          Button('用磁盘版').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.CARD).borderRadius(8).onClick(() => this.conflictKeepDisk())
-          Button('保留本地').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.CARD).borderRadius(8).onClick(() => this.conflictKeepLocal())
-          Button('另存副本').fontSize(12).fontColor(this.pal.TEXT).backgroundColor(this.pal.CARD).borderRadius(8).onClick(() => this.conflictSaveCopy())
+          Button('用磁盘版', { type: ButtonType.Normal })
+            .attributeModifier(new ControlStyle(this.pal, 'quiet')).onClick(() => this.conflictKeepDisk())
+          Button('保留本地', { type: ButtonType.Normal })
+            .attributeModifier(new ControlStyle(this.pal, 'quiet')).onClick(() => this.conflictKeepLocal())
+          Button('另存副本', { type: ButtonType.Normal })
+            .attributeModifier(new ControlStyle(this.pal, 'quiet')).onClick(() => this.conflictSaveCopy())
         }
         .width('100%')
         .padding(6)
@@ -1894,10 +1821,15 @@ struct EditorPage {
         .borderRadius(8)
       }
 
-      // 快捷栏（仅编辑/分屏可见；B3-02：单行水平滚动，不换行成按钮墙）
-      if (this.viewMode !== DefaultView.PREVIEW) {
+      // 预览只保留视图与导航；窄窗命令单行滚动。
+      if (this.viewMode !== DefaultView.PREVIEW || this.bp !== 'phone') {
         Scroll() {
-          Row({ space: 2 }) {
+          Row({ space: 4 }) {
+            if (this.bp !== 'phone') {
+              this.viewControls()
+              this.toolSep()
+            }
+            if (this.viewMode !== DefaultView.PREVIEW) {
             this.toolGroup('标题')
             this.toolGroup('格式')
             this.toolGroup('段落')
@@ -1905,13 +1837,18 @@ struct EditorPage {
             this.toolSep()
             this.histBtn('撤销', 'undo')
             this.histBtn('重做', 'redo')
+            }
+            if (this.bp !== 'phone') {
+              this.toolSep()
+              this.navigationTools()
+            }
           }
         }
         .scrollable(ScrollDirection.Horizontal)
         .align(Alignment.Start)
         .scrollBar(BarState.Auto)
         .width('100%')
-        .height(44)
+        .height(ControlMetrics.HEIGHT)
       }
 
       // A2 恢复面板：外部文档读取失败/授权失效（不呈现可正常保存的空白文档）
@@ -1930,31 +1867,15 @@ struct EditorPage {
           Text(this.loadFailure).fontSize(12).fontColor(this.pal.DANGER).maxLines(3)
           Row({ space: 12 }) {
             if (this.docTarget !== undefined && this.docTarget.kind === 'external') {
-              Button('重新选择文件')
-                .fontSize(14)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.pal.ON_PRIMARY)
-                .backgroundColor(this.pal.PRIMARY)
-                .borderRadius(20)
-                .height(40)
-                .padding({ left: 16, right: 16 })
+              Button('重新选择文件', { type: ButtonType.Normal })
+                .attributeModifier(new ControlStyle(this.pal, 'primary'))
                 .onClick(() => this.reselectExternalFile())
             }
-            Button('查看恢复草稿')
-              .fontSize(14)
-              .fontColor(this.pal.TEXT)
-              .backgroundColor(this.pal.CARD)
-              .borderRadius(20)
-              .height(40)
-              .padding({ left: 16, right: 16 })
+            Button('查看恢复草稿', { type: ButtonType.Normal })
+              .attributeModifier(new ControlStyle(this.pal, 'quiet'))
               .onClick(() => router.pushUrl({ url: 'pages/RecoveryPage' }))
-            Button('返回')
-              .fontSize(14)
-              .fontColor(this.pal.TEXT_SUB)
-              .backgroundColor(Color.Transparent)
-              .borderRadius(20)
-              .height(40)
-              .padding({ left: 16, right: 16 })
+            Button('返回', { type: ButtonType.Normal })
+              .attributeModifier(new ControlStyle(this.pal, 'quiet'))
               .onClick(() => router.back())
           }
         }

@@ -1,3 +1,4 @@
+import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, promptAction } from '@kit.ArkUI';
@@ -115,7 +116,9 @@ struct RecoveryPage {
 
   private fmtTime(ms: number): string {
     const d = new Date(ms);
-    return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes()}`;
+    const hour = `${d.getHours()}`.padStart(2, '0');
+    const minute = `${d.getMinutes()}`.padStart(2, '0');
+    return `${d.getMonth() + 1}/${d.getDate()} ${hour}:${minute}`;
   }
 
   /** 恢复：草稿内容写回源文档（磁盘==基线才写，写前复核决策） */
@@ -190,13 +193,10 @@ struct RecoveryPage {
     Stack({ alignContent: Alignment.Top }) {
       Column({ space: 8 }) {
       Row({ space: 8 }) {
-        Button('‹')
-          .fontSize(22)
-          .fontColor(this.pal.TEXT)
-          .backgroundColor(this.pal.CARD)
-          .borderRadius(10)
-          .width(40)
-          .height(40)
+        Button({ type: ButtonType.Normal }) {
+          SymbolGlyph($r('sys.symbol.chevron_left')).fontSize(20).fontColor([this.pal.TEXT])
+        }
+          .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('返回')
           .onClick(() => router.back())
         Text('找回未保存内容')
           .fontSize(18)
@@ -230,9 +230,11 @@ struct RecoveryPage {
                   .fontWeight(FontWeight.Medium)
                   .fontColor(this.pal.TEXT)
                   .layoutWeight(1)
+                  .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
                 Text(this.fmtTime(row.draft.updatedAt))
-                  .fontSize(10)
+                  .fontSize(12)
                   .fontColor(this.pal.TEXT_SUB)
+                  .constraintSize({ minWidth: 110 }).maxLines(1)
               }
               .width('100%')
 
@@ -245,34 +247,24 @@ struct RecoveryPage {
                 .fontColor(this.pal.TEXT_FAINT)
                 .maxLines(2)
 
-              Row({ space: 8 }) {
+              Flex({ wrap: FlexWrap.Wrap }) {
                 if (row.decision === RecoveryDecision.RESTORE_DRAFT) {
-                  Button('恢复')
-                    .fontSize(12)
-                    .fontColor(this.pal.ON_PRIMARY)
-                    .backgroundColor(this.pal.PRIMARY)
-                    .borderRadius(8)
-                    .onClick(() => this.restoreRow(row))
+                  Button('恢复', { type: ButtonType.Normal })
+                    .attributeModifier(new ControlStyle(this.pal, 'primary'))
+                    .width(96).margin({ right: 8, top: 4 }).onClick(() => this.restoreRow(row))
                 }
-                Button('另存副本')
-                  .fontSize(12)
-                  .fontColor(this.pal.TEXT)
-                  .backgroundColor(this.pal.CARD)
-                  .borderRadius(8)
-                  .onClick(() => this.saveCopy(row))
-                Button(row.decision === RecoveryDecision.DISCARD_REDUNDANT ? '确认清理' : '放弃草稿')
-                  .fontSize(12)
-                  .fontColor(this.pal.TEXT)
-                  .backgroundColor(this.pal.CARD)
-                  .borderRadius(8)
-                  .onClick(() => this.discardRow(row))
+                Button('另存副本', { type: ButtonType.Normal })
+                  .attributeModifier(new ControlStyle(this.pal, 'quiet'))
+                  .width(96).margin({ right: 8, top: 4 }).onClick(() => this.saveCopy(row))
+                Button(row.decision === RecoveryDecision.DISCARD_REDUNDANT ? '确认清理' : '放弃草稿', { type: ButtonType.Normal })
+                  .attributeModifier(new ControlStyle(this.pal, 'danger'))
+                  .width(96).margin({ right: 8, top: 4 }).onClick(() => this.discardRow(row))
               }
               .width('100%')
             }
             .padding(10)
-            .backgroundColor(this.pal.CARD)
-            .borderRadius(10)
-            .border({ width: 1, color: this.pal.DIVIDER })
+            .backgroundColor(this.pal.CONTENT)
+            .borderRadius(ControlMetrics.RADIUS)
             .alignItems(HorizontalAlign.Start)
             .width('100%')
           }

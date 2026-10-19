@@ -9,6 +9,7 @@
 本轮交付以验证记录为准，下表旧版本“完成”不替代当前设备与异常路径的验收。
 后续改进：[外部文件入口与操作分组](docs/spec/file-intake-2026-10.md) · [真实授权、拖入与菜单验收](docs/spec/file-intake-verification.md)。
 文档操作更新：[宽窄屏设计](docs/spec/document-actions-2026-10.md) · [面板验收](docs/spec/document-actions-verification.md)。
+界面一致性：[全局控件规则](docs/spec/control-system-2026-10.md) · [截图审查与验收](docs/spec/control-system-verification.md)。
 
 ## 当前状态
 

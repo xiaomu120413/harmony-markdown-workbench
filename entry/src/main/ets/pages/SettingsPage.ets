@@ -1,3 +1,4 @@
+import { ControlStyle } from '../common/ControlStyle';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
@@ -105,13 +106,10 @@ struct SettingsPage {
       Column() {
         // 顶栏
         Row({ space: 8 }) {
-          Button('‹')
-            .fontSize(20)
-            .fontColor(this.pal.TEXT)
-            .backgroundColor(Color.Transparent)
-            .borderRadius(10)
-            .width(38)
-            .height(38)
+          Button({ type: ButtonType.Normal }) {
+            SymbolGlyph($r('sys.symbol.chevron_left')).fontSize(20).fontColor([this.pal.TEXT])
+          }
+            .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('返回')
             .onClick(() => router.back())
           Text('设置')
             .fontSize(18)
@@ -185,6 +183,7 @@ struct SettingsPage {
               Row({ space: 12 }) {
                 this.rowLabel('自动换行', '')
                 Toggle({ type: ToggleType.Switch, isOn: this.wrap })
+                  .selectedColor(this.pal.PRIMARY)
                   .onChange((v: boolean) => { this.wrap = v; this.persist(); })
               }
               .width('100%')
@@ -195,6 +194,7 @@ struct SettingsPage {
               Row({ space: 12 }) {
                 this.rowLabel('显示行号', '')
                 Toggle({ type: ToggleType.Switch, isOn: this.lineNumbers })
+                  .selectedColor(this.pal.PRIMARY)
                   .onChange((v: boolean) => { this.lineNumbers = v; this.persist(); })
               }
               .width('100%')
@@ -205,6 +205,7 @@ struct SettingsPage {
               Row({ space: 12 }) {
                 this.rowLabel('自动保存', '停止输入片刻后自动写入文件')
                 Toggle({ type: ToggleType.Switch, isOn: this.autoSave })
+                  .selectedColor(this.pal.PRIMARY)
                   .onChange((v: boolean) => { this.autoSave = v; this.persist(); })
               }
               .width('100%')
@@ -250,15 +251,10 @@ struct SettingsPage {
               .padding({ left: 16, right: 14 })
               this.rowDiv(true)
 
-              Button(this.draftCount > 0 ? '查看并恢复草稿' : '打开恢复页')
-                .fontSize(14)
-                .fontWeight(FontWeight.Medium)
-                .fontColor(this.pal.ON_PRIMARY)
-                .backgroundColor(this.pal.PRIMARY)
-                .borderRadius(20)
-                .width('100%')
-                .height(42)
-                .margin({ top: 10, bottom: 12 })
+              Button(this.draftCount > 0 ? '查看并恢复草稿' : '打开恢复页', { type: ButtonType.Normal })
+                .width(180)
+                .margin({ left: 16, top: 10, bottom: 12 })
+                .attributeModifier(new ControlStyle(this.pal, 'secondary'))
                 .onClick(() => router.pushUrl({ url: 'pages/RecoveryPage' }))
             }
             .width('100%')
@@ -270,10 +266,12 @@ struct SettingsPage {
           .padding({ bottom: 24 })
         }
         .layoutWeight(1)
+        .align(Alignment.TopStart)
         .width('100%')
         .scrollBar(BarState.Off)
       }
       .width('100%')
+      .constraintSize({ maxWidth: 760 })
       .height('100%')
     }
     .width('100%')

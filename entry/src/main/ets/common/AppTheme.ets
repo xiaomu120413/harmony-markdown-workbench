@@ -14,7 +14,7 @@ export class AppTheme {
   readonly CONTENT: string;
   /** 控件浅底（工具条/输入框/非激活分段） */
   readonly CARD: string;
-  /** 主色（HarmonyOS 官方蓝 #007DFF） */
+  /** 主操作色；普通控件不铺主色底。 */
   readonly PRIMARY: string;
   /** 主色浅底（选中/标签） */
   readonly PRIMARY_SOFT: string;
@@ -67,8 +67,8 @@ export class AppTheme {
   static light(): AppTheme {
     return new AppTheme(
       '#F2F3F5', '#EEEFF1', '#FFFFFF', '#F4F5F7',
-      '#007DFF', '#E6F0FF', '#FFFFFF',
-      '#182431', '#8A8F99', '#B7BCC4', '#E5E6E8',
+      '#0069D9', '#E8EEF6', '#FFFFFF',
+      '#20252B', '#626A73', '#626A73', '#E5E6E8',
       '#2E9E5B', '#C77A18', '#D93A3A', '#E7F6ED', '#FCF1E3', '#FDEBEB',
     );
   }
@@ -76,8 +76,8 @@ export class AppTheme {
   static dark(): AppTheme {
     return new AppTheme(
       '#131316', '#17171B', '#1E1E22', '#2A2A2F',
-      '#0A84FF', '#1B2A3D', '#FFFFFF',
-      '#E8E9EB', '#9CA1AA', '#6B7078', '#323236',
+      '#0069D9', '#27313D', '#FFFFFF',
+      '#E8E9EB', '#A4ABB4', '#A4ABB4', '#323236',
       '#4BC98A', '#E0A64E', '#F06A6A', '#1C3227', '#39301E', '#3D2424',
     );
   }

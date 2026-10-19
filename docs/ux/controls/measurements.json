@@ -1,0 +1,273 @@
+{
+  "device": "HAD-W32 API 26",
+  "standardHeightVp": 44,
+  "measurement": "Native uitest dumpLayout -b com.markdownworkbench.validation -m false -a; system caption buttons excluded",
+  "pages": {
+    "home": {
+      "buttons": 7,
+      "heightsPx": [
+        84
+      ],
+      "measurements": [
+        {
+          "label": "新建文档",
+          "widthPx": 445,
+          "heightPx": 84,
+          "background": "#FF0069D9"
+        },
+        {
+          "label": "",
+          "widthPx": 445,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "",
+          "widthPx": 445,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "",
+          "widthPx": 445,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "",
+          "widthPx": 445,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "收起",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "新建文档",
+          "widthPx": 342,
+          "heightPx": 84,
+          "background": "#FFF4F5F7"
+        }
+      ]
+    },
+    "editor": {
+      "buttons": 19,
+      "heightsPx": [
+        84
+      ],
+      "measurements": [
+        {
+          "label": "",
+          "widthPx": 84,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "",
+          "widthPx": 84,
+          "heightPx": 84,
+          "background": "#FFE8EEF6"
+        },
+        {
+          "label": "",
+          "widthPx": 181,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "保存",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#FF0069D9"
+        },
+        {
+          "label": "编辑",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#FFE8EEF6"
+        },
+        {
+          "label": "预览",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "分屏",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "标题",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "格式",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "段落",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "插入",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "撤销",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "重做",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "查找",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "大纲",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "帮助",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "最近",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#FFE8EEF6"
+        },
+        {
+          "label": "固定",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "资料库",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        }
+      ]
+    },
+    "settings": {
+      "buttons": 9,
+      "heightsPx": [
+        84
+      ],
+      "measurements": [
+        {
+          "label": "",
+          "widthPx": 84,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "浅色",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#FFE8EEF6"
+        },
+        {
+          "label": "深色",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "−",
+          "widthPx": 84,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "+",
+          "widthPx": 84,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "编辑",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#FFE8EEF6"
+        },
+        {
+          "label": "预览",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "分屏",
+          "widthPx": 137,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "查看并恢复草稿",
+          "widthPx": 342,
+          "heightPx": 84,
+          "background": "#FFF4F5F7"
+        }
+      ]
+    },
+    "recoveryNarrow": {
+      "buttons": 4,
+      "heightsPx": [
+        84
+      ],
+      "measurements": [
+        {
+          "label": "",
+          "widthPx": 84,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "恢复",
+          "widthPx": 182,
+          "heightPx": 84,
+          "background": "#FF0069D9"
+        },
+        {
+          "label": "另存副本",
+          "widthPx": 183,
+          "heightPx": 84,
+          "background": "#00000000"
+        },
+        {
+          "label": "放弃草稿",
+          "widthPx": 182,
+          "heightPx": 84,
+          "background": "#00000000"
+        }
+      ]
+    }
+  }
+}
