@@ -115,6 +115,10 @@ struct EditorPage {
   @State dropBusy: boolean = false;
   @State fileHover: boolean = false;
   @State fileMenuVisible: boolean = false;
+  @State fileSheetVisible: boolean = false;
+  @StorageLink('titleControlsBottom') titleControlsBottom: number = 0;
+  @State fileSheetSection: string = 'root';
+  private afterFileSheet: (() => void) | undefined = undefined;
   @State activeToolMenu: string = '';
   private openPromptVisible: boolean = false;
   @StorageLink('checkpointRequest') @Watch('onCheckpointRequest') checkpointRequest: number = 0;
@@ -248,7 +252,15 @@ struct EditorPage {
     } finally { this.dropBusy = false; }
   }
 
-  onBackPress(): boolean { this.goBack(); return true; }
+  onBackPress(): boolean {
+    if (this.fileSheetVisible) {
+      if (this.fileSheetSection !== 'root') { this.fileSheetSection = 'root'; }
+      else { this.fileSheetVisible = false; }
+      return true;
+    }
+    this.goBack();
+    return true;
+  }
 
   private append(line: string): void {
     hilog.info(DOMAIN, TAG, '%{public}s', line);
@@ -259,6 +271,8 @@ struct EditorPage {
       this.bp = bp;
       // 断点变化归一化：phone 档无分屏（ViewModePolicy）
       this.viewMode = ViewModePolicy.normalize(this.viewMode, bp);
+      if (bp === 'phone') { this.fileMenuVisible = false; this.outlineVisible = false; }
+      else { this.fileSheetVisible = false; }
     });
     // 编排器延迟创建：deps 闭包依赖组件方法（字段初始化器内不能引用 this）
     this.coordinator = new SaveCoordinator(new EditorPageDeps(
@@ -701,6 +715,15 @@ struct EditorPage {
     if (this.outlineVisible) {
       this.syncDocNow();
     }
+  }
+
+  private async openPhoneOutline(): Promise<void> {
+    const session = this.activeSession;
+    const md = await this.runJsValue('window.__editorApi.getSnapshot();');
+    if (!this.pageActive || session !== this.activeSession || this.bp !== 'phone') { return; }
+    this.rebuildOutline(md);
+    this.fileSheetSection = 'outline';
+    this.fileSheetVisible = true;
   }
 
   /** 视图切换：进入预览/分屏立即同步一次（不等防抖）；B4 空间预算 */
@@ -1211,21 +1234,173 @@ struct EditorPage {
   @Builder
   fileMenu() {
     Menu() {
-      MenuItemGroup({ header: '文档' }) {
+      MenuItemGroup() {
         MenuItem({ content: '新建文档' }).onClick(() => this.newDocument())
         MenuItem({ content: '打开文档…' }).onClick(() => this.openDocument())
         MenuItem({ content: '另存为…' }).onClick(() => this.deliverDocument(0))
       }
-      MenuItemGroup({ header: '导出副本 · 不改变保存位置' }) {
-        MenuItem({ content: '图文 ZIP', labelInfo: '正文 + 图片' }).onClick(() => this.deliverDocument(2))
-        MenuItem({ content: 'HTML 网页', labelInfo: '内嵌本地图片' }).onClick(() => this.deliverDocument(3))
-        MenuItem({ content: 'Markdown', labelInfo: '仅正文' }).onClick(() => this.deliverDocument(1))
-      }
-      MenuItemGroup({ header: '更多' }) {
+      MenuItemGroup() {
+        MenuItem({ content: '导出副本', builder: this.exportMenu })
         MenuItem({ content: '复制内容', builder: this.copyMenu })
         MenuItem({ content: '查看保存位置' }).onClick(() => this.showLocation())
       }
-    }.width(320)
+    }.width(264)
+  }
+
+  @Builder
+  exportMenu() {
+    Menu() {
+      MenuItem({ content: '图文包 ZIP', labelInfo: '正文和图片' }).onClick(() => this.deliverDocument(2))
+      MenuItem({ content: '网页 HTML', labelInfo: '内嵌图片' }).onClick(() => this.deliverDocument(3))
+      MenuItem({ content: 'Markdown', labelInfo: '仅正文' }).onClick(() => this.deliverDocument(1))
+    }
+  }
+
+  private documentLocation(): string {
+    const target = this.docTarget;
+    return target === undefined ? '尚未保存到文件' : target.kind === 'internal'
+      ? '我的文档 · 应用内' : RecentFileList.location(target.uri);
+  }
+
+  private dismissFileSheet(action: () => void): void {
+    this.afterFileSheet = action;
+    this.fileSheetVisible = false;
+  }
+
+  private fileSheetClosed(): void {
+    this.fileSheetVisible = false;
+    const action = this.afterFileSheet;
+    this.afterFileSheet = undefined;
+    if (this.pageActive && action !== undefined) { action(); }
+  }
+
+  @Builder
+  fileActionRow(label: string, detail: string, next: boolean, action: () => void) {
+    Button({ type: ButtonType.Normal }) {
+      Row({ space: 12 }) {
+        Column({ space: 3 }) {
+          Text(label).fontSize(16).fontColor(this.pal.TEXT).maxLines(1)
+          if (detail.length > 0) {
+            Text(detail).fontSize(12).fontColor(this.pal.TEXT_SUB).maxLines(2)
+          }
+        }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+        if (next) { SymbolGlyph($r('sys.symbol.chevron_right')).fontSize(14).fontColor([this.pal.TEXT_SUB]) }
+      }.width('100%')
+    }
+    .width('100%').constraintSize({ minHeight: 56 }).padding({ left: 12, right: 12, top: 10, bottom: 10 })
+    .backgroundColor(Color.Transparent).borderRadius(10).hoverEffect(HoverEffect.Highlight)
+    .accessibilityText(`${label}，${detail}`).onClick(action)
+  }
+
+  @Builder
+  fileSheet() {
+    Column({ space: 8 }) {
+      Row({ space: 8 }) {
+        if (this.fileSheetSection !== 'root') {
+          Button('返回').fontSize(14).fontColor(this.pal.PRIMARY).backgroundColor(Color.Transparent)
+            .height(44).onClick(() => { this.fileSheetSection = 'root'; })
+        }
+        Text(this.fileSheetSection === 'root' ? '文档操作' : this.fileSheetSection === 'export' ? '导出副本' : this.fileSheetSection === 'outline' ? '文档大纲' : '复制内容')
+          .fontSize(20).fontWeight(FontWeight.Medium).fontColor(this.pal.TEXT).layoutWeight(1)
+        Button('关闭').fontSize(14).fontColor(this.pal.TEXT_SUB).backgroundColor(Color.Transparent)
+          .height(44).onClick(() => { this.fileSheetVisible = false; })
+      }.width('100%')
+      Column({ space: 4 }) {
+        Text(this.docTitle).fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.pal.TEXT)
+          .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+        Text(`${this.documentLocation()} · ${this.saveLabel}`).fontSize(12).fontColor(this.pal.TEXT_SUB).maxLines(2)
+      }.alignItems(HorizontalAlign.Start).width('100%').padding({ left: 12, right: 12, bottom: 8 })
+      Divider().color(this.pal.DIVIDER)
+      Scroll() {
+        Column({ space: 2 }) {
+          if (this.fileSheetSection === 'root') {
+            this.fileActionRow('新建文档', '', false, () => this.dismissFileSheet(() => this.newDocument()))
+            this.fileActionRow('打开文档', '选择要继续编辑的原文件', false, () => this.dismissFileSheet(() => this.openDocument()))
+            this.fileActionRow('另存为', '保存后继续编辑新文件', false, () => this.dismissFileSheet(() => this.deliverDocument(0)))
+            Divider().color(this.pal.DIVIDER).margin({ top: 4, bottom: 4 })
+            this.fileActionRow('导出副本', '选择格式，保留当前保存位置', true, () => { this.fileSheetSection = 'export'; })
+            this.fileActionRow('复制内容', '', true, () => { this.fileSheetSection = 'copy'; })
+            this.fileActionRow('保存位置', this.documentLocation(), false, () => this.dismissFileSheet(() => this.showLocation()))
+            this.fileActionRow('快捷键与帮助', '', false, () => this.dismissFileSheet(() => this.showHelp()))
+          } else if (this.fileSheetSection === 'export') {
+            this.fileActionRow('图文包 ZIP', 'Markdown 正文和引用的本地图片', false, () => this.dismissFileSheet(() => this.deliverDocument(2)))
+            this.fileActionRow('网页 HTML', '在浏览器查看，本地图片嵌入文件', false, () => this.dismissFileSheet(() => this.deliverDocument(3)))
+            this.fileActionRow('Markdown', '仅保存正文，不包含图片附件', false, () => this.dismissFileSheet(() => this.deliverDocument(1)))
+          } else if (this.fileSheetSection === 'outline') {
+            if (this.outlineEntries.length === 0) {
+              Text('添加 Markdown 标题后，可在这里快速跳转。').fontSize(14).fontColor(this.pal.TEXT_SUB).padding(12)
+            }
+            ForEach(this.outlineEntries, (entry: OutlineEntry) => {
+              this.fileActionRow(`${'#'.repeat(entry.level)} ${entry.text}`, '', false,
+                () => this.dismissFileSheet(() => this.jumpToOutlineEntry(entry)))
+            })
+          } else {
+            this.fileActionRow('Markdown 原文', '', false, () => this.dismissFileSheet(() => this.deliverDocument(4)))
+            this.fileActionRow('渲染 HTML', '', false, () => this.dismissFileSheet(() => this.deliverDocument(7)))
+          }
+        }.width('100%')
+      }.layoutWeight(1).width('100%').align(Alignment.TopStart).scrollBar(BarState.Auto)
+    }.width('100%').height('100%').padding({ left: 16, right: 16, bottom: 24 })
+      .backgroundColor(this.pal.CONTENT)
+  }
+
+  @Builder
+  fileEntry() {
+    Button({ type: ButtonType.Normal }) {
+      Row({ space: 7 }) {
+        SymbolGlyph(this.bp === 'phone' ? $r('sys.symbol.ellipsis_circle') : $r('sys.symbol.folder'))
+          .fontSize(this.bp === 'phone' ? 22 : 18).fontColor([this.pal.TEXT])
+        if (this.bp !== 'phone') {
+          Text('文档').fontSize(14).fontColor(this.pal.TEXT)
+          SymbolGlyph($r('sys.symbol.chevron_down')).fontSize(11).fontColor([this.pal.TEXT_SUB])
+        }
+      }
+    }
+    .height(44).constraintSize({ minWidth: 44 }).padding({ left: 12, right: 12 }).borderRadius(10)
+    .backgroundColor(this.fileMenuVisible || this.fileSheetVisible ? this.pal.PRIMARY_SOFT : Color.Transparent)
+    .hoverEffect(HoverEffect.Highlight).accessibilityText('文档操作').id('document-actions')
+    .enabled(!this.deliveryBusy && !this.dropBusy)
+    .onClick(() => {
+      if (this.bp === 'phone') { this.fileSheetSection = 'root'; this.fileSheetVisible = true; }
+      else { this.fileMenuVisible = true; }
+    })
+    .bindMenu(this.bp !== 'phone' && this.fileMenuVisible, this.fileMenu, {
+      showInSubWindow: false, onDisappear: () => { this.fileMenuVisible = false; },
+    })
+    .bindSheet(this.bp === 'phone' && this.fileSheetVisible, this.fileSheet, {
+      height: '75%', preferType: SheetType.BOTTOM, showClose: false, dragBar: true,
+      backgroundColor: this.pal.CONTENT, onDisappear: () => this.fileSheetClosed(),
+    })
+  }
+
+  @Builder
+  phoneHeader() {
+    if (this.titleControlsBottom > 0) {
+      Blank().height(this.titleControlsBottom).width('100%')
+        .onTouch((e: TouchEvent) => { if (e.type === TouchType.Down) { beginWindowMove(this.ctx); } })
+    }
+    Row({ space: 4 }) {
+      Button({ type: ButtonType.Normal }) {
+        SymbolGlyph($r('sys.symbol.chevron_left')).fontSize(20).fontColor([this.pal.TEXT])
+      }.width(44).height(44).backgroundColor(Color.Transparent).accessibilityText('返回首页').onClick(() => this.goBack())
+      Column({ space: 2 }) {
+        Text(this.docTitle).fontSize(16).fontWeight(FontWeight.Medium).fontColor(this.pal.TEXT)
+          .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+        Text(this.saveLabel).fontSize(11).fontColor(this.saveLabel === '已保存' ? this.pal.OK : this.pal.AMBER)
+      }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+      Button('保存').fontSize(14).fontColor(this.pal.PRIMARY).backgroundColor(Color.Transparent)
+        .height(44).padding({ left: 10, right: 10 }).onClick(() => this.save())
+      this.fileEntry()
+    }.width('100%')
+    Row({ space: 6 }) {
+      SegBtn({ label: '编辑', active: this.viewMode === DefaultView.EDIT, pal: this.pal, action: () => this.setViewMode(DefaultView.EDIT) })
+      SegBtn({ label: '预览', active: this.viewMode === DefaultView.PREVIEW, pal: this.pal, action: () => this.setViewMode(DefaultView.PREVIEW) })
+      Blank()
+      Button('大纲').fontSize(13).fontColor(this.pal.TEXT).backgroundColor(Color.Transparent).height(40)
+        .onClick(() => { this.openPhoneOutline(); })
+      Button('查找').fontSize(13).fontColor(this.pal.TEXT).backgroundColor(Color.Transparent).height(40)
+        .onClick(() => { this.openFind(); })
+    }.width('100%')
   }
 
   @Builder
@@ -1543,6 +1718,9 @@ struct EditorPage {
 
   build() {
     Column({ space: 8 }) {
+      if (this.bp === 'phone') {
+        this.phoneHeader()
+      } else {
       // 顶栏：返回 | 文档名+保存状态 | （弹性） | 视图分段 | 查找/大纲/分享 | 保存（wrap 适配窄窗）
       Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
         Button('‹')
@@ -1610,17 +1788,7 @@ struct EditorPage {
           .height(36)
           .padding({ left: 12, right: 12 })
           .onClick(() => this.toggleOutline())
-        Button('文件')
-          .fontSize(13)
-          .backgroundColor(this.pal.CARD)
-          .fontColor(this.pal.TEXT)
-          .borderRadius(8)
-          .height(36)
-          .enabled(!this.deliveryBusy && !this.dropBusy)
-          .onClick(() => { this.fileMenuVisible = true; this.append('[菜单] 文件展开'); })
-          .bindMenu(this.fileMenuVisible, this.fileMenu, {
-            showInSubWindow: false, onAppear: () => { this.append('[菜单] 文件已显示'); }, onDisappear: () => { this.fileMenuVisible = false; },
-          })
+        this.fileEntry()
         Button('帮助')
           .fontSize(13)
           .fontColor(this.pal.TEXT)
@@ -1639,6 +1807,7 @@ struct EditorPage {
           .onClick(() => this.save())
       }
       .width('100%')
+      }
 
       // 查找替换面板（FR-EDIT-004；wrap 适配窄屏）
       if (this.findVisible) {
@@ -1799,7 +1968,7 @@ struct EditorPage {
       Stack() {
       Row({ space: 0 }) {
         // B1/B2：文档侧栏（编辑页内切换文档，phone 档可折叠）
-        if (this.sidebarVisible) {
+        if (this.sidebarVisible && this.bp !== 'phone') {
           DocumentSidebar({
             recent: $sidebarRecent,
             libraryFiles: $sidebarLibrary,

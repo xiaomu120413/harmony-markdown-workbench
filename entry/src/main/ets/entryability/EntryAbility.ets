@@ -9,6 +9,7 @@ export default class EntryAbility extends UIAbility {
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     AppStorage.setOrCreate('checkpointRequest', 0);
     AppStorage.setOrCreate('pendingOpenUri', '');
+    AppStorage.setOrCreate('titleControlsBottom', 0);
     this.receiveFile(want);
     hilog.info(DOMAIN, TAG, 'EntryAbility onCreate');
   }
@@ -44,12 +45,17 @@ export default class EntryAbility extends UIAbility {
         return;
       }
       hilog.info(DOMAIN, TAG, 'HomePage loaded');
-      // 隐藏系统标题栏（自由窗口 DecorBar）：应用自定义顶栏成为唯一标题栏，
-      // 内容区接管原标题栏空间；窗口拖动由应用内热区（页面标题，startMoving）接管。
+      // 隐藏 DecorBar 后仍保留系统三键；发布其实际高度供窄窗避让。
+      // 窗口拖动由应用内热区（页面标题，startMoving）接管。
       // 须在 loadContent 生效后调用；不支持的形态（手机全屏等）静默降级。
       windowStage.getMainWindow().then((win: window.Window) => {
         try {
           win.setWindowDecorVisible(false);
+          const updateTitleControls = (rect: window.TitleButtonRect): void => {
+            AppStorage.setOrCreate('titleControlsBottom', rect.width > 0 ? rect.top + rect.height : 0);
+          };
+          updateTitleControls(win.getTitleButtonRect());
+          win.on('windowTitleButtonRectChange', updateTitleControls);
           hilog.info(DOMAIN, TAG, 'window decor hidden');
         } catch (e) {
           hilog.info(DOMAIN, TAG, 'setWindowDecorVisible unavailable: %{public}s', JSON.stringify(e));
