@@ -36,7 +36,8 @@ export class DocumentImportService {
 
   async importUri(uri: string): Promise<string> {
     const external = new ExternalUriFileSource();
-    const read = await external.read({ kind: 'external', uri: uri, displayName: '' });
+    // Drag/drop imports a private copy; do not retain access to its external source.
+    const read = await external.read({ kind: 'external', uri: uri, displayName: '' }, false);
     if (!read.validUtf8) { throw new Error('仅支持 UTF-8 文本文档，原文件未改动'); }
     const internal = new InternalFileSource(this.ctx);
     const originalName = RecentFileList.displayName(uri).replace(/[\\/:*?"<>|\x00-\x1f]/g, '_');

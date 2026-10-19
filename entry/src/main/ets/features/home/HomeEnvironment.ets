@@ -7,6 +7,8 @@ import { SettingsStore } from '../../infrastructure/metadata/SettingsStore';
 
 export class HomeEnvironment {
   active: boolean = true;
+  get pendingOpenUri(): string { return AppStorage.get<string>('pendingOpenUri') ?? ''; }
+  set pendingOpenUri(uri: string) { AppStorage.setOrCreate('pendingOpenUri', uri); }
   ctx: common.UIAbilityContext;
   meta: MetadataStore;
   fileSource: InternalFileSource;

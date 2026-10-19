@@ -12,6 +12,9 @@
     "deliveryWithInstall": false,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "requestPermissions": [
+      { "name": "ohos.permission.FILE_ACCESS_PERSIST" }
+    ],
     "abilities": [
       {
         "name": "EntryAbility",

@@ -1,3 +1,5 @@
+import { FileRevisionContract, DocumentWriteFormat } from '../../domain/document/DocumentFileAdapter';
+import { AppSettings, SettingsValidator } from '../../domain/settings/AppSettings';
 import { common } from '@kit.AbilityKit';
 import { webview } from '@kit.ArkWeb';
 import { mediaquery } from '@kit.ArkUI';
@@ -13,6 +15,21 @@ import { ReadDocumentResult } from '../../domain/document/DocumentFileAdapter';
 /** Per-mounted-editor platform dependencies and disposable handles; never an observed UI model. */
 export class EditorEnvironment {
   disposed: boolean = false;
+  openPromptVisible: boolean = false;
+  activeSession: string = '';
+  appSettings: AppSettings = SettingsValidator.defaults();
+  expectedRevision: FileRevisionContract = { size: 0, contentHash: '' };
+  pendingLoad: string = '';
+  retiredDraftId: string = '';
+  sessionDraftId: string = `session:${Date.now()}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
+  docFormat: DocumentWriteFormat = { encoding: 'utf-8', lineEnding: 'lf' };
+  docValidUtf8: boolean = true;
+  pendingLoadAt: number = 0;
+  webReady: boolean = false;
+  previewReady: boolean = false;
+  lastPreviewedMd: string = '\u0000';
+  get pendingOpenUri(): string { return AppStorage.get<string>('pendingOpenUri') ?? ''; }
+  set pendingOpenUri(uri: string) { AppStorage.setOrCreate('pendingOpenUri', uri); }
   ctx: common.UIAbilityContext;
   controller: webview.WebviewController = new webview.WebviewController();
   previewController: webview.WebviewController = new webview.WebviewController();

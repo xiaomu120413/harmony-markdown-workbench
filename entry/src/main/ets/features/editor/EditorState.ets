@@ -1,14 +1,15 @@
+import { SaveState, SaveStateMachine } from '../../domain/recovery/SaveStateMachine';
 import { OutlineEntry } from './EditorTypes';
 import { FindMatch } from '../../domain/editor/FindReplaceEngine';
-import { DocumentSource, FileRevisionContract, DocumentWriteFormat } from '../../domain/document/DocumentFileAdapter';
+import { DocumentSource } from '../../domain/document/DocumentFileAdapter';
 import { AppTheme } from '../../common/AppTheme';
 import { RecentEntry } from '../../domain/document/RecentFileList';
 import { Breakpoint } from '../../common/Breakpoints';
-import { AppSettings, SettingsValidator, DefaultView } from '../../domain/settings/AppSettings';
+import { DefaultView } from '../../domain/settings/AppSettings';
 
 @Observed
 export class EditorState {
-  saveLabel: string = '已保存';
+  saveState: SaveState = SaveState.CLEAN;
   recoveryLabel: string = '';
   deliveryBusy: boolean = false;
   dropBusy: boolean = false;
@@ -17,19 +18,16 @@ export class EditorState {
   fileSheetVisible: boolean = false;
   fileSheetSection: string = 'root';
   activeToolMenu: string = '';
-  openPromptVisible: boolean = false;
-  activeSession: string = '';
-  pageActive: boolean = true;
   docLength: number = 0;
   docTitle: string = '未命名';
-  conflictVisible: boolean = false;
+  get conflictVisible(): boolean { return this.saveState === SaveState.CONFLICT; }
   viewMode: DefaultView = DefaultView.EDIT;
   findVisible: boolean = false;
   findQuery: string = '';
   replaceText: string = '';
   findCase: boolean = false;
   findWord: boolean = false;
-  matchCount: number = 0;
+  get matchCount(): number { return this.findMatches.length; }
   matchIndex: number = -1;
   outlineVisible: boolean = false;
   outlineEntries: OutlineEntry[] = [];
@@ -40,26 +38,17 @@ export class EditorState {
   sidebarVisible: boolean = false;
   sidebarRecent: RecentEntry[] = [];
   sidebarLibrary: string[] = [];
-  appSettings: AppSettings = SettingsValidator.defaults();
   pal: AppTheme = AppTheme.light();
   bp: Breakpoint = 'phone';
   contentWidthVp: number = 1000;
   docTarget: DocumentSource | undefined = undefined;
-  expectedRevision: FileRevisionContract = { size: 0, contentHash: '' };
-  pendingLoad: string = '';
-  retiredDraftId: string = '';
-  sessionDraftId: string = `session:${Date.now()}-${Math.floor(Math.random() * 0xffff).toString(16)}`;
-  docFormat: DocumentWriteFormat = { encoding: 'utf-8', lineEnding: 'lf' };
-  docValidUtf8: boolean = true;
-  pendingLoadAt: number = 0;
-  webReady: boolean = false;
-  previewReady: boolean = false;
-  lastPreviewedMd: string = '\u0000';
   findMatches: FindMatch[] = [];
   titleControlsBottom: number = 0;
   titleControlsWidth: number = 0;
   compactHeight: boolean = false;
-  get pendingOpenUri(): string { return AppStorage.get<string>('pendingOpenUri') ?? ''; }
-  set pendingOpenUri(uri: string) { AppStorage.setOrCreate('pendingOpenUri', uri); }
-
+  get saveLabel(): string {
+    if (this.loadState === 'loading') { return '正在打开'; }
+    if (this.loadState !== 'ready') { return '未打开'; }
+    return SaveStateMachine.label(this.saveState);
+  }
 }

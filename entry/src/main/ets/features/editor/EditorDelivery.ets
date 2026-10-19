@@ -2,7 +2,7 @@ import { promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { util } from '@kit.ArkTS';
 import { picker } from '@kit.CoreFileKit';
-import { SaveState, SaveStateMachine } from '../../domain/recovery/SaveStateMachine';
+import { SaveState } from '../../domain/recovery/SaveStateMachine';
 import { DocumentDeliveryService } from '../../services/DocumentDeliveryService';
 import { SaveCoordinator } from '../../services/SaveCoordinator';
 import { ExternalSource } from '../../domain/document/DocumentFileAdapter';
@@ -13,7 +13,7 @@ export class EditorDelivery {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
   private isCurrent(session: string): boolean {
-    return this.host.isActive() && session === this.host.state.activeSession;
+    return this.host.isActive() && session === this.host.env.activeSession;
   }
   async inspectImages(content: string): Promise<string[]> {
     const raw = await this.host.runJsChecked(this.host.env.controller,
@@ -34,7 +34,7 @@ export class EditorDelivery {
       promptAction.showToast({ message: '正在保存，请完成后再导出或另存' }); return;
     }
     this.host.state.deliveryBusy = true;
-    const session = this.host.state.activeSession;
+    const session = this.host.env.activeSession;
     try {
       // 阻止选择器期间改写正文；取消后恢复编辑和原保存目标。
       await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(false);');
@@ -70,25 +70,26 @@ export class EditorDelivery {
           : await service.html(this.host.state.docTitle, snap.content, images,
             (text: string, resources: Record<string, string>) => this.host.renderForDelivery(text, resources));
       if (result === undefined) { return; }
-      if (!this.host.isActive() || session !== this.host.state.activeSession) { return; }
+      if (!this.host.isActive() || session !== this.host.env.activeSession) { return; }
       if (action === 0) {
         // 成功后才切换目标；后续 Ctrl+S 和自动保存都写入此文件。
-        const previousDraftId = this.host.state.docTarget === undefined ? this.host.state.sessionDraftId : this.host.draftIdOf(this.host.state.docTarget);
+        const previousDraftId = this.host.state.docTarget === undefined ? this.host.env.sessionDraftId : this.host.draftIdOf(this.host.state.docTarget);
         const source: ExternalSource = { kind: 'external', uri: result.uri, displayName: result.fileName };
         this.host.state.docTarget = source;
         this.host.state.docTitle = result.fileName;
-        this.host.state.expectedRevision = { size: util.TextEncoder.create('utf-8').encodeInto(snap.content).byteLength,
+        this.host.env.expectedRevision = { size: util.TextEncoder.create('utf-8').encodeInto(snap.content).byteLength,
           contentHash: HashUtil.of(snap.content) };
-        this.host.state.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
-        this.host.state.docValidUtf8 = true;
+        this.host.env.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
+        this.host.env.docValidUtf8 = true;
         this.host.env.coordinator = new SaveCoordinator(new EditorPageDeps(() => this.host.getSnapshotData(),
           (text: string) => this.host.doSaveCheckpoint(text), (text: string) => this.host.doPersist(text), () => this.host.clearSavedDrafts()));
         this.host.env.coordinator.onDocumentLoaded(session, snap.version);
         this.host.env.drafts.remove(previousDraftId);
-        this.host.env.drafts.remove(this.host.state.sessionDraftId);
+        this.host.env.drafts.remove(this.host.env.sessionDraftId);
         this.host.state.recoveryLabel = '';
-        this.host.state.saveLabel = '已保存';
-        this.host.state.conflictVisible = false;
+        this.host.state.saveState = SaveState.CLEAN;
+        await this.host.env.external.retainAccess(source);
+        if (!this.isCurrent(session)) { return; }
         await this.host.trackRecent(source);
         this.host.refreshSidebarData();
       }
@@ -100,7 +101,7 @@ export class EditorDelivery {
       AlertDialog.show({ title: '文件操作未完成', message: String(e), confirm: { value: '返回编辑', action: () => {} } });
     } finally {
       if (this.host.isActive()) { this.host.state.deliveryBusy = false; }
-      if (this.host.isActive() && this.host.state.pendingOpenUri.length > 0) { this.host.onExternalOpen(); }
+      if (this.host.isActive() && this.host.env.pendingOpenUri.length > 0) { this.host.onExternalOpen(); }
       if (this.isCurrent(session)) {
         this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(true);').catch(() => {
           this.host.append('[交付] 恢复编辑失败，请保留草稿后重新打开');
@@ -111,7 +112,7 @@ export class EditorDelivery {
 
   async insertLocalImage(): Promise<void> {
     if (!this.host.isActive() || this.host.state.deliveryBusy) { return; }
-    const session = this.host.state.activeSession;
+    const session = this.host.env.activeSession;
     try {
       const photoPicker = new picker.PhotoViewPicker();
       const result = await photoPicker.select({
@@ -150,7 +151,7 @@ export class EditorDelivery {
       const c = this.host.env.coordinator;
       if (c !== undefined) {
         c.onEdit(Date.now());
-        this.host.state.saveLabel = SaveStateMachine.label(c.state);
+        this.host.state.saveState = c.state;
       }
       this.host.scheduleDocSync();
       promptAction.showToast({ message: `已插入 ${name}` });

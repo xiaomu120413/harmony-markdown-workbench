@@ -12,7 +12,7 @@ export class EditorPersistence {
     const target = this.host.state.docTarget;
     if (target === undefined) {
       this.host.env.drafts.save(
-        this.host.state.sessionDraftId,
+        this.host.env.sessionDraftId,
         'session:new',
         0,
         '',
@@ -23,8 +23,8 @@ export class EditorPersistence {
     this.host.env.drafts.save(
       this.host.draftIdOf(target),
       this.host.fingerprintOf(target),
-      this.host.state.expectedRevision.size,
-      this.host.state.expectedRevision.contentHash,
+      this.host.env.expectedRevision.size,
+      this.host.env.expectedRevision.contentHash,
       content,
     );
     // 首次持久化成功后会清正式草稿；会话草稿一并在 doPersist 迁移清理
@@ -46,13 +46,13 @@ export class EditorPersistence {
       const better = DocumentNamer.upgrade(currentName, content, this.host.env.internal.listLibrary());
       if (better !== undefined) {
         const renamed: InternalSource = { kind: 'internal', relativePath: `library/${better}` };
-        const w = await this.host.env.internal.write(renamed, content, { size: 0, contentHash: '' }, this.host.state.docFormat);
+        const w = await this.host.env.internal.write(renamed, content, { size: 0, contentHash: '' }, this.host.env.docFormat);
         if (w.ok) {
-          this.host.state.retiredDraftId = this.host.draftIdOf(target);
+          this.host.env.retiredDraftId = this.host.draftIdOf(target);
           this.host.env.internal.remove(target);
           this.host.state.docTarget = renamed;
           this.host.state.docTitle = better;
-          this.host.state.expectedRevision = w.revision;
+          this.host.env.expectedRevision = w.revision;
           // 原名草稿保留供恢复页按内容核对。
 
 
@@ -68,16 +68,16 @@ export class EditorPersistence {
       const fail: WriteFailResult = { ok: false, reason: 'io', message: 'document not loaded; write-back blocked' };
       return fail;
     }
-    if (!this.host.state.docValidUtf8) {
+    if (!this.host.env.docValidUtf8) {
       // A4-04：非 UTF-8 文档不静默乱码覆盖——阻断原位写回（内容仍可另存副本）
       const fail: WriteFailResult = { ok: false, reason: 'io', message: 'non-UTF-8 document; write-back blocked' };
       return fail;
     }
     const result = target.kind === 'internal'
-      ? await this.host.env.internal.write(target, content, this.host.state.expectedRevision, this.host.state.docFormat)
-      : await this.host.env.external.write(target, content, this.host.state.expectedRevision, this.host.state.docFormat);
+      ? await this.host.env.internal.write(target, content, this.host.env.expectedRevision, this.host.env.docFormat)
+      : await this.host.env.external.write(target, content, this.host.env.expectedRevision, this.host.env.docFormat);
     if (result.ok) {
-      this.host.state.expectedRevision = result.revision;
+      this.host.env.expectedRevision = result.revision;
       // 恢复页按实际磁盘内容清理冗余，不能在旧版本提交时删除新草稿。
       // A3：正式目标确立后清理会话草稿（迁移完成）
 
@@ -87,10 +87,10 @@ export class EditorPersistence {
   }
 
   clearSavedDrafts(): Promise<void> {
-    if (this.host.state.retiredDraftId.length > 0) { this.host.env.drafts.remove(this.host.state.retiredDraftId); this.host.state.retiredDraftId = ''; }
+    if (this.host.env.retiredDraftId.length > 0) { this.host.env.drafts.remove(this.host.env.retiredDraftId); this.host.env.retiredDraftId = ''; }
     this.host.state.recoveryLabel = '';
     if (this.host.state.docTarget !== undefined) { this.host.env.drafts.remove(this.host.draftIdOf(this.host.state.docTarget)); }
-    this.host.env.drafts.remove(this.host.state.sessionDraftId);
+    this.host.env.drafts.remove(this.host.env.sessionDraftId);
     return Promise.resolve();
   }
 
@@ -119,8 +119,7 @@ export class EditorPersistence {
       return;
     }
     const outcome = await c.saveNow(Date.now());
-    this.host.state.saveLabel = SaveStateMachine.label(c.state);
-    this.host.state.conflictVisible = c.state === SaveState.CONFLICT;
+    this.host.state.saveState = c.state;
     // saved + 无待保存（保存期间无新编辑，A1 版本门控）→ 干净离开
     if ((outcome === 'saved' || outcome === 'unchanged') && SaveStateMachine.label(c.state) === '已保存' && !c.pending) {
       router.back();
@@ -152,7 +151,7 @@ export class EditorPersistence {
 
   async goBack(): Promise<void> {
     if (this.host.state.deliveryBusy) { promptAction.showToast({ message: '请先完成或取消文件操作' }); return; }
-    if (this.host.state.loadState === 'ready' && this.host.state.webReady && !await this.host.protectDraft()) {
+    if (this.host.state.loadState === 'ready' && this.host.env.webReady && !await this.host.protectDraft()) {
       promptAction.showToast({ message: '恢复草稿未确认写入，请保存或导出后离开' }); return;
     }
     const c = this.host.env.coordinator;
@@ -184,7 +183,7 @@ export class EditorPersistence {
       const raw = await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.getSnapshotEx();');
       const o: ESObject = JSON.parse(raw);
       const d: SnapshotData = {
-        ok: o.ok === true && typeof o.c === 'string' && typeof o.v === 'number' && o.s === this.host.state.activeSession,
+        ok: o.ok === true && typeof o.c === 'string' && typeof o.v === 'number' && o.s === this.host.env.activeSession,
         sessionId: `${o.s}`,
         version: o.v as number,
         content: `${o.c}`,
@@ -210,8 +209,7 @@ export class EditorPersistence {
       return;
     }
     const outcome = await c.saveNow(Date.now());
-    this.host.state.saveLabel = SaveStateMachine.label(c.state);
-    this.host.state.conflictVisible = c.state === SaveState.CONFLICT;
+    this.host.state.saveState = c.state;
     if (outcome === 'saved' || outcome === 'unchanged') {
       this.host.append(`[保存] ${outcome === 'saved' ? '完成' : '无修改'} → ${this.host.state.saveLabel}`);
     } else if (outcome === 'failed') {
@@ -230,18 +228,16 @@ export class EditorPersistence {
     }
     const src: DocumentFileAdapter = target.kind === 'internal' ? this.host.env.internal : this.host.env.external;
     src.read(target).then((r) => {
-      this.host.state.expectedRevision = r.revision;
-      this.host.state.pendingLoad = r.content;
+      this.host.env.expectedRevision = r.revision;
+      this.host.env.pendingLoad = r.content;
       this.host.flushPendingLoad();
       c.decideKeepDisk();
-      this.host.state.conflictVisible = false;
-      this.host.state.saveLabel = SaveStateMachine.label(c.state);
+      this.host.state.saveState = c.state;
       this.host.append('[冲突] 已加载磁盘版本');
     }).catch((e: ESObject) => {
       this.host.append(`[冲突] 读取磁盘版本失败：${JSON.stringify(e)}（保留本地编辑）`);
       c.decideKeepLocal();
-      this.host.state.conflictVisible = false;
-      this.host.state.saveLabel = SaveStateMachine.label(c.state);
+      this.host.state.saveState = c.state;
     });
   }
 
@@ -252,8 +248,7 @@ export class EditorPersistence {
       return;
     }
     c.decideKeepLocal();
-    this.host.state.conflictVisible = false;
-    this.host.state.saveLabel = SaveStateMachine.label(c.state);
+    this.host.state.saveState = c.state;
     this.host.append('[冲突] 保留本地内容继续编辑');
   }
 
@@ -263,12 +258,12 @@ export class EditorPersistence {
 
   async openDocument(): Promise<void> {
     if (!this.host.isActive() || this.host.state.deliveryBusy || this.host.state.dropBusy) { return; }
-    const session = this.host.state.activeSession;
+    const session = this.host.env.activeSession;
     try {
       const uris = await new picker.DocumentViewPicker(this.host.env.ctx).select({
         maxSelectNumber: 1, fileSuffixFilters: ['.md', '.markdown', '.txt'],
       });
-      if (this.host.isActive() && session === this.host.state.activeSession && uris.length > 0) { this.host.state.pendingOpenUri = uris[0]; }
+      if (this.host.isActive() && session === this.host.env.activeSession && uris.length > 0) { this.host.env.pendingOpenUri = uris[0]; }
     } catch (e) { this.host.append('[打开] 选择器未完成'); promptAction.showToast({ message: '打开失败，请重试' }); }
   }
 

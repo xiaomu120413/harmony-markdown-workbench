@@ -1,3 +1,4 @@
+import { router } from '@kit.ArkUI';
 import { webview } from '@kit.ArkWeb';
 import { MarkdownCommands, MarkdownCommandName, TextRange, TextTransformResult } from '../../domain/editor/MarkdownCommands';
 import { RecentFileList } from '../../domain/document/RecentFileList';
@@ -95,7 +96,7 @@ export class EditorRuntime {
     this.host.state.fileSheetVisible = false;
     const action = this.host.env.afterFileSheet;
     this.host.env.afterFileSheet = undefined;
-    if (this.host.state.pageActive && action !== undefined) { action(); }
+    if (this.host.isActive() && action !== undefined) { action(); }
   }
 
   saveStatusColor(): string {
@@ -103,45 +104,19 @@ export class EditorRuntime {
       : this.host.state.saveLabel === '外部冲突' || this.host.state.saveLabel === '保存失败' ? this.host.state.pal.DANGER : this.host.state.pal.AMBER;
   }
 
-  showLocation(): void {
+  async showLocation(): Promise<void> {
     const source = this.host.state.docTarget;
+    const persistent = source?.kind === 'external' ? await this.host.env.external.canPersistAccess(source) : false;
+    if (!this.host.isActive() || source !== this.host.state.docTarget) { return; }
     AlertDialog.show({ title: '当前保存位置', message: source === undefined
       ? '尚未保存到文件；恢复草稿仅在本机应用内保留。'
       : source.kind === 'internal'
         ? `我的文档 / ${source.relativePath.substring('library/'.length)}\n应用私有目录，卸载前请导出文档和附件。`
-        : `外部原文件（临时访问授权）\n${source.uri}\n重启后可能需要重新选择文件。`,
+        : `外部原文件\n${source.uri}\n${persistent ? '已保留此文件的访问授权；移动文件或撤销授权后需重新选择。' : '临时访问授权；重启后可能需要重新选择文件。'}`,
       confirm: { value: '知道了', action: () => {} } });
   }
 
-  showHelp(): void {
-    AlertDialog.show({
-      title: '木笺 MuMark · 快捷键与提示',
-      message: [
-        '快捷键：',
-        '· Ctrl+S 保存　Ctrl+F 查找　Ctrl+Shift+F 大纲',
-        '· Ctrl+B 加粗　Ctrl+I 斜体',
-        '· Ctrl+Z 撤销　Ctrl+Y 重做',
-        '',
-        '工具栏：',
-        '· H1–H6 标题（同级再点取消，异级切换）',
-        '· B/I/S/高亮/行内码 行内样式',
-        '· 列表/序号/任务/引用/代码块/缩进 块级',
-        '· 链接/图片/表格/分隔线 插入',
-        '',
-        '视图：',
-        '· 编辑/预览/分屏 顶栏切换（平板与电脑支持分屏）',
-        '· 文档侧栏　大纲面板点击标题跳转',
-        '',
-        '保存：',
-        '· 修改自动保存（1.5 秒防抖）',
-        '· 文档菜单：另存为、导出副本、图文 ZIP、HTML、复制',
-        '· 意外退出可在首页「找回未保存内容」恢复',
-      ].join('\n'),
-      confirm: {
-        value: '知道了',
-        action: () => {
-        },
-      },
-    });
+  showSettings(): void {
+    router.pushUrl({ url: 'pages/SettingsPage' });
   }
 }

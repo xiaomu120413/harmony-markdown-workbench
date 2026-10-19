@@ -13,19 +13,18 @@ import { TextEncodingDetector } from '../../domain/document/TextEncoding';
 import { TextRoundtrip, DocumentWriteFormat } from '../../domain/document/DocumentFileAdapter';
 import { util } from '@kit.ArkTS';
 import { SafeFileIO } from './SafeFileIO';
+import { ExternalFileAccess } from './ExternalFileAccess';
 
 /**
  * 外部 URI 文件适配器（FR-FILE-002 / M1-01；A2 重构：冲突预检与 fd 兜底）。
- * 基于 M0-02 实测结论：
- *  - 授权 URI 单次运行内可读（openSync + fd 读取）；
- *  - 进程重启后授权失效（13900001/13900002）；
- *  - canPersistAccess() = false → 产品按"临时访问 + 重新定位"交付（ADR-009 草案）。
+ * 读取前恢复/保留单文件持久授权；权限未获批或提供方不支持时仍尝试临时授权。
  * A2（R03）：写入前重读磁盘并按统一解码/哈希规则与基线比对，变化 → conflict，
  * 禁止先 TRUNC 再判断；所有 fd 在 finally 中关闭（A2-07）。
  */
 export class ExternalUriFileSource implements DocumentFileAdapter {
-  async read(source: DocumentSource): Promise<ReadDocumentResult> {
+  async read(source: DocumentSource, retainAccess: boolean = true): Promise<ReadDocumentResult> {
     const uri = this.uriOf(source);
+    if (retainAccess) { await ExternalFileAccess.prepare(uri); }
     let file: fs.File | undefined = undefined;
     try {
       file = fs.openSync(uri, fs.OpenMode.READ_ONLY);
@@ -114,13 +113,16 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
   }
 
   async canPersistAccess(source: DocumentSource): Promise<boolean> {
-    void source;
-    return false; // M0-02 实测：单次运行临时授权
+    return ExternalFileAccess.isPersistent(this.uriOf(source));
+  }
+
+  async retainAccess(source: DocumentSource): Promise<boolean> {
+    return ExternalFileAccess.prepare(this.uriOf(source));
   }
 
   /** 权限失效（13900001/13900002/permission）与普通 IO 错误分类 */
   private classify(e: ESObject): 'permission' | 'io' {
-    const code: string = String(e);
+    const code: string = `${e.code ?? ''} ${String(e)}`;
     return code.includes('permission') || code.includes('13900001') || code.includes('13900002') ? 'permission' : 'io';
   }
 

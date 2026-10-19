@@ -13,7 +13,7 @@ export class EditorDocuments {
   constructor(host: EditorController) { this.host = host; }
   async protectDraft(): Promise<boolean> {
     const c = this.host.env.coordinator;
-    if (!this.host.isActive() || !this.host.state.webReady || this.host.state.loadState !== 'ready' || c === undefined) { return false; }
+    if (!this.host.isActive() || !this.host.env.webReady || this.host.state.loadState !== 'ready' || c === undefined) { return false; }
     const ok = await c.checkpointNow();
     if (!this.host.isActive() || c !== this.host.env.coordinator) { return false; }
     this.host.state.recoveryLabel = ok ? (c.state === SaveState.CLEAN ? '' : '恢复草稿已保留') : '恢复草稿写入失败，请立即保存或导出';
@@ -23,19 +23,19 @@ export class EditorDocuments {
 
   async onExternalOpen(): Promise<void> {
     if (this.host.state.deliveryBusy) { return; }
-    if (!this.host.isActive() || this.host.state.openPromptVisible || this.host.state.pendingOpenUri.length === 0) { return; }
-    const uri = this.host.state.pendingOpenUri;
+    if (!this.host.isActive() || this.host.env.openPromptVisible || this.host.env.pendingOpenUri.length === 0) { return; }
+    const uri = this.host.env.pendingOpenUri;
     if (this.host.state.loadState !== 'ready' && this.host.state.docLength === 0) {
-      this.host.state.pendingOpenUri = '';
+      this.host.env.pendingOpenUri = '';
       this.host.openReceivedDocument(uri);
       return;
     }
-    this.host.state.openPromptVisible = true;
-    if (!await this.host.protectDraft() || !this.host.isActive()) { this.host.state.openPromptVisible = false; return; }
+    this.host.env.openPromptVisible = true;
+    if (!await this.host.protectDraft() || !this.host.isActive()) { this.host.env.openPromptVisible = false; return; }
     if (this.host.env.coordinator?.state === SaveState.CLEAN) {
-      this.host.state.openPromptVisible = false;
-      if (this.host.state.pendingOpenUri !== uri) { this.host.onExternalOpen(); return; }
-      this.host.state.pendingOpenUri = '';
+      this.host.env.openPromptVisible = false;
+      if (this.host.env.pendingOpenUri !== uri) { this.host.onExternalOpen(); return; }
+      this.host.env.pendingOpenUri = '';
       this.host.openReceivedDocument(uri);
       return;
     }
@@ -44,14 +44,14 @@ export class EditorDocuments {
       message: '先保留当前文档的恢复草稿，再打开收到的文件。',
       primaryButton: { value: '保留草稿并打开', action: () => {
         this.host.protectDraft().then((ok: boolean) => {
-          this.host.state.openPromptVisible = false;
-          if (!ok || this.host.state.pendingOpenUri !== uri) { this.host.onExternalOpen(); return; }
-          this.host.state.pendingOpenUri = '';
+          this.host.env.openPromptVisible = false;
+          if (!ok || this.host.env.pendingOpenUri !== uri) { this.host.onExternalOpen(); return; }
+          this.host.env.pendingOpenUri = '';
           this.host.openReceivedDocument(uri);
         });
       } },
-      secondaryButton: { value: '取消', action: () => { this.host.state.openPromptVisible = false; this.host.state.pendingOpenUri = ''; } },
-      cancel: () => { this.host.state.openPromptVisible = false; this.host.state.pendingOpenUri = ''; },
+      secondaryButton: { value: '取消', action: () => { this.host.env.openPromptVisible = false; this.host.env.pendingOpenUri = ''; } },
+      cancel: () => { this.host.env.openPromptVisible = false; this.host.env.pendingOpenUri = ''; },
     });
   }
 
@@ -70,7 +70,7 @@ export class EditorDocuments {
       if (!this.host.isActive()) { return; }
       this.host.append('[拖入] 已取得单文档授权');
       promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
-      this.host.state.pendingOpenUri = uri;
+      this.host.env.pendingOpenUri = uri;
     } catch (e) {
       this.host.append('[拖入] 未完成，当前正文保留');
       if (this.host.isActive()) { promptAction.showToast({ message: String(e).replace(/^Error: /, '') }); }
@@ -84,7 +84,7 @@ export class EditorDocuments {
     const c = this.host.env.coordinator;
     if (c !== undefined && c.state !== SaveState.CLEAN) {
       const outcome = await c.saveNow(Date.now());
-      this.host.state.saveLabel = SaveStateMachine.label(c.state);
+      this.host.state.saveState = c.state;
       if (!((outcome === 'saved' || outcome === 'unchanged') && SaveStateMachine.label(c.state) === '已保存' && !c.pending)) {
         promptAction.showToast({ message: '请先保存当前文档，或保留草稿返回首页再打开' }); return;
       }
@@ -94,8 +94,8 @@ export class EditorDocuments {
       : { kind: 'external', uri: docId, displayName: RecentFileList.displayName(docId) };
     this.host.state.docTarget = source;
     this.host.state.docTitle = RecentFileList.displayName(docId);
-    this.host.state.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
-    this.host.state.docValidUtf8 = true;
+    this.host.env.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
+    this.host.env.docValidUtf8 = true;
     this.host.loadOpenedDoc(source);
     this.host.refreshSidebarData();
   }
@@ -124,20 +124,19 @@ export class EditorDocuments {
   loadOpenedDoc(target: DocumentSource): void {
     const t0 = Date.now();
     this.host.state.loadState = 'loading';
-    this.host.state.saveLabel = '正在打开';
     const src: DocumentFileAdapter = target.kind === 'internal' ? this.host.env.internal : this.host.env.external;
     const read = src.read(target);
     this.host.env.documentRead = read;
     read.then((r) => {
       if (!this.host.isActive() || read !== this.host.env.documentRead) { return; }
-      this.host.state.expectedRevision = r.revision;
-      this.host.state.pendingLoad = r.content;
-      this.host.state.pendingLoadAt = t0;
-      this.host.state.docFormat = { encoding: r.encoding, lineEnding: r.lineEnding };
-      this.host.state.docValidUtf8 = r.validUtf8;
+      this.host.env.expectedRevision = r.revision;
+      this.host.env.pendingLoad = r.content;
+      this.host.env.pendingLoadAt = t0;
+      this.host.env.docFormat = { encoding: r.encoding, lineEnding: r.lineEnding };
+      this.host.env.docValidUtf8 = r.validUtf8;
       this.host.state.loadState = 'ready';
       this.host.trackRecent(target).then(() => this.host.refreshSidebarData());
-      if (this.host.state.webReady) {
+      if (this.host.env.webReady) {
         this.host.flushPendingLoad();
       }
     }).catch((e: ESObject) => {
@@ -147,21 +146,20 @@ export class EditorDocuments {
       this.host.state.loadFailure = e.message === undefined ? msg : String(e.message);
       this.host.state.loadState = e.code === 13900001 || e.code === 13900002 || /13900001|13900002|permission|not permitted/i.test(msg)
         ? 'accessExpired' : 'loadFailed';
-      this.host.state.saveLabel = '未打开';
       this.host.append(`[打开] 失败（${this.host.state.loadState}）`);
     });
   }
 
   async reselectExternalFile(): Promise<void> {
     if (!this.host.isActive()) { return; }
-    const session = this.host.state.activeSession;
+    const session = this.host.env.activeSession;
     try {
       const documentPicker = new picker.DocumentViewPicker(this.host.env.ctx);
       const result: Array<string> = await documentPicker.select({
         maxSelectNumber: 1,
         fileSuffixFilters: ['.md', '.markdown', '.txt'],
       });
-      if (!this.host.isActive() || session !== this.host.state.activeSession || result.length === 0) {
+      if (!this.host.isActive() || session !== this.host.env.activeSession || result.length === 0) {
         return; // 用户取消：保持恢复面板
       }
       const src: ExternalSource = { kind: 'external', uri: result[0], displayName: result[0] };
@@ -188,20 +186,20 @@ export class EditorDocuments {
   }
 
   flushPendingLoad(): void {
-    const md = this.host.state.pendingLoad;
-    this.host.state.pendingLoad = '';
-    const t0 = this.host.state.pendingLoadAt;
-    this.host.state.activeSession = `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const session = this.host.state.activeSession;
+    const md = this.host.env.pendingLoad;
+    this.host.env.pendingLoad = '';
+    const t0 = this.host.env.pendingLoadAt;
+    this.host.env.activeSession = `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const session = this.host.env.activeSession;
     const js = `window.__editorApi.loadDocument(${JSON.stringify(md)}, ${JSON.stringify(session)});`;
     this.host.runJsValue(js).then(() => {
-      if (session !== this.host.state.activeSession || !this.host.isActive()) { return; }
+      if (session !== this.host.env.activeSession || !this.host.isActive()) { return; }
       this.host.env.coordinator = new SaveCoordinator(new EditorPageDeps(
         () => this.host.getSnapshotData(), (content: string) => this.host.doSaveCheckpoint(content),
         (content: string) => this.host.doPersist(content), () => this.host.clearSavedDrafts()));
-      this.host.state.saveLabel = '已保存';
+      this.host.state.saveState = SaveState.CLEAN;
       this.host.state.recoveryLabel = '';
-      this.host.state.lastPreviewedMd = '\u0000';
+      this.host.env.lastPreviewedMd = '\u0000';
       this.host.state.docLength = md.length;
       const dt = t0 > 0 ? Date.now() - t0 : -1;
       this.host.append(`[打开] 文档 ${md.length} 字符（打开至可编辑 ${dt}ms）`);

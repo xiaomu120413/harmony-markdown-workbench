@@ -23,8 +23,8 @@ export struct EditorCommandBar {
     Button('大纲', { type: ButtonType.Normal })
       .attributeModifier(new ControlStyle(this.state.pal, this.state.outlineVisible ? 'selected' : 'quiet'))
       .onClick(() => this.actions.toggleOutline())
-    Button('帮助', { type: ButtonType.Normal })
-      .attributeModifier(new ControlStyle(this.state.pal)).onClick(() => this.actions.showHelp())
+    Button('设置', { type: ButtonType.Normal })
+      .attributeModifier(new ControlStyle(this.state.pal)).onClick(() => this.actions.showSettings())
   }
   @Builder
   commandItem(label: string, cmd: MarkdownCommandName) {

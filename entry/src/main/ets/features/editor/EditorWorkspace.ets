@@ -120,7 +120,7 @@ export struct EditorWorkspace {
               controller: this.actions.env.controller,
             })
             .onPageEnd(() => {
-              this.state.webReady = true;
+              this.actions.env.webReady = true;
               // 补发样式：aboutToAppear 时 Web 可能未就绪，样式命令会被吞掉
               this.actions.applyEditorStyle();
               if (this.state.loadState === 'ready') {
@@ -157,7 +157,7 @@ export struct EditorWorkspace {
               return !request.getRequestUrl().endsWith('/web/preview.html');
             })
             .onPageEnd(() => {
-              this.state.previewReady = true;
+              this.actions.env.previewReady = true;
               this.actions.applyPreviewStyle();
               this.actions.syncDocNow();
               this.actions.append('预览就绪');

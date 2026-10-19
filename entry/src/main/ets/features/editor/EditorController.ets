@@ -41,12 +41,12 @@ export class EditorController {
     this.runtime = new EditorRuntime(this);
     this.delivery = new EditorDelivery(this);
   }
-  isActive(): boolean { return this.state.pageActive && !this.env.disposed; }
+  isActive(): boolean { return !this.env.disposed; }
   sendBridge(raw: string): void { if (this.isActive()) { this.channel.send(raw); } }
   append(line: string): void { return this.lifecycle.append(line); }
   onCheckpointRequest(): void { return this.lifecycle.onCheckpointRequest(); }
   aboutToAppear(): void { return this.lifecycle.aboutToAppear(); }
-  applyAppSettings(): void { return this.lifecycle.applyAppSettings(); }
+  applyAppSettings(preserveView: boolean = false): void { return this.lifecycle.applyAppSettings(preserveView); }
   applyEditorStyle(): void { return this.lifecycle.applyEditorStyle(); }
   applyPreviewStyle(): void { return this.lifecycle.applyPreviewStyle(); }
   initSidebar(): void { return this.lifecycle.initSidebar(); }
@@ -107,8 +107,8 @@ export class EditorController {
   dismissFileSheet(action: () => void): void { return this.runtime.dismissFileSheet(action); }
   fileSheetClosed(): void { return this.runtime.fileSheetClosed(); }
   saveStatusColor(): string { return this.runtime.saveStatusColor(); }
-  showLocation(): void { return this.runtime.showLocation(); }
-  showHelp(): void { return this.runtime.showHelp(); }
+  showLocation(): Promise<void> { return this.runtime.showLocation(); }
+  showSettings(): void { return this.runtime.showSettings(); }
   inspectImages(content: string): Promise<string[]> { return this.delivery.inspectImages(content); }
   renderForDelivery(content: string, resources: Record<string, string>): Promise<string> { return this.delivery.renderForDelivery(content, resources); }
   deliverDocument(action: number): Promise<void> { return this.delivery.deliverDocument(action); }

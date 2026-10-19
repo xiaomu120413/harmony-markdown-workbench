@@ -76,7 +76,7 @@ export struct EditorFileActions {
             this.fileActionRow('导出副本', '选择格式，保留当前保存位置', true, () => { this.state.fileSheetSection = 'export'; })
             this.fileActionRow('复制内容', '', true, () => { this.state.fileSheetSection = 'copy'; })
             this.fileActionRow('保存位置', this.actions.documentLocation(), false, () => this.actions.dismissFileSheet(() => this.actions.showLocation()))
-            this.fileActionRow('快捷键与帮助', '', false, () => this.actions.dismissFileSheet(() => this.actions.showHelp()))
+            this.fileActionRow('设置与使用帮助', '', false, () => this.actions.dismissFileSheet(() => this.actions.showSettings()))
           } else if (this.state.fileSheetSection === 'export') {
             this.fileActionRow('图文包 ZIP', 'Markdown 正文和引用的本地图片', false, () => this.actions.dismissFileSheet(() => this.actions.deliverDocument(2)))
             this.fileActionRow('网页 HTML', '在浏览器查看，本地图片嵌入文件', false, () => this.actions.dismissFileSheet(() => this.actions.deliverDocument(3)))

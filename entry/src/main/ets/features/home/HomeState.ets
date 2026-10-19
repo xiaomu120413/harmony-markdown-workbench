@@ -21,7 +21,4 @@ export class HomeState {
   searchBusy: boolean = false;
   bp: Breakpoint = 'phone';
   pal: AppTheme = AppTheme.light();
-  get pendingOpenUri(): string { return AppStorage.get<string>('pendingOpenUri') ?? ''; }
-  set pendingOpenUri(uri: string) { AppStorage.setOrCreate('pendingOpenUri', uri); }
-
 }

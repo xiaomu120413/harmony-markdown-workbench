@@ -11,6 +11,7 @@
 文档操作更新：[宽窄屏设计](docs/spec/document-actions-2026-10.md) · [面板验收](docs/spec/document-actions-verification.md)。
 界面一致性：[全局控件规则](docs/spec/control-system-2026-10.md) · [截图审查与验收](docs/spec/control-system-verification.md)。
 整体复查：[窄窗快捷键与帮助修正](docs/spec/final-review-2026-10.md)。
+状态与授权：[状态精简、持久授权与设置帮助](docs/spec/state-access-2026-10.md)。当前声明单文件持久访问权限 `ohos.permission.FILE_ACCESS_PERSIST`，历史“零权限”记录不代表当前版本。
 
 ## 当前状态
 
@@ -137,6 +138,7 @@ node web-tools/build-web.js
 node scripts/test-host.cjs
 node scripts/test-editor-actions.cjs
 node scripts/test-file-transactions.cjs
+node scripts/test-external-access.cjs
 node scripts/test-page-viewmodels.cjs
 node scripts/test-window-viewport.cjs
 node scripts/check-source-size.mjs

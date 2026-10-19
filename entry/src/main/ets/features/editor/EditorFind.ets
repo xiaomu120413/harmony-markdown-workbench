@@ -1,4 +1,3 @@
-import { SaveStateMachine } from '../../domain/recovery/SaveStateMachine';
 import { FindReplaceEngine, FindOptions } from '../../domain/editor/FindReplaceEngine';
 import { FindSession } from '../../domain/editor/FindSession';
 import { DefaultView } from '../../domain/settings/AppSettings';
@@ -23,16 +22,15 @@ export class EditorFind {
   async refreshFind(): Promise<void> {
     if (this.host.state.findQuery.length === 0) {
       this.host.state.findMatches = [];
-      this.host.state.matchCount = 0;
       this.host.state.matchIndex = -1;
       return;
     }
-    const session = this.host.state.activeSession;
+    const session = this.host.env.activeSession;
     const query = this.host.state.findQuery;
     const options = this.host.findOpts();
     const coordinator = this.host.env.coordinator;
     const snapshot = await this.host.getSnapshotData();
-    if (!this.host.isActive() || session !== this.host.state.activeSession || query !== this.host.state.findQuery ||
+    if (!this.host.isActive() || session !== this.host.env.activeSession || query !== this.host.state.findQuery ||
       options.caseSensitive !== this.host.state.findCase || options.wholeWord !== this.host.state.findWord ||
       coordinator !== this.host.env.coordinator || !snapshot.ok || snapshot.sessionId !== session ||
       snapshot.version < (coordinator?.documentVersion ?? 0)) { return; }
@@ -41,7 +39,6 @@ export class EditorFind {
 
   updateFindMatches(text: string): void {
     this.host.state.findMatches = FindReplaceEngine.findAll(text, this.host.state.findQuery, this.host.findOpts());
-    this.host.state.matchCount = this.host.state.findMatches.length;
     this.host.state.matchIndex = Math.min(Math.max(0, this.host.state.matchIndex), this.host.state.matchCount - 1);
   }
 
@@ -89,7 +86,6 @@ export class EditorFind {
     // 替换改变了正文：同步重算命中（替换处已消失，从锚点前进到下一处）
     const anchor = this.host.state.matchIndex;
     this.host.state.findMatches = FindReplaceEngine.findAll(r.text, this.host.state.findQuery, this.host.findOpts());
-    this.host.state.matchCount = this.host.state.findMatches.length;
     this.host.state.matchIndex = FindSession.next(this.host.state.matchCount, Math.min(anchor, this.host.state.matchCount - 1));
     this.host.selectCurrentMatch();
   }
@@ -110,7 +106,6 @@ export class EditorFind {
     this.host.markEdited();
     // 全部替换后命中归零
     this.host.state.findMatches = [];
-    this.host.state.matchCount = 0;
     this.host.state.matchIndex = -1;
     this.host.append(`[替换] 全部替换 ${r.count} 处`);
   }
@@ -119,7 +114,7 @@ export class EditorFind {
     const c = this.host.env.coordinator;
     if (c !== undefined) {
       c.onEdit(Date.now());
-      this.host.state.saveLabel = SaveStateMachine.label(c.state);
+      this.host.state.saveState = c.state;
     }
     this.host.scheduleDocSync();
   }

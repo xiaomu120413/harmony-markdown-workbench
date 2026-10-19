@@ -12,7 +12,7 @@
 | `editor/EditorPersistence` | 快照、草稿、持久化、冲突和离开保护 |
 | `editor/EditorPreview` | 预览同步、大纲与窗口空间决策 |
 | `editor/EditorFind` | 查找替换及编辑状态分发，规则仍来自 domain |
-| `editor/EditorRuntime` | Web 调用、命令分发、文件面板调度与帮助 |
+| `editor/EditorRuntime` | Web 调用、命令分发、文件面板调度与设置导航 |
 | `editor/EditorDelivery` | 另存为、导出、复制及图片插入 |
 | `editor/EditorBridgeChannel` | 每个挂载会话独立的非观察消息队列，桥回调只入队 |
 | `editor/*Screen/Header/Workspace/FindPanel/CommandBar/FileActions` | ArkUI 视图与事件转发，无持久化实现 |
@@ -27,3 +27,5 @@
 这里的 EditorController / HomeController 是 ViewModel 命令入口，命名不代表 MVC 的页面控制器；State 是绑定到 ArkUI 的可观察展示数据。平台对象、Promise、定时器和订阅放在非观察 Environment；纯业务规则放 domain；文件与元数据读写放 infrastructure。设置/恢复使用显式 ViewModel 命名，职责遵循相同边界。
 
 不增加观察计数器或强制重绘。查找和预览使用真实 sessionId/version 快照并核对当前查询条件；文档加载以实际读 Promise 区分先后操作。`Date.now()` 用于保存调度、历史时间或唯一文档会话，不充当 UI 刷新键。
+
+编辑器 State 只保留 35 个存储字段；命中数量从匹配列表派生，保存文案和冲突可见性从 SaveState 派生。会话、待加载正文、文件版本、缓存和 AppStorage 适配放在现有 Environment，不观察、不强制刷新。帮助直接并入设置分组。

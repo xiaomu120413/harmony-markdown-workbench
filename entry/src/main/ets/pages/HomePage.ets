@@ -9,12 +9,12 @@ struct HomePage {
   @State state: HomeState = new HomeState();
   private actions: HomeController | undefined = undefined;
   @StorageLink('pendingOpenUri') @Watch('externalOpenChanged') pendingOpenUri: string = '';
-  private externalOpenChanged(): void { this.state.pendingOpenUri = this.pendingOpenUri; this.actions?.consumeExternalOpen(); }
+  private externalOpenChanged(): void { this.actions?.consumeExternalOpen(); }
   aboutToAppear(): void {
     this.actions = new HomeController(this.state, this.getUIContext(), getContext(this) as common.UIAbilityContext);
     this.actions.aboutToAppear();
   }
-  onPageShow(): void { this.state.pendingOpenUri = this.pendingOpenUri; this.actions?.onPageShow(); }
+  onPageShow(): void { this.actions?.onPageShow(); }
   aboutToDisappear(): void { this.actions?.aboutToDisappear(); }
   build() { if (this.actions !== undefined) { SafePage() { HomeScreen({ state: this.state, actions: this.actions }) } } }
 }

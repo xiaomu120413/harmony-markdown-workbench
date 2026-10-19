@@ -29,7 +29,7 @@
 | R-07 | hypium 用例失败时 hvigor `test` 任务仍返回成功（断言失败仅打 ERROR 日志，无结构化结果文件） | 已发生 | 高 | clean-build 脚本 grep 日志 ERROR 行作为门禁；文档注明；后续任务评估自定义 runner/退出码 | M2 起持续 |
 | R-08 | 构建用 SDK 为 API 26 **Beta1**（HarmonyOS 6.6.0 Beta），正式发布存在工具链变更风险 | 中 | 中 | 正式发布前复核发布版 DevEco/SDK；构建产物仅用于开发验证 | M6-04 |
 | R-09 | app 图标为脚本生成占位（渐变+M），非正式设计 | 确定 | 低 | M6 前输出正式图标资源 | M6-03 |
-| R-10 | API 26 Beta（26.0.0.23）`uriPermissionManager` 类型为空，persistPermission 编译期不可调用；模块增强在 ArkTS 下不生效 | 已发生 | 高 | 真机实测重启后 URI 失效（13900001）证实持久化必要性；V0.1 按"临时访问+重新定位"降级交付（ADR-009 草案）；正式 SDK 复核后关闭 | 正式 SDK 发布后 |
+| R-10 | `uriPermissionManager` 类型为空的旧结论不代表持久授权不可用 | 已修正 | 中 | 当前 SDK 的 `fileShare` 已提供校验、保留和激活接口，已接入；仍需生产权限申请和各设备/提供方验证，失败降级临时授权与重选。见 [本轮记录](spec/state-access-2026-10.md) | 发布前复核 |
 | R-11 | 本机设备（MateBook Pro，OpenHarmony 7.0 华为定制镜像）信任库不含 OpenHarmony Profile CA，第三方调试签名安装被拒（9568329） | ✅ **已解决** | — | 1) 官方 CA 体系签名（sign-local.sh：app/profile 证书由 Application CA 签发，subject 按信任源 DN）；2) Profile CA 补入设备 `trusted_root_ca.json`（/system overlay 可写）；3) profile 含 validity；4) deliveryWithInstall=false。**真机安装成功并运行** | 已闭环（2026-08-29） |
 | R-12 | 本镜像文件选择器（filemanager picker）UI 自动化"打开"按钮事件注入不生效（真实用户手动操作正常——有成功选择记录）；"最近"索引不收录新 push 文件 | 确定 | 低 | 自动化验证受限项如实标注；人工/标准镜像复测；选择器打开与选中已验证 | M0-02 复核 |
 

@@ -24,13 +24,15 @@ function deferred() { let resolve; const promise = new Promise(r => { resolve = 
 function fixture() {
   storage.clear(); dialogs.length = 0;
   const state = new EditorState();
-  Object.assign(state, { activeSession: 'original', webReady: true, docTitle: 'source.md',
+  Object.assign(state, { docTitle: 'source.md',
     docTarget: { kind: 'internal', relativePath: 'library/source.md' } });
   const actions = new EditorController(state, {}, { filesDir: '/files', cacheDir: '/cache' });
+  Object.assign(actions.env, { activeSession: 'original', webReady: true });
+  actions.env.external.retainAccess = async () => false;
   const scripts = [], checkpoints = [], removed = [], writes = [];
   let text = '# Current snapshot', version = 1;
   actions.runJsChecked = async (_, script) => { scripts.push(script); return ''; };
-  actions.getSnapshotData = async () => ({ ok: true, sessionId: state.activeSession, version, content: text });
+  actions.getSnapshotData = async () => ({ ok: true, sessionId: actions.env.activeSession, version, content: text });
   actions.inspectImages = async () => [];
   actions.renderForDelivery = async content => `<p>${content}</p>`;
   actions.doSaveCheckpoint = async content => checkpoints.push(content);
@@ -61,7 +63,7 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
   f = fixture(); DocumentDeliveryService.prototype.markdown = async () => result;
   await f.actions.deliverDocument(0);
   assert.equal(f.state.docTitle, 'new-target'); assert.equal(f.state.docTarget.uri, result.uri);
-  assert.notEqual(f.actions.env.coordinator, f.c); assert.equal(f.state.docFormat.encoding, 'utf-8');
+  assert.notEqual(f.actions.env.coordinator, f.c); assert.equal(f.actions.env.docFormat.encoding, 'utf-8');
   f.edit('follow-up'); await f.actions.save();
   assert.equal(f.writes.length, 1); assert.equal(f.writes[0].target.uri, result.uri);
   assert.equal(f.writes[0].content, 'follow-up');
@@ -79,23 +81,23 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
     for (const late of ['disposed', 'switched']) {
       f = fixture(); const gate = deferred(); select = () => gate.promise;
       const pending = f.actions[method]();
-      if (late === 'disposed') { f.actions.env.disposed = true; f.state.pageActive = true; }
-      else { f.state.activeSession = 'other-document'; }
+      if (late === 'disposed') { f.actions.env.disposed = true; }
+      else { f.actions.env.activeSession = 'other-document'; }
       gate.resolve(['file://docs/late.md']); await pending;
-      assert.equal(f.state.pendingOpenUri, ''); assert.equal(f.state.docTarget.kind, 'internal');
+      assert.equal(f.actions.env.pendingOpenUri, ''); assert.equal(f.state.docTarget.kind, 'internal');
     }
   }
 
   f = fixture(); let gate = deferred(); select = () => gate.promise;
   const open = f.actions.openDocument(); gate.resolve(['file://docs/authorized.md']); await open;
-  assert.equal(f.state.pendingOpenUri, 'file://docs/authorized.md');
+  assert.equal(f.actions.env.pendingOpenUri, 'file://docs/authorized.md');
 
   f = fixture(); gate = deferred(); DocumentDeliveryService.prototype.markdown = () => gate.promise;
   const delivery = f.actions.deliverDocument(0);
   while (!f.checkpoints.length) await Promise.resolve();
   // Let inspectImages complete and the picker operation start.
   for (let i = 0; i < 8; i++) await Promise.resolve();
-  f.actions.env.disposed = true; f.state.pendingOpenUri = 'file://docs/next.md';
+  f.actions.env.disposed = true; f.actions.env.pendingOpenUri = 'file://docs/next.md';
   let opens = 0; f.actions.onExternalOpen = () => { opens++; };
   const scriptCount = f.scripts.length; gate.resolve(result); await delivery;
   assert.equal(f.state.docTitle, 'source.md'); assert.equal(f.removed.length, 0);

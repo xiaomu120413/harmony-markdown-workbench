@@ -1,5 +1,5 @@
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { SaveState, SaveStateMachine } from '../../domain/recovery/SaveStateMachine';
+import { SaveState } from '../../domain/recovery/SaveStateMachine';
 import { ViewModePolicy } from '../../domain/editor/ViewModePolicy';
 import { SaveCoordinator } from '../../services/SaveCoordinator';
 import { RecentFileList } from '../../domain/document/RecentFileList';
@@ -24,7 +24,7 @@ export class EditorLifecycle {
   }
 
   aboutToAppear(): void {
-    this.host.state.pageActive = true;
+    this.host.env.disposed = false;
     this.host.env.bpListeners = watchBreakpoints((bp: Breakpoint) => {
       this.host.state.bp = bp;
       // 断点变化归一化：phone 档无分屏（ViewModePolicy）
@@ -45,7 +45,7 @@ export class EditorLifecycle {
         return;
       }
       if (env.type === 'edit') {
-        if (env.payload.s !== this.host.state.activeSession) { return; }
+        if (env.payload.s !== this.host.env.activeSession) { return; }
         // 用户输入（打字/粘贴/IME/撤销重做）：进入 DIRTY 并调度防抖保存与预览同步
         const len = env.payload.len as number | undefined;
         if (len !== undefined) {
@@ -68,7 +68,7 @@ export class EditorLifecycle {
           } else {
             c.onEdit(Date.now());
           }
-          this.host.state.saveLabel = SaveStateMachine.label(c.state);
+          this.host.state.saveState = c.state;
         }
         this.host.scheduleDocSync();
         return;
@@ -95,7 +95,7 @@ export class EditorLifecycle {
       }
       if (env.type === 'editorScroll') {
         // D1：编辑器滚动 → 预览同步（分屏时；防回环：仅编辑器侧触发）
-        if (this.host.state.viewMode === DefaultView.SPLIT && this.host.state.previewReady) {
+        if (this.host.state.viewMode === DefaultView.SPLIT && this.host.env.previewReady) {
           const line = env.payload.line as number | undefined;
           if (line !== undefined) {
             this.host.runJsValue('window.__editorApi.getSnapshot();').then((md: string) => {
@@ -139,13 +139,13 @@ export class EditorLifecycle {
     // autoSave 设置关闭时跳过自动保存，手动保存仍可用——M5-03）
     this.host.env.saveTimer = setInterval(() => {
       const c = this.host.env.coordinator;
-      if (c === undefined || this.host.state.deliveryBusy || !this.host.state.appSettings.autoSave) {
+      if (c === undefined || this.host.state.deliveryBusy || !this.host.env.appSettings.autoSave) {
         return;
       }
       c.tick(Date.now()).then((ran: boolean) => {
+        if (!this.host.isActive() || c !== this.host.env.coordinator) { return; }
         if (ran) {
-          this.host.state.saveLabel = SaveStateMachine.label(c.state);
-          this.host.state.conflictVisible = c.state === SaveState.CONFLICT;
+          this.host.state.saveState = c.state;
           if (c.state === SaveState.ERROR) {
             this.host.append('[自动保存] 失败，保留未保存内容');
           }
@@ -157,10 +157,13 @@ export class EditorLifecycle {
     this.host.initSidebar();
   }
 
-  applyAppSettings(): void {
+  applyAppSettings(preserveView: boolean = false): void {
     this.host.env.settings.load().then((s: AppSettings) => {
-      this.host.state.appSettings = s;
-      this.host.state.viewMode = ViewModePolicy.resolveInitial(this.host.state.bp, s.defaultView);
+      if (!this.host.isActive()) { return; }
+      this.host.env.appSettings = s;
+      if (!preserveView) {
+        this.host.state.viewMode = ViewModePolicy.resolveInitial(this.host.state.bp, s.defaultView);
+      }
       this.host.enforceWorkspaceBudget();
       this.host.state.pal = AppTheme.of(s.theme === ThemeMode.DARK);
       this.host.applyEditorStyle();
@@ -171,7 +174,7 @@ export class EditorLifecycle {
   }
 
   applyEditorStyle(): void {
-    const s = this.host.state.appSettings;
+    const s = this.host.env.appSettings;
     const dark = s.theme === ThemeMode.DARK;
     this.host.runJsValue(`window.__editorApi.setTheme(${dark});`);
     this.host.runJsValue(`window.__editorApi.setFontSize(${s.fontSize});`);
@@ -180,12 +183,12 @@ export class EditorLifecycle {
   }
 
   applyPreviewStyle(): void {
-    if (!this.host.state.previewReady) {
+    if (!this.host.env.previewReady) {
       return;
     }
-    const dark = this.host.state.appSettings.theme === ThemeMode.DARK;
+    const dark = this.host.env.appSettings.theme === ThemeMode.DARK;
     this.host.env.previewController.runJavaScript(`window.__previewApi.setDark(${dark});`);
-    this.host.env.previewController.runJavaScript(`window.__previewApi.setFontSize(${this.host.state.appSettings.fontSize});`);
+    this.host.env.previewController.runJavaScript(`window.__previewApi.setFontSize(${this.host.env.appSettings.fontSize});`);
   }
 
   initSidebar(): void {
@@ -219,7 +222,6 @@ export class EditorLifecycle {
 
   aboutToDisappear(): void {
     this.host.env.disposed = true;
-    this.host.state.pageActive = false;
     this.host.env.documentRead = undefined;
     unwatchBreakpoints(this.host.env.bpListeners);
     this.host.env.bpListeners = [];

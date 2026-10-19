@@ -23,25 +23,25 @@ export class EditorPreview {
   }
 
   syncDocNow(): void {
-    if (!this.host.isActive() || !this.host.state.webReady) {
+    if (!this.host.isActive() || !this.host.env.webReady) {
       return;
     }
-    const needPreview = this.host.state.previewReady && this.host.state.viewMode !== DefaultView.EDIT;
+    const needPreview = this.host.env.previewReady && this.host.state.viewMode !== DefaultView.EDIT;
     const needOutline = this.host.state.outlineVisible;
     const needFind = this.host.state.findVisible;
     if (!needPreview && !needOutline && !needFind) {
       return;
     }
-    const session = this.host.state.activeSession;
+    const session = this.host.env.activeSession;
     const coordinator = this.host.env.coordinator;
     this.host.getSnapshotData().then((snapshot) => {
-      if (!this.host.isActive() || session !== this.host.state.activeSession || coordinator !== this.host.env.coordinator ||
+      if (!this.host.isActive() || session !== this.host.env.activeSession || coordinator !== this.host.env.coordinator ||
         !snapshot.ok || snapshot.sessionId !== session || snapshot.version < (coordinator?.documentVersion ?? 0)) { return; }
       const md = snapshot.content;
       if (needFind && this.host.state.findVisible) { this.host.updateFindMatches(md); }
-      if (needPreview && md !== this.host.state.lastPreviewedMd) {
-        this.host.state.lastPreviewedMd = md;
-        this.host.renderPreview(md, this.host.state.activeSession);
+      if (needPreview && md !== this.host.env.lastPreviewedMd) {
+        this.host.env.lastPreviewedMd = md;
+        this.host.renderPreview(md, this.host.env.activeSession);
       }
       if (needOutline) {
         this.host.rebuildOutline(md);
@@ -66,7 +66,7 @@ export class EditorPreview {
           }
         } catch (e) { incomplete = true; }
       }
-      if (!this.host.isActive() || session !== this.host.state.activeSession || md !== this.host.state.lastPreviewedMd) { return; }
+      if (!this.host.isActive() || session !== this.host.env.activeSession || md !== this.host.env.lastPreviewedMd) { return; }
       if (incomplete) { this.host.append('[预览] 部分图片无法读取或超过限额，正文及附件未修改'); }
       await this.host.runJsChecked(this.host.env.previewController,
         `window.__previewApi.render(${JSON.stringify(md)}, ${JSON.stringify(resources)});`);
@@ -129,9 +129,9 @@ export class EditorPreview {
   }
 
   async openPhoneOutline(): Promise<void> {
-    const session = this.host.state.activeSession;
+    const session = this.host.env.activeSession;
     const md = await this.host.runJsValue('window.__editorApi.getSnapshot();');
-    if (!this.host.isActive() || session !== this.host.state.activeSession || this.host.state.bp !== 'phone') { return; }
+    if (!this.host.isActive() || session !== this.host.env.activeSession || this.host.state.bp !== 'phone') { return; }
     this.host.rebuildOutline(md);
     this.host.state.fileSheetSection = 'outline';
     this.host.state.fileSheetVisible = true;

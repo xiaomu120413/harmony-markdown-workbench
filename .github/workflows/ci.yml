@@ -47,6 +47,7 @@ jobs:
           node scripts/test-host.cjs
           node scripts/test-editor-actions.cjs
           node scripts/test-file-transactions.cjs
+          node scripts/test-external-access.cjs
           node scripts/test-page-viewmodels.cjs
           node scripts/test-window-viewport.cjs
       - name: Assert committed bundles unchanged

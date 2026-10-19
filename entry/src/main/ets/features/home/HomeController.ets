@@ -36,9 +36,9 @@ export class HomeController {
   }
 
   consumeExternalOpen(): void {
-    if (this.state.pendingOpenUri.length === 0 || router.getState().name !== 'HomePage') { return; }
-    const uri = this.state.pendingOpenUri;
-    this.state.pendingOpenUri = '';
+    if (this.env.pendingOpenUri.length === 0 || router.getState().name !== 'HomePage') { return; }
+    const uri = this.env.pendingOpenUri;
+    this.env.pendingOpenUri = '';
     router.pushUrl({ url: 'pages/EditorPage', params: DocumentIntake.route(uri) }).catch(() => {
       this.note('[打开] 无法进入编辑页，请重新打开文件');
       promptAction.showToast({ message: '打开失败，请重新选择文件' });

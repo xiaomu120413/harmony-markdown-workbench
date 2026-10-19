@@ -54,6 +54,49 @@ struct SettingsPage {
   }
 
   @Builder
+  helpItem(title: string, description: string) {
+    Column({ space: 5 }) {
+      Text(title).fontSize(15).fontColor(this.state.pal.TEXT)
+      Text(description).fontSize(13).fontColor(this.state.pal.TEXT_SUB).lineHeight(21)
+    }
+    .alignItems(HorizontalAlign.Start).width('100%').padding(16)
+  }
+
+  @Builder
+  shortcut(label: string, keys: string) {
+    Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.SpaceBetween, alignItems: ItemAlign.Center }) {
+      Text(label).fontSize(14).fontColor(this.state.pal.TEXT).padding({ right: 12, top: 6, bottom: 6 })
+      Text(keys).fontSize(13).fontColor(this.state.pal.TEXT_SUB).padding({ top: 6, bottom: 6 })
+    }.width('100%').padding({ left: 16, right: 16, top: 4, bottom: 4 })
+  }
+
+  @Builder
+  helpContent() {
+    this.sectionTitle('使用帮助')
+    Column() {
+      this.helpItem('打开与拖入', '通过“打开文件”编辑外部原文件；拖入文档会导入“我的文档”，编辑的是应用内副本。')
+      this.rowDiv(true)
+      this.helpItem('保存与带走文档', '“保存”写回当前文件；“另存为”切换保存位置。带图片的文档请导出图文 ZIP，单个 Markdown 文件仅包含正文；HTML 可用于阅读分享。')
+      this.rowDiv(true)
+      this.helpItem('文件授权与数据保留', '仅访问你选择的文件，并尝试保留访问授权。授权失效时请重新选择原文件。“我的文档”和恢复草稿保存在应用内，卸载前请先导出。')
+      this.rowDiv(true)
+      this.helpItem('编辑与视图', '工具栏按标题、格式、段落和插入分组；再次选择同级标题可取消。查找支持替换，大纲可跳转标题；平板与电脑可并排编辑和预览。')
+    }
+    .width('100%').backgroundColor(this.state.pal.CONTENT).borderRadius(12)
+    this.sectionTitle('外接键盘快捷键')
+    Column() {
+      this.shortcut('保存', 'Ctrl + S')
+      this.rowDiv(true)
+      this.shortcut('查找 / 大纲', 'Ctrl + F / Ctrl + Shift + F')
+      this.rowDiv(true)
+      this.shortcut('加粗 / 斜体', 'Ctrl + B / Ctrl + I')
+      this.rowDiv(true)
+      this.shortcut('撤销 / 重做', 'Ctrl + Z / Ctrl + Y')
+    }
+    .width('100%').backgroundColor(this.state.pal.CONTENT).borderRadius(12)
+  }
+
+  @Builder
   pageContent() {
     Column() {
       Column() {
@@ -207,6 +250,7 @@ struct SettingsPage {
             .backgroundColor(this.state.pal.CONTENT)
             .borderRadius(12)
             .alignItems(HorizontalAlign.Start)
+            this.helpContent()
           }
           .width('100%')
           .padding({ bottom: 24 })

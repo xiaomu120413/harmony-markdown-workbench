@@ -1,0 +1,44 @@
+[
+  {
+    "file": "settings-help.jpg",
+    "source": "C:\\Users\\mu\\harmonyos-screenshots\\screenshot_20261019_162815.jpeg",
+    "originalSize": [
+      2880,
+      1920
+    ],
+    "outputSize": [
+      1200,
+      800
+    ],
+    "device": "PCE-W30 API 22",
+    "transform": "proportional resize only"
+  },
+  {
+    "file": "reopened-write.jpg",
+    "source": "C:\\Users\\mu\\harmonyos-screenshots\\screenshot_20261019_162540.jpeg",
+    "originalSize": [
+      2880,
+      1920
+    ],
+    "outputSize": [
+      1200,
+      800
+    ],
+    "device": "PCE-W30 API 22",
+    "transform": "proportional resize only"
+  },
+  {
+    "file": "settings-return-dark.jpg",
+    "source": "C:\\Users\\mu\\harmonyos-screenshots\\screenshot_20261019_162649.jpeg",
+    "originalSize": [
+      2880,
+      1920
+    ],
+    "outputSize": [
+      1200,
+      800
+    ],
+    "device": "PCE-W30 API 22",
+    "transform": "proportional resize only"
+  }
+]

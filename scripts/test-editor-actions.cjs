@@ -11,7 +11,7 @@ const kits = {
     router: { getState: () => ({ name: 'HomePage' }), pushUrl: async r => routes.push(r) } },
 };
 const load = createLoader(kits, {
-  Observed: cls => cls, AlertDialog: { show: d => dialogs.push(d) },
+  canIUse: () => false, Observed: cls => cls, AlertDialog: { show: d => dialogs.push(d) },
   AppStorage: { get: k => storage.get(k), setOrCreate: (k, v) => storage.set(k, v) },
 });
 const root = path.join(__dirname, '../entry/src/main/ets');
@@ -29,6 +29,16 @@ function fixture() {
   return { state, actions, syncs: () => syncs };
 }
 (async () => {
+  const derived = new EditorState();
+  derived.findMatches = [{ from: 0, to: 5 }, { from: 6, to: 11 }];
+  assert.equal(derived.matchCount, 2);
+  derived.findMatches = []; assert.equal(derived.matchCount, 0);
+  derived.saveState = 'conflict'; assert.equal(derived.conflictVisible, true);
+  assert.equal(derived.saveLabel, '外部冲突');
+  derived.loadState = 'loading'; assert.equal(derived.saveLabel, '正在打开');
+  derived.loadState = 'accessExpired'; assert.equal(derived.saveLabel, '未打开');
+  derived.loadState = 'ready'; derived.saveState = 'clean';
+  assert.equal(derived.conflictVisible, false); assert.equal(derived.saveLabel, '已保存');
   const wide = fixture();
   wide.actions.toggleOutline(); assert.equal(wide.state.outlineVisible, true); assert.equal(wide.syncs(), 1);
   wide.actions.toggleOutline(); assert.equal(wide.state.outlineVisible, false);
@@ -50,20 +60,19 @@ function fixture() {
   cramped.actions.toggleOutline(); assert.equal(cramped.state.outlineVisible, true); assert.equal(cramped.state.viewMode, 'split');
   cramped.state.contentWidthVp = 800; cramped.actions.enforceWorkspaceBudget(); assert.equal(cramped.state.viewMode, 'edit');
 
-  wide.actions.showHelp(); assert.equal(dialogs.length, 1);
-  assert.ok(dialogs[0].message.includes('\n')); assert.ok(!dialogs[0].message.includes('\\n'));
-  assert.ok(dialogs[0].message.includes('Ctrl+Shift+F'));
+  wide.actions.showSettings(); await Promise.resolve();
+  assert.equal(routes.pop().url, 'pages/SettingsPage'); assert.equal(dialogs.length, 0);
 
   wide.actions.sendBridge('first'); narrow.actions.sendBridge('second');
   assert.deepEqual(wide.actions.channel.pending, ['first']); assert.deepEqual(narrow.actions.channel.pending, ['second']);
-  wide.state.pendingOpenUri = 'file://received.md'; assert.equal(storage.get('pendingOpenUri'), 'file://received.md');
+  wide.actions.env.pendingOpenUri = 'file://received.md'; assert.equal(storage.get('pendingOpenUri'), 'file://received.md');
   const home = new HomeState({ filesDir: '/test' }); const homeActions = new HomeController(home, {}, { filesDir: '/test' });
   homeActions.consumeExternalOpen(); await Promise.resolve();
   assert.equal(storage.get('pendingOpenUri'), ''); assert.equal(routes[0].params.uri, 'file://received.md');
   let deferred = 0;
   wide.actions.dismissFileSheet(() => deferred++); wide.actions.fileSheetClosed(); wide.actions.fileSheetClosed();
   assert.equal(deferred, 1);
-  wide.actions.dismissFileSheet(() => deferred++); wide.state.pageActive = false; wide.actions.fileSheetClosed();
+  wide.actions.dismissFileSheet(() => deferred++); wide.actions.env.disposed = true; wide.actions.fileSheetClosed();
   assert.equal(deferred, 1);
   wide.actions.aboutToDisappear(); wide.actions.sendBridge('late');
   assert.deepEqual(wide.actions.channel.pending, []);
@@ -72,12 +81,13 @@ function fixture() {
   let resolveSnapshot;
   late.actions.runJsValue = () => new Promise(resolve => { resolveSnapshot = resolve; });
   const pending = late.actions.openPhoneOutline();
-  late.actions.aboutToDisappear(); late.state.pageActive = true; // A new mount reuses the model.
+  late.actions.aboutToDisappear(); // The old environment stays disposed when a new mount reuses the model.
   resolveSnapshot('# stale'); await pending;
   assert.equal(late.state.fileSheetVisible, false);
   late.actions.sendBridge('stale'); assert.deepEqual(late.actions.channel.pending, []);
   const liveFind = fixture(); delete liveFind.actions.syncDocNow;
-  Object.assign(liveFind.state, { webReady: true, findVisible: true, findQuery: 'MatePad', activeSession: 'find' });
+  Object.assign(liveFind.state, { findVisible: true, findQuery: 'MatePad' });
+  Object.assign(liveFind.actions.env, { webReady: true, activeSession: 'find' });
   const snap = (content, version = 1) => ({ ok: true, sessionId: 'find', version, content });
   liveFind.actions.getSnapshotData = async () => snap('MatePad MatePad MatePad MatePad');
   liveFind.actions.scheduleDocSync();
@@ -94,12 +104,12 @@ function fixture() {
   assert.equal(liveFind.state.matchCount, 2);
 
   const oldSync = liveFind.actions.syncDocNow();
-  liveFind.actions.env.disposed = true; liveFind.state.pageActive = true;
+  liveFind.actions.env.disposed = true;
   resolveFind(snap('new new new')); await Promise.resolve();
   assert.equal(liveFind.state.matchCount, 2);
   assert.equal(oldSync, undefined);
   const revision = fixture();
-  Object.assign(revision.state, { activeSession: 'find', findQuery: 'new' });
+  revision.actions.env.activeSession = 'find'; revision.state.findQuery = 'new';
   revision.actions.env.coordinator = { documentVersion: 2 };
   revision.actions.getSnapshotData = async () => snap('new new', 1);
   await revision.actions.refreshFind(); assert.equal(revision.state.matchCount, 0);
@@ -118,7 +128,7 @@ function fixture() {
     encoding: 'utf-8', lineEnding: 'lf', validUtf8: true });
   secondRead(readResult('latest')); await Promise.resolve();
   firstRead(readResult('obsolete')); await Promise.resolve();
-  assert.equal(loads.state.pendingLoad, 'latest');
+  assert.equal(loads.actions.env.pendingLoad, 'latest');
   const searchState = new HomeState();
   const search = new HomeController(searchState, {}, { filesDir: '/test' });
   searchState.searchQuery = 'old'; let finishRead;
@@ -128,5 +138,15 @@ function fixture() {
   await search.runSearch(); assert.equal(searchState.searchBusy, false);
   finishRead({ content: 'old' }); await oldSearch;
   assert.deepEqual(searchState.searchResults, []); assert.equal(searchState.searchBusy, false);
-  console.log('19 editor/home controller scenarios passed (real modules, platform boundaries mocked)');
+  const settings = fixture(); settings.actions.env.webReady = true;
+  settings.actions.env.settings.load = async () => ({ theme: 'dark', fontSize: 16, wrap: true,
+    lineNumbers: true, autoSave: true, defaultView: 'preview' });
+  settings.actions.applyAppSettings(); await Promise.resolve();
+  assert.equal(settings.state.viewMode, 'preview'); // Initial defaults survive a late settings read.
+  settings.state.viewMode = 'edit'; settings.actions.applyAppSettings(true); await Promise.resolve();
+  assert.equal(settings.state.viewMode, 'edit'); assert.equal(settings.actions.env.appSettings.fontSize, 16);
+  settings.actions.env.settings.load = async () => ({ fontSize: 20 });
+  settings.actions.env.disposed = true; settings.actions.applyAppSettings(true); await Promise.resolve();
+  assert.equal(settings.actions.env.appSettings.fontSize, 16);
+  console.log('23 editor/home controller scenarios passed (real modules, platform boundaries mocked)');
 })().catch(error => { console.error(error); process.exitCode = 1; });

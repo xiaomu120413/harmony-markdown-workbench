@@ -25,6 +25,7 @@ struct EditorPage {
     this.actions.aboutToAppear();
   }
   aboutToDisappear(): void { this.actions?.aboutToDisappear(); }
+  onPageShow(): void { this.actions?.applyAppSettings(true); }
   build() {
     if (this.actions !== undefined) {
       SafePage() { EditorScreen({ state: this.state, actions: this.actions }) }
