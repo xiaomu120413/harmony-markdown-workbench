@@ -14,6 +14,7 @@ ArkWeb 编辑运行时资源说明（SDD 7.2 / ADR-001、ADR-005）。本目录�
 
 - 所有 JS/CSS/字体本地打包，离线可用；禁止远程资源。
 - Markdown 渲染 `html: false`（原始 HTML 标签不执行），并依赖 markdown-it 默认链接协议校验拒绝 `javascript:` 等危险协议。
-- HTML 内容块以 `data:text/html;base64` + `sandbox=""` iframe 隔离渲染；HTML 只读预览另由 `domain/preview/HtmlSafety` 做危险标签检测。
+- HTML 内容块以 `data:text/html;base64` + `sandbox=""` iframe 隔离渲染；独立 HTML 只读预览通过 CSP（`default-src 'none'; script-src 'none'; frame-src 'none'` 等）包裹后 `loadData`，脚本与联网禁用。
+- `domain/preview/HtmlSafety` 目前仅单测覆盖、未接入生产（HTML 预览实际由上述 CSP 收口），属待清理死代码。
 - 未引入 DOMPurify（依赖未入仓）；如后续引入，须固定版本并同步 NOTICE。
 - 依赖锁定在 `web-tools/package-lock.json`；修改 Web 源码后必须运行 `node web-tools/build-web.js` 并提交产物，CI 会校验 bundle 一致性。
