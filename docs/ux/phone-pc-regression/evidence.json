@@ -1,0 +1,164 @@
+{
+  "date": "2026-10-19",
+  "baseline": "22cca7b",
+  "bundle": "com.markdownworkbench.validation",
+  "hapSha256": "411b28899528d43c5bb9eb4461a59f8be441a028638866644d5e40e30987a61c",
+  "checks": {
+    "pc_original_unchanged": true,
+    "pc_bom_crlf_preserved": true,
+    "pc_save_as_target": true,
+    "pc_markdown_copy": true,
+    "pc_zip_crc": true,
+    "pc_zip_body": true,
+    "pc_html_body": true,
+    "phone_original_unchanged": true,
+    "phone_bom_crlf_preserved": true,
+    "phone_save_as_target": true,
+    "phone_markdown_copy": true,
+    "phone_zip_crc": true,
+    "phone_zip_body": true,
+    "phone_html_body": true,
+    "pc_drop_copy": true,
+    "image_zip_crc": true,
+    "image_zip_body": true,
+    "image_zip_png": true,
+    "image_html_png": true,
+    "image_html_body": true
+  },
+  "files": {
+    "export1739.html": {
+      "bytes": 1718,
+      "sha256": "8926b27f883b9bbd2e5ed25fd52f9ec83165136523e7b3bb6b0ac862631a2a1a"
+    },
+    "export1739.md": {
+      "bytes": 60,
+      "sha256": "0e7936a3376fd794b6e08b6bfce4e0e321173a3a61ad6b36af73dde6849a17c1"
+    },
+    "export1739.zip": {
+      "bytes": 366,
+      "sha256": "9750d3bcb54f052d5a600b50272555dc150d595711973109fd7daaa6f350e0b6"
+    },
+    "pc-copy.md": {
+      "bytes": 54,
+      "sha256": "950d623be07fcdb2cd51ccd4dbf77d37740fddc68692b9c2f4ab5f06abc32f68"
+    },
+    "pc-drop.md": {
+      "bytes": 33,
+      "sha256": "0d408971a818b6d9660ba6e226f8d194f027246317db3a9122ed493d52aa7dda"
+    },
+    "pc-imported.md": {
+      "bytes": 33,
+      "sha256": "0d408971a818b6d9660ba6e226f8d194f027246317db3a9122ed493d52aa7dda"
+    },
+    "pc-new.md": {
+      "bytes": 54,
+      "sha256": "950d623be07fcdb2cd51ccd4dbf77d37740fddc68692b9c2f4ab5f06abc32f68"
+    },
+    "pc-original.md": {
+      "bytes": 48,
+      "sha256": "9f8d8709ba7dbd910124c6a8673df51227e3f6b90b809a3805063a2bf6c2b29d"
+    },
+    "pc-saved.md": {
+      "bytes": 48,
+      "sha256": "9f8d8709ba7dbd910124c6a8673df51227e3f6b90b809a3805063a2bf6c2b29d"
+    },
+    "pc-source.md": {
+      "bytes": 36,
+      "sha256": "2ec33d96c8bba01e8f547f5fff885c263afdf81177eb8ff1b3269ae29dd4844f"
+    },
+    "pc1726.html": {
+      "bytes": 1598,
+      "sha256": "4790c4e554c1da97a734535ca098b38334befa851d4bd7531a60cc8281793527"
+    },
+    "pc1726.zip": {
+      "bytes": 176,
+      "sha256": "d55c1a48a701820146f048ce0ca5391a45de0cfd2f6320e1d8d5eec61abcbb09"
+    },
+    "phone-copy.md": {
+      "bytes": 60,
+      "sha256": "368f82237067413e9dee99b7aac1f791244a23564dfa9f24ca51800916e04de1"
+    },
+    "phone-new.md": {
+      "bytes": 60,
+      "sha256": "368f82237067413e9dee99b7aac1f791244a23564dfa9f24ca51800916e04de1"
+    },
+    "phone-original-final.md": {
+      "bytes": 51,
+      "sha256": "66bf25b6a6c05ca5d1f4f968a23461ce5237ceae73cb9861017ca98792e43fcf"
+    },
+    "phone-saved.md": {
+      "bytes": 51,
+      "sha256": "66bf25b6a6c05ca5d1f4f968a23461ce5237ceae73cb9861017ca98792e43fcf"
+    },
+    "phone1730.html": {
+      "bytes": 1607,
+      "sha256": "6b2e64f483864e2ef633b08156f90ea2bb14be170c5af33cdd96211749e11f80"
+    },
+    "phone1730.zip": {
+      "bytes": 180,
+      "sha256": "19c35e47c7e4e734b4946e4d53dd6207fc7d8495c2eaba01d59e3bee7208db63"
+    },
+    "rg1739.png": {
+      "bytes": 75,
+      "sha256": "ab0c2bc0f1259d0774fe2a8627ede2fdf8d3c40a644729141259dbc2ea4d6e42"
+    },
+    "unsupported.html": {
+      "bytes": 21,
+      "sha256": "508c1c574d170dfc059b8aab4735605ab8afb5e2e36d2888274f4302a803a78e"
+    }
+  },
+  "captures": [
+    {
+      "file": "phone-reopened.jpg",
+      "source": "screenshot_20261019_174817.jpeg",
+      "originalSize": [
+        1320,
+        2856
+      ],
+      "size": [
+        416,
+        900
+      ],
+      "operation": "proportional resize only"
+    },
+    {
+      "file": "pc-rejected-drop.jpg",
+      "source": "screenshot_20261019_173536.jpeg",
+      "originalSize": [
+        3120,
+        2080
+      ],
+      "size": [
+        1200,
+        800
+      ],
+      "operation": "proportional resize only"
+    },
+    {
+      "file": "pc-imported-drop.jpg",
+      "source": "screenshot_20261019_173711.jpeg",
+      "originalSize": [
+        3120,
+        2080
+      ],
+      "size": [
+        1200,
+        800
+      ],
+      "operation": "proportional resize only"
+    },
+    {
+      "file": "pc-image-document.jpg",
+      "source": "screenshot_20261019_173958.jpeg",
+      "originalSize": [
+        3120,
+        2080
+      ],
+      "size": [
+        1200,
+        800
+      ],
+      "operation": "proportional resize only"
+    }
+  ]
+}
