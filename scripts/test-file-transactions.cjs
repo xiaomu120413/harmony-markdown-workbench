@@ -20,6 +20,8 @@ const { EditorState } = load(`${root}/features/editor/EditorState`);
 const { EditorController } = load(`${root}/features/editor/EditorController`);
 const { SaveCoordinator } = load(`${root}/services/SaveCoordinator`);
 const { DocumentDeliveryService } = load(`${root}/services/DocumentDeliveryService`);
+const { EditorDelivery } = load(`${root}/features/editor/EditorDelivery`);
+const { DocumentImportService } = load(`${root}/services/DocumentImportService`);
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; }
 function fixture() {
   storage.clear(); dialogs.length = 0;
@@ -115,5 +117,35 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
   const image = f.actions.insertLocalImage(); f.actions.env.disposed = true;
   gate.resolve({ photoUris: ['file://docs/image.png'] }); await image;
   assert.equal(copies, 0); assert.equal(f.scripts.length, 0);
-  console.log('14 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
+  f = fixture(); select = async () => [];
+  await f.actions.insertHtml();
+  assert.equal(f.state.deliveryBusy, false); assert.equal(f.state.docTitle, 'source.md');
+  assert.ok(f.scripts.at(-1).includes('setEditable(true)'));
+  assert.ok(!f.scripts.some(s => s.includes('replaceRange')));
+
+  f = fixture(); gate = deferred(); select = () => gate.promise;
+  const lateHtml = f.actions.insertHtml(); await Promise.resolve();
+  f.actions.env.activeSession = 'new-document'; gate.resolve(['file://docs/late.html']); await lateHtml;
+  assert.equal(f.state.deliveryBusy, false); assert.equal(f.state.docTarget.relativePath, 'library/source.md');
+  assert.ok(!f.scripts.some(s => s.includes('replaceRange')));
+
+  f = fixture();
+  f.actions.runJsChecked = async (_, script) => {
+    f.scripts.push(script); return script.includes('getSelectionRange') ? JSON.stringify({ from: 9, to: 9 }) : '';
+  };
+  await new EditorDelivery(f.actions).insertAttachment('attachments/block.html', 'HTML', 'original');
+  assert.ok(f.scripts.some(s => s.includes('replaceRange(9, 9,') && s.includes('![HTML]')));
+  assert.equal(f.state.docTarget.relativePath, 'library/source.md');
+
+  f = fixture(); f.actions.runJsChecked = async (_, script) => { f.scripts.push(script); return 'invalid'; };
+  await assert.rejects(new EditorDelivery(f.actions).insertAttachment('attachments/block.html', 'HTML', 'original'));
+  assert.ok(!f.scripts.some(s => s.includes('replaceRange')));
+
+  f = fixture(); let inserted;
+  DocumentImportService.prototype.receive = async () => 'library/drop.html';
+  f.actions.insertHtml = async id => { inserted = id; };
+  await f.actions.receiveDrop({});
+  assert.equal(inserted, 'library/drop.html'); assert.equal(f.actions.env.pendingOpenUri, '');
+  assert.equal(f.state.dropBusy, false); assert.equal(f.state.docTitle, 'source.md');
+  console.log('19 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
 })().catch(e => { console.error(e); process.exitCode = 1; });

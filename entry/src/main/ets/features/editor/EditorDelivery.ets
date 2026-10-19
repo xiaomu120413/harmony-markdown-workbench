@@ -2,17 +2,116 @@ import { MuLogger } from '../../common/MuLogger';
 import { promptAction } from '@kit.ArkUI';
 import { pasteboard } from '@kit.BasicServicesKit';
 import { util } from '@kit.ArkTS';
-import { picker } from '@kit.CoreFileKit';
+import { picker, fileUri, fileIo as fs } from '@kit.CoreFileKit';
 import { SaveState } from '../../domain/recovery/SaveStateMachine';
 import { DocumentDeliveryService } from '../../services/DocumentDeliveryService';
 import { ExternalSource } from '../../domain/document/DocumentFileAdapter';
 import { HashUtil } from '../../domain/document/HashUtil';
 import { EditorController } from './EditorController';
+import { SafeFileIO } from '../../infrastructure/file/SafeFileIO';
+import { HtmlResourceStore } from '../../infrastructure/file/HtmlResourceStore';
+import { DocumentImportService } from '../../services/DocumentImportService';
 export class EditorDelivery {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
   private isCurrent(session: string): boolean {
     return this.host.isActive() && session === this.host.env.activeSession;
+  }
+  private async htmlResources(id: string, html: string, session: string): Promise<Record<string, string>> {
+    const source = fileUri.getUriFromPath(`${this.host.env.ctx.filesDir}/${id}`);
+    const store = new HtmlResourceStore(source.substring(0, source.lastIndexOf('/')));
+    const resources: Record<string, string> = {};
+    for (let round = 0; round < 32; round++) {
+      if (!this.isCurrent(session)) { throw new Error('文档已切换，已取消插入'); }
+      const paths = JSON.parse(await this.host.runJsChecked(this.host.env.controller,
+        `window.__editorApi.inspectHtml(${JSON.stringify(html)}, ${JSON.stringify(resources)});`)) as string[];
+      let loaded = 0;
+      let missing = 0;
+      for (const path of paths) {
+        if (resources[path] !== undefined) { continue; }
+        try {
+          const item = store.read(HtmlResourceStore.BASE + encodeURI(path));
+          resources[path] = `data:${item.mime};base64,${new util.Base64Helper().encodeToStringSync(item.bytes)}`;
+          loaded++;
+        } catch (e) {
+          const message = String(e).replace(/^(Error: )+/, '');
+          if (/^(资源超过|文件超过本次操作的大小限制|不导入符号链接|资源路径)/.test(message)) { throw new Error(message); }
+          missing++;
+        }
+      }
+      if (loaded > 0) { continue; } // 新导入 CSS 后再解析其 @import 和图片。
+      if (missing === 0) { return resources; }
+      const choice = await promptAction.showActionMenu({ title: `HTML 还缺少 ${missing} 个图片或样式资源`, buttons: [
+        { text: '选择 HTML 所在目录', color: this.host.state.pal.TEXT },
+        { text: '选择图片和 CSS 文件', color: this.host.state.pal.TEXT },
+      ] });
+      if (!this.isCurrent(session)) { throw new Error('文档已切换，已取消插入'); }
+      const viewPicker = new picker.DocumentViewPicker(this.host.env.ctx);
+      const uris = choice.index === 0
+        ? await viewPicker.select({ maxSelectNumber: 1, selectMode: picker.DocumentSelectMode.FOLDER })
+        : await viewPicker.select({ maxSelectNumber: 128, fileSuffixFilters: ['.css', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico', '.avif'] });
+      if (!this.isCurrent(session) || uris.length === 0) { throw new Error('已取消插入 HTML，正文未改动'); }
+      if (choice.index === 0) { store.useFolder(uris[0]); } else { store.importFiles(uris); }
+    }
+    throw new Error('HTML 资源引用过深或未补齐，请整理资源后重试');
+  }
+
+  async insertHtml(id?: string): Promise<void> {
+    if (!this.host.isActive() || this.host.state.deliveryBusy || this.host.state.loadState !== 'ready') { return; }
+    const session = this.host.env.activeSession;
+    this.host.state.deliveryBusy = true;
+    try {
+      await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(false);');
+      if (id === undefined) {
+        const uris = await new picker.DocumentViewPicker(this.host.env.ctx).select({ maxSelectNumber: 1, fileSuffixFilters: ['.html', '.htm'] });
+        if (!this.isCurrent(session) || uris.length === 0) { return; }
+        id = await new DocumentImportService(this.host.env.ctx).importUri(uris[0]);
+      }
+      if (!this.isCurrent(session)) { return; }
+      const read = await this.host.env.internal.read({ kind: 'internal', relativePath: id });
+      if (!read.validUtf8 || read.revision.size > 8 * 1024 * 1024) { throw new Error('仅支持 8 MiB 以内的 UTF-8 HTML'); }
+      const resources = await this.htmlResources(id, read.content, session);
+      const html = await this.host.runJsChecked(this.host.env.controller,
+        `window.__editorApi.bundleHtml(${JSON.stringify(read.content)}, ${JSON.stringify(resources)});`);
+      if (!this.isCurrent(session)) { return; }
+      const bytes = util.TextEncoder.create('utf-8').encodeInto(html);
+      if (bytes.byteLength > 12 * 1024 * 1024) { throw new Error('内嵌 HTML 超过 12 MiB，请缩小图片后插入'); }
+      const folder = `${this.host.env.ctx.filesDir}/attachments`;
+      if (!fs.accessSync(folder)) { fs.mkdirSync(folder); }
+      const name = `html-${Date.now()}-${Math.floor(Math.random() * 0xffffff)}.html`;
+      SafeFileIO.atomicBytes(`${folder}/${name}`, bytes);
+      await this.insertAttachment(`attachments/${name}`, 'HTML', session);
+      if (this.isCurrent(session)) { promptAction.showToast({ message: 'HTML 已插入光标处，可切换预览查看' }); }
+    } catch (e) {
+      MuLogger.warn('HTML insertion incomplete');
+      const error: ESObject = e as ESObject;
+      if (this.isCurrent(session) && error.code !== 1006 && error.code !== 1007) {
+        promptAction.showToast({ message: String(e).replace(/^Error: /, '') });
+      }
+    } finally {
+      if (this.host.isActive()) { this.host.state.deliveryBusy = false; }
+      if (this.isCurrent(session)) {
+        this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(true);').catch(() => {
+          MuLogger.warn('HTML insertion editor restore failed');
+        });
+      }
+      if (this.host.isActive() && this.host.env.pendingOpenUri.length > 0) { this.host.onExternalOpen(); }
+    }
+  }
+
+  private async insertAttachment(path: string, label: string, session: string): Promise<void> {
+    const raw = await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.getSelectionRange();');
+    const selection: ESObject = JSON.parse(raw);
+    const at = selection.from as number;
+    if (!this.isCurrent(session)) { return; }
+    if (typeof at !== 'number' || !Number.isInteger(at) || at < 0) { throw new Error('无法获取插入位置，请重新定位光标'); }
+    const snippet = label === 'HTML' ? `\n\n![HTML](<${path}>)\n\n` : `![图片](<${path}>)`;
+    await this.host.runJsChecked(this.host.env.controller,
+      `window.__editorApi.replaceRange(${at}, ${at}, ${JSON.stringify(snippet)});`);
+    if (!this.isCurrent(session)) { return; }
+    this.host.env.coordinator?.onEdit(Date.now());
+    this.host.state.saveState = this.host.env.coordinator?.state ?? SaveState.DIRTY;
+    this.host.scheduleDocSync();
   }
   async inspectImages(content: string): Promise<string[]> {
     const raw = await this.host.runJsChecked(this.host.env.controller,
@@ -49,8 +148,8 @@ export class EditorDelivery {
       if ((action === 0 || action === 1) && images.length > 0) {
         // 单文件 Markdown 不能携带附件；用户显式选定后才输出正文副本。
         const accepted = await new Promise<boolean>((resolve) => {
-          AlertDialog.show({ title: 'Markdown 文件不包含图片附件',
-            message: '此操作仅保存 Markdown 正文。要把图片一起带走，请取消并选择“导出图文 ZIP”。',
+          AlertDialog.show({ title: 'Markdown 文件不包含附件',
+            message: '此操作仅保存 Markdown 正文。要把图片及 HTML 内容块一起带走，请取消并选择“导出图文 ZIP”。',
             primaryButton: { value: '仅保存正文', action: () => resolve(true) },
             secondaryButton: { value: '取消', action: () => resolve(false) }, cancel: () => resolve(false) });
         });
@@ -134,24 +233,7 @@ export class EditorDelivery {
         promptAction.showToast({ message: '图片复制失败' });
         return;
       }
-      // 在光标处插入 Markdown 引用（相对路径，可迁移）
-      const sel = await this.host.runJsValue('window.__editorApi.getSelectionRange();');
-      if (!this.isCurrent(session)) { return; }
-      let parsed: ESObject;
-      try {
-        parsed = JSON.parse(sel);
-      } catch (e) {
-        parsed = { from: 0, to: 0 };
-      }
-      const at = (parsed.from as number) ?? 0;
-      const snippet = `![图片](<${attPath}>)`;
-      await this.host.runJsValue(`window.__editorApi.replaceRange(${at}, ${at}, ${JSON.stringify(snippet)});`);
-      const c = this.host.env.coordinator;
-      if (c !== undefined) {
-        c.onEdit(Date.now());
-        this.host.state.saveState = c.state;
-      }
-      this.host.scheduleDocSync();
+      await this.insertAttachment(attPath, '图片', session);
       promptAction.showToast({ message: `已插入 ${name}` });
     } catch (e) {
       const err: ESObject = e as ESObject;

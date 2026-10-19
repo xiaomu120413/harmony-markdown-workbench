@@ -12,7 +12,7 @@
 | `editor/EditorPersistence` | 快照、草稿、持久化、冲突和离开保护 |
 | `editor/EditorPreview` | 预览同步、大纲与窗口空间决策 |
 | `editor/EditorFind` | 查找替换及编辑状态分发，规则仍来自 domain |
-| `editor/EditorDelivery` | 另存为、导出、复制及图片插入 |
+| `editor/EditorDelivery` | 另存为、导出、复制及图片/HTML 插入；共用光标写入与忙状态，HTML 先合成离线附件再展示 sandbox 内容块 |
 | `editor/*Screen/Header/Workspace/FindPanel/CommandBar/FileActions` | ArkUI 视图与事件转发，无持久化实现 |
 | `home/HomeState`、`home/HomeEnvironment` | 首页可观察数据与平台依赖分开 |
 | `home/HomeController` | 资料库、最近记录、搜索、重命名/回收及路由编排 |

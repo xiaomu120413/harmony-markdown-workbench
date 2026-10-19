@@ -143,6 +143,8 @@ node scripts/test-external-access.cjs
 node scripts/test-page-viewmodels.cjs
 node scripts/test-window-viewport.cjs
 node scripts/test-html-preview.cjs
+node scripts/test-html-resources.cjs
+node scripts/test-html-embed.cjs
 node scripts/check-source-size.mjs
 ```
 

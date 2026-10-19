@@ -16,6 +16,7 @@ window.addEventListener('error', function (e) {
  * 原生→Web 命令经 runJavaScript 调用 __editorApi（返回值通道）。
  */
 import { inspectMarkdown, renderMarkdown } from './markdown';
+import { inspectHtml, bundleHtml } from './html-embed';
 import { basicSetup } from 'codemirror';
 import { EditorView, placeholder, keymap } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
@@ -161,6 +162,8 @@ window.__editorApi = {
   setEditable(editable) { view.dispatch({ effects: editableC.reconfigure(EditorView.editable.of(editable)) }); return 'ok'; },
   inspectMarkdown(text) { return inspectMarkdown(text); },
   renderMarkdown(text, resources) { return renderMarkdown(text, resources); },
+  inspectHtml(html, resources) { return inspectHtml(html, resources); },
+  bundleHtml(html, resources) { return bundleHtml(html, resources); },
   getSnapshot() {
     return view ? view.state.doc.toString() : '';
   },

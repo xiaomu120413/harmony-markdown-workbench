@@ -61,6 +61,7 @@ export struct EditorCommandBar {
       } else {
         this.commandItem('链接', 'link')
         MenuItem({ content: '本地图片…' }).onClick(() => this.actions.insertLocalImage())
+        MenuItem({ content: 'HTML 内容块…' }).onClick(() => this.actions.insertHtml())
         this.commandItem('表格', 'table')
         this.commandItem('分隔线', 'hr')
       }

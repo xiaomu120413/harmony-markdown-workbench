@@ -155,6 +155,7 @@ export struct EditorWorkspace {
             .attributeModifier(new WebDragStyle())
             .onDragEnter(() => { this.state.fileHover = true; })
             .onOverrideUrlLoading((request: WebResourceRequest): boolean => {
+              if (!request.isMainFrame() && request.getRequestUrl().startsWith('data:text/html;base64,')) { return false; }
               return !request.getRequestUrl().endsWith('/web/preview.html');
             })
             .onPageEnd(() => {
@@ -181,8 +182,8 @@ export struct EditorWorkspace {
       .height('100%')
       if (this.state.fileHover) {
         Column({ space: 10 }) {
-          Text('松开以导入文档').fontSize(20).fontWeight(FontWeight.Medium).fontColor(this.state.pal.PRIMARY)
-          Text('Markdown / txt / HTML · 副本保存在“我的文档”').fontSize(14).fontColor(this.state.pal.TEXT_SUB)
+          Text('松开以打开文档或插入 HTML').fontSize(20).fontWeight(FontWeight.Medium).fontColor(this.state.pal.PRIMARY)
+          Text('HTML 插入当前光标 · Markdown / txt 导入副本').fontSize(14).fontColor(this.state.pal.TEXT_SUB)
         }
         .justifyContent(FlexAlign.Center)
         .width('100%').height('100%').backgroundColor(this.state.pal.PRIMARY_SOFT)

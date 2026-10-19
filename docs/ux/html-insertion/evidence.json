@@ -1,0 +1,101 @@
+{
+  "date": "2026-10-19",
+  "baseline": "9f337b2",
+  "bundle": "com.markdownworkbench.validation",
+  "hapBytes": 2793046,
+  "hapSha256": "61e10f3fc0118a4c4423746003b552e751683f1f4434137b39a0926f7b2cbd18",
+  "checks": {
+    "zip_crc": true,
+    "zip_reference_matches_attachment": true,
+    "pc_original_before_insert": true,
+    "pc_save_as_matches_snapshot": true,
+    "pc_follow_up_saved_to_new_target": true,
+    "inline_css": true,
+    "two_embedded_pictures": true,
+    "image_bytes_exact": true,
+    "script_removed": true,
+    "no_external_image": true,
+    "attachment_csp": true,
+    "html_export_contains_same_attachment": true,
+    "html_export_sandbox": true,
+    "phone_original_before_insert": true,
+    "phone_saved_reference": true,
+    "phone_cancel_unchanged": true,
+    "licenses_in_hap": true
+  },
+  "artifacts": {
+    "html-inline-2024.zip": {
+      "bytes": 1084,
+      "sha256": "499330a768776b49be1d3562e6598c023863ccc9472e0f3d768601d2fc4392af"
+    },
+    "html-inline-2028.html": {
+      "bytes": 4108,
+      "sha256": "a3ee0faad99b5cc974770d8bf4abe7eef13ee1cd0164e9d367002c495e91a6b5"
+    },
+    "zip-inline-attachment.html": {
+      "bytes": 1648,
+      "sha256": "c38285b77b68b1b2ecae8965d0a8537c808097b4391159949cc48c104fa82bae"
+    },
+    "phone-inline.md": {
+      "bytes": 119,
+      "sha256": "737160a7b25b0f0817bfe7510c43ce163b8c182b144cdd6615f22518a7d6177b"
+    },
+    "phone-inline-after-cancel.md": {
+      "bytes": 119,
+      "sha256": "737160a7b25b0f0817bfe7510c43ce163b8c182b144cdd6615f22518a7d6177b"
+    },
+    "pc-inline-saved-as.md": {
+      "bytes": 113,
+      "sha256": "36f512ede0554d795d1e8de16b4c6756b391b97070e2601c473b299e03e3328b"
+    },
+    "pc-inline-follow-up.md": {
+      "bytes": 131,
+      "sha256": "7224f09acf6129275a6f9c01ba039e3e2876e28f29f958ecdf2a5220ab782fdb"
+    }
+  },
+  "captures": [
+    {
+      "file": "pc-inline-offline.jpg",
+      "source": "screenshot_20261019_203707.jpeg",
+      "original": [
+        3120,
+        2080
+      ],
+      "crop": [
+        76,
+        76,
+        2166,
+        1470
+      ],
+      "size": [
+        1200,
+        800
+      ]
+    },
+    {
+      "file": "phone-inline.jpg",
+      "source": "screenshot_20261019_203640.jpeg",
+      "original": [
+        1320,
+        2856
+      ],
+      "crop": null,
+      "size": [
+        416,
+        900
+      ]
+    }
+  ],
+  "operation": "specified crop and proportional resize only",
+  "finalResourceCollectionRegression": {
+    "pcInsertionAtStartPreservesPreviousBytes": true,
+    "newAttachmentMatchesVerifiedExport": true,
+    "markdownBytes": 189,
+    "markdownSha256": "b7807e9958c22750e56eb02a388958cc8b355ba512a2d19e0fefe25e31312008",
+    "phoneReopenPreview": true,
+    "screenshots": [
+      "pc-inline-fresh.jpg",
+      "phone-inline-final.jpg"
+    ]
+  }
+}

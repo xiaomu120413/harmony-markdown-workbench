@@ -17,6 +17,11 @@ const md = new MarkdownIt({
 const defaultImage = md.renderer.rules.image;
 md.renderer.rules.image = (tokens, index, options, env, renderer) => {
   const source = tokens[index].attrGet('src');
+  if (/^attachments\/[^/]+\.html?$/i.test(source) && env.resources?.[source]?.startsWith('data:text/html;base64,')) {
+    return `<span class="html-embed" style="display:block"><span style="font-size:12px">HTML 内容</span>` +
+      `<iframe sandbox="" referrerpolicy="no-referrer" title="HTML 内容" src="${md.utils.escapeHtml(env.resources[source])}" ` +
+      'style="display:block;width:100%;height:420px;border:1px solid #ccc;border-radius:4px"></iframe></span>';
+  }
   if (env.resources && Object.prototype.hasOwnProperty.call(env.resources, source)) {
     tokens[index].attrSet('src', env.resources[source]);
   }

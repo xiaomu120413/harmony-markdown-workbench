@@ -79,7 +79,8 @@ export class EditorDocuments {
         (key: string) => this.host.uiContext.getDragController().cancelDataLoading(key)).receive(event);
       if (!this.host.isActive()) { return; }
       MuLogger.info('[拖入] 已取得单文档授权');
-      promptAction.showToast({ message: DocumentIntake.isHtml(uri) ? '已导入 HTML 副本，只读预览' : '已导入“我的文档”，编辑的是副本' });
+      if (DocumentIntake.isHtml(uri)) { await this.host.insertHtml(uri); return; }
+      promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
       this.host.env.pendingOpenUri = uri;
     } catch (e) {
       MuLogger.info('[拖入] 未完成，当前正文保留');
