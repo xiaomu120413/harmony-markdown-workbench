@@ -75,6 +75,7 @@ export class EditorController {
   findOpts(): FindOptions { return this.find.findOpts(); }
   openFind(): void { return this.find.openFind(); }
   refreshFind(): Promise<void> { return this.find.refreshFind(); }
+  updateFindMatches(text: string): void { return this.find.updateFindMatches(text); }
   jumpNext(): void { return this.find.jumpNext(); }
   locateFirstMatch(): void { return this.find.locateFirstMatch(); }
   jumpPrev(): void { return this.find.jumpPrev(); }

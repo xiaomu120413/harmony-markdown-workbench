@@ -6,6 +6,7 @@ import { DraftStore } from '../../infrastructure/metadata/DraftStore';
 import { SettingsStore } from '../../infrastructure/metadata/SettingsStore';
 
 export class HomeEnvironment {
+  active: boolean = true;
   ctx: common.UIAbilityContext;
   meta: MetadataStore;
   fileSource: InternalFileSource;

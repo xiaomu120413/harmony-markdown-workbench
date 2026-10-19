@@ -8,6 +8,7 @@ import { ExternalUriFileSource } from '../../infrastructure/file/ExternalUriFile
 import { DraftStore } from '../../infrastructure/metadata/DraftStore';
 import { MetadataStore } from '../../infrastructure/metadata/MetadataStore';
 import { SettingsStore } from '../../infrastructure/metadata/SettingsStore';
+import { ReadDocumentResult } from '../../domain/document/DocumentFileAdapter';
 
 /** Per-mounted-editor platform dependencies and disposable handles; never an observed UI model. */
 export class EditorEnvironment {
@@ -22,6 +23,7 @@ export class EditorEnvironment {
   settings: SettingsStore;
   meta: MetadataStore;
   coordinator: SaveCoordinator | undefined = undefined;
+  documentRead: Promise<ReadDocumentResult> | undefined = undefined;
   bpListeners: mediaquery.MediaQueryListener[] = [];
   previewTimer: number = -1;
   flushTimer: number = -1;

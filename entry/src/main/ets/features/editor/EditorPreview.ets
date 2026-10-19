@@ -10,7 +10,7 @@ export class EditorPreview {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
   scheduleDocSync(): void {
-    if (this.host.state.viewMode === DefaultView.EDIT && !this.host.state.outlineVisible) {
+    if (this.host.state.viewMode === DefaultView.EDIT && !this.host.state.outlineVisible && !this.host.state.findVisible) {
       return;
     }
     if (this.host.env.previewTimer >= 0) {
@@ -23,15 +23,22 @@ export class EditorPreview {
   }
 
   syncDocNow(): void {
-    if (!this.host.state.webReady) {
+    if (!this.host.isActive() || !this.host.state.webReady) {
       return;
     }
     const needPreview = this.host.state.previewReady && this.host.state.viewMode !== DefaultView.EDIT;
     const needOutline = this.host.state.outlineVisible;
-    if (!needPreview && !needOutline) {
+    const needFind = this.host.state.findVisible;
+    if (!needPreview && !needOutline && !needFind) {
       return;
     }
-    this.host.runJsValue('window.__editorApi.getSnapshot();').then((md: string) => {
+    const session = this.host.state.activeSession;
+    const coordinator = this.host.env.coordinator;
+    this.host.getSnapshotData().then((snapshot) => {
+      if (!this.host.isActive() || session !== this.host.state.activeSession || coordinator !== this.host.env.coordinator ||
+        !snapshot.ok || snapshot.sessionId !== session || snapshot.version < (coordinator?.documentVersion ?? 0)) { return; }
+      const md = snapshot.content;
+      if (needFind && this.host.state.findVisible) { this.host.updateFindMatches(md); }
       if (needPreview && md !== this.host.state.lastPreviewedMd) {
         this.host.state.lastPreviewedMd = md;
         this.host.renderPreview(md, this.host.state.activeSession);

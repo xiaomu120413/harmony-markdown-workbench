@@ -20,7 +20,6 @@ export class EditorState {
   openPromptVisible: boolean = false;
   activeSession: string = '';
   pageActive: boolean = true;
-  loadGeneration: number = 0;
   docLength: number = 0;
   docTitle: string = '未命名';
   conflictVisible: boolean = false;

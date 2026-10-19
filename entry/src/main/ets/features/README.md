@@ -19,5 +19,11 @@
 | `home/HomeState`、`home/HomeEnvironment` | 首页可观察数据与平台依赖分开 |
 | `home/HomeController` | 资料库、最近记录、搜索、重命名/回收及路由编排 |
 | `home/*Screen/Compact/Navigation/RecentList/Welcome/LibraryPanel` | 首页分区展示；共享 HomeState |
+| `settings/SettingsState`、`settings/SettingsViewModel` | 设置展示状态与加载、校验、串行保存编排；页面无 Preferences/DraftStore 操作 |
+| `recovery/RecoveryState`、`recovery/RecoveryViewModel` | 恢复展示状态与磁盘校验、恢复/副本/清理编排；domain 决定恢复规则 |
 
 安全区域由 `infrastructure/window/WindowViewportAdapter` 发布，四个路由页面统一使用 `components/SafePage`。RESIZE 负责键盘缩放；组件不再次叠加键盘高度。设备窗口变小只改变布局状态，不重新创建控制器、Web 文档或 SaveCoordinator。
+
+这里的 EditorController / HomeController 是 ViewModel 命令入口，命名不代表 MVC 的页面控制器；State 是绑定到 ArkUI 的可观察展示数据。平台对象、Promise、定时器和订阅放在非观察 Environment；纯业务规则放 domain；文件与元数据读写放 infrastructure。设置/恢复使用显式 ViewModel 命名，职责遵循相同边界。
+
+不增加观察计数器或强制重绘。查找和预览使用真实 sessionId/version 快照并核对当前查询条件；文档加载以实际读 Promise 区分先后操作。`Date.now()` 用于保存调度、历史时间或唯一文档会话，不充当 UI 刷新键。

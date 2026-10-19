@@ -26,6 +26,7 @@ export class HomeController {
     try {
       const id = await new DocumentImportService(this.env.ctx,
         (key: string) => this.uiContext.getDragController().cancelDataLoading(key)).receive(event);
+      if (!this.env.active) { return; }
       promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
       AppStorage.setOrCreate('pendingOpenUri', id);
     } catch (e) {
@@ -49,6 +50,7 @@ export class HomeController {
   }
 
   aboutToAppear(): void {
+    this.env.active = true;
     this.state.bp = bpOf();
     this.env.bpListeners = watchBreakpoints((bp: Breakpoint) => {
       this.state.bp = bp;
@@ -60,12 +62,14 @@ export class HomeController {
   }
 
   aboutToDisappear(): void {
+    this.env.active = false;
     unwatchBreakpoints(this.env.bpListeners);
     this.env.bpListeners = [];
     if (this.env.searchTimer >= 0) { clearTimeout(this.env.searchTimer); this.env.searchTimer = -1; }
   }
 
   onPageShow(): void {
+    this.env.active = true;
     this.consumeExternalOpen();
     this.state.bp = bpOf();
     this.applyTheme();
@@ -232,6 +236,7 @@ export class HomeController {
     const q = this.state.searchQuery.trim();
     if (q.length === 0) {
       this.state.searchResults = [];
+      this.state.searchBusy = false;
       return;
     }
     this.state.searchBusy = true;
@@ -248,9 +253,11 @@ export class HomeController {
         }
       }
       const opts: FindOptions = { caseSensitive: false, wholeWord: false };
-      this.state.searchResults = LibrarySearch.search(docs, q, opts);
+      if (this.env.active && q === this.state.searchQuery.trim()) {
+        this.state.searchResults = LibrarySearch.search(docs, q, opts);
+      }
     } finally {
-      this.state.searchBusy = false;
+      if (this.env.active && q === this.state.searchQuery.trim()) { this.state.searchBusy = false; }
     }
   }
 

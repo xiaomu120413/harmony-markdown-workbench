@@ -1,80 +1,27 @@
 import { SafePage } from '../components/SafePage';
 import { ControlStyle } from '../common/ControlStyle';
 import { common } from '@kit.AbilityKit';
-import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router } from '@kit.ArkUI';
 import { beginWindowMove } from '../common/WindowDrag';
-import { AppSettings, SettingsValidator, ThemeMode, DefaultView } from '../domain/settings/AppSettings';
-import { SettingsStore } from '../infrastructure/metadata/SettingsStore';
-import { DraftStore } from '../infrastructure/metadata/DraftStore';
-import { AppTheme } from '../common/AppTheme';
+import { ThemeMode, DefaultView } from '../domain/settings/AppSettings';
 import { SegBtn } from '../common/SegBtn';
-
-const DOMAIN: number = 0x0000;
-const TAG: string = 'HMWB-SETTINGS';
-
-/**
- * 设置页（V0.4：对齐系统设置的原生分组行样式）。
- * 灰底页面 + 白底圆角分组；行内左标签右控件，行间细分隔线；
- * 即改即存；主题切换即时生效。
- */
+import { SettingsState } from '../features/settings/SettingsState';
+import { SettingsViewModel } from '../features/settings/SettingsViewModel';
 @Entry
 @Component
 struct SettingsPage {
-  @State narrow: boolean = true;
+  @State state: SettingsState = new SettingsState();
   @StorageProp('titleControlsBottom') captionBottom: number = 0;
-  @State themeMode: ThemeMode = ThemeMode.LIGHT;
-  @State fontSize: number = 15;
-  @State wrap: boolean = true;
-  @State lineNumbers: boolean = true;
-  @State autoSave: boolean = true;
-  @State defaultView: DefaultView = DefaultView.EDIT;
-  @State draftCount: number = 0;
-  @State pal: AppTheme = AppTheme.light();
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
-  private store: SettingsStore = new SettingsStore(getContext(this) as common.UIAbilityContext);
-
-  private note(line: string): void {
-    hilog.info(DOMAIN, TAG, '%{public}s', line);
-  }
-
-  async aboutToAppear(): Promise<void> {
-    const s = await this.store.load();
-    this.themeMode = s.theme;
-    this.fontSize = s.fontSize;
-    this.wrap = s.wrap;
-    this.lineNumbers = s.lineNumbers;
-    this.autoSave = s.autoSave;
-    this.defaultView = s.defaultView;
-    this.pal = AppTheme.of(s.theme === ThemeMode.DARK);
-    try {
-      const drafts = new DraftStore(this.ctx);
-      this.draftCount = drafts.listAll().length;
-    } catch (e) {
-      this.draftCount = 0;
-    }
-  }
-
-  /** 即改即存：任何设置变更立即持久化（静默） */
-  private persist(): void {
-    const s: AppSettings = {
-      theme: this.themeMode,
-      fontSize: SettingsValidator.clampFont(this.fontSize),
-      wrap: this.wrap,
-      lineNumbers: this.lineNumbers,
-      autoSave: this.autoSave,
-      defaultView: this.defaultView,
-    };
-    this.store.save(s);
-    this.note(`[设置] theme=${s.theme} font=${s.fontSize} wrap=${s.wrap} lines=${s.lineNumbers} auto=${s.autoSave} view=${s.defaultView}`);
-  }
-
+  private actions: SettingsViewModel = new SettingsViewModel(this.state, this.ctx);
+  aboutToAppear(): void { this.actions = new SettingsViewModel(this.state, this.ctx); this.actions.load(); }
+  aboutToDisappear(): void { this.actions.dispose(); }
   /** 区块标题（分组外的灰色小标题） */
   @Builder
   sectionTitle(title: string) {
     Text(title)
       .fontSize(13)
-      .fontColor(this.pal.TEXT_SUB)
+      .fontColor(this.state.pal.TEXT_SUB)
       .padding({ left: 14, top: 14, bottom: 6 })
       .width('100%')
   }
@@ -86,7 +33,7 @@ struct SettingsPage {
       Row() {}
         .width('100%')
         .height(1)
-        .backgroundColor(this.pal.DIVIDER)
+        .backgroundColor(this.state.pal.DIVIDER)
         .margin({ left: 16 })
     }
   }
@@ -95,9 +42,9 @@ struct SettingsPage {
   @Builder
   rowLabel(label: string, sub: string, fullWidth: boolean = false) {
     Column({ space: 2 }) {
-      Text(label).fontSize(15).fontColor(this.pal.TEXT)
+      Text(label).fontSize(15).fontColor(this.state.pal.TEXT)
       if (sub.length > 0) {
-        Text(sub).fontSize(11).fontColor(this.pal.TEXT_FAINT)
+        Text(sub).fontSize(11).fontColor(this.state.pal.TEXT_FAINT)
       }
     }
     .alignItems(HorizontalAlign.Start)
@@ -113,14 +60,14 @@ struct SettingsPage {
         // 顶栏
         Row({ space: 8 }) {
           Button({ type: ButtonType.Normal }) {
-            SymbolGlyph($r('sys.symbol.chevron_left')).fontSize(20).fontColor([this.pal.TEXT])
+            SymbolGlyph($r('sys.symbol.chevron_left')).fontSize(20).fontColor([this.state.pal.TEXT])
           }
-            .attributeModifier(new ControlStyle(this.pal, 'quiet', true)).accessibilityText('返回')
+            .attributeModifier(new ControlStyle(this.state.pal, 'quiet', true)).accessibilityText('返回')
             .onClick(() => router.back())
           Text('设置')
             .fontSize(18)
             .fontWeight(FontWeight.Bold)
-            .fontColor(this.pal.TEXT)
+            .fontColor(this.state.pal.TEXT)
             .padding({ top: 6, bottom: 6 })
             .onTouch((e: TouchEvent) => {
               // 系统标题栏已隐藏：标题区接管窗口拖动（否则本页窗口无法移动）
@@ -139,15 +86,11 @@ struct SettingsPage {
             Column() {
               Row({ space: 12 }) {
                 this.rowLabel('主题', '')
-                SegBtn({ label: '浅色', active: this.themeMode === ThemeMode.LIGHT, pal: this.pal, action: () => {
-                  this.themeMode = ThemeMode.LIGHT;
-                  this.pal = AppTheme.light();
-                  this.persist();
+                SegBtn({ label: '浅色', active: this.state.themeMode === ThemeMode.LIGHT, pal: this.state.pal, action: () => {
+                  this.actions.setTheme(ThemeMode.LIGHT);
                 } })
-                SegBtn({ label: '深色', active: this.themeMode === ThemeMode.DARK, pal: this.pal, action: () => {
-                  this.themeMode = ThemeMode.DARK;
-                  this.pal = AppTheme.dark();
-                  this.persist();
+                SegBtn({ label: '深色', active: this.state.themeMode === ThemeMode.DARK, pal: this.state.pal, action: () => {
+                  this.actions.setTheme(ThemeMode.DARK);
                 } })
               }
               .width('100%')
@@ -157,29 +100,27 @@ struct SettingsPage {
 
               Row({ space: 10 }) {
                 this.rowLabel('字号', '编辑器与预览文字大小')
-                SegBtn({ label: '−', active: false, pal: this.pal, action: () => {
-                  this.fontSize = SettingsValidator.clampFont(this.fontSize - 1);
-                  this.persist();
+                SegBtn({ label: '−', active: false, pal: this.state.pal, action: () => {
+                  this.actions.adjustFont(-1);
                 } })
-                Text(`${this.fontSize}`)
+                Text(`${this.state.fontSize}`)
                   .fontSize(14)
-                  .fontColor(this.pal.TEXT)
+                  .fontColor(this.state.pal.TEXT)
                   .width(28)
                   .textAlign(TextAlign.Center)
-                SegBtn({ label: '+', active: false, pal: this.pal, action: () => {
-                  this.fontSize = SettingsValidator.clampFont(this.fontSize + 1);
-                  this.persist();
+                SegBtn({ label: '+', active: false, pal: this.state.pal, action: () => {
+                  this.actions.adjustFont(1);
                 } })
                 Text('px')
                   .fontSize(12)
-                  .fontColor(this.pal.TEXT_FAINT)
+                  .fontColor(this.state.pal.TEXT_FAINT)
               }
               .width('100%')
               .constraintSize({ minHeight: 52 })
               .padding({ left: 16, right: 14 })
             }
             .width('100%')
-            .backgroundColor(this.pal.CONTENT)
+            .backgroundColor(this.state.pal.CONTENT)
             .borderRadius(12)
             .alignItems(HorizontalAlign.Start)
 
@@ -188,9 +129,9 @@ struct SettingsPage {
             Column() {
               Row({ space: 12 }) {
                 this.rowLabel('自动换行', '')
-                Toggle({ type: ToggleType.Switch, isOn: this.wrap })
-                  .selectedColor(this.pal.PRIMARY)
-                  .onChange((v: boolean) => { this.wrap = v; this.persist(); })
+                Toggle({ type: ToggleType.Switch, isOn: this.state.wrap })
+                  .selectedColor(this.state.pal.PRIMARY)
+                  .onChange((v: boolean) => { this.actions.setWrap(v); })
               }
               .width('100%')
               .constraintSize({ minHeight: 52 })
@@ -199,9 +140,9 @@ struct SettingsPage {
 
               Row({ space: 12 }) {
                 this.rowLabel('显示行号', '')
-                Toggle({ type: ToggleType.Switch, isOn: this.lineNumbers })
-                  .selectedColor(this.pal.PRIMARY)
-                  .onChange((v: boolean) => { this.lineNumbers = v; this.persist(); })
+                Toggle({ type: ToggleType.Switch, isOn: this.state.lineNumbers })
+                  .selectedColor(this.state.pal.PRIMARY)
+                  .onChange((v: boolean) => { this.actions.setLineNumbers(v); })
               }
               .width('100%')
               .constraintSize({ minHeight: 52 })
@@ -210,9 +151,9 @@ struct SettingsPage {
 
               Row({ space: 12 }) {
                 this.rowLabel('自动保存', '停止输入片刻后自动写入文件')
-                Toggle({ type: ToggleType.Switch, isOn: this.autoSave })
-                  .selectedColor(this.pal.PRIMARY)
-                  .onChange((v: boolean) => { this.autoSave = v; this.persist(); })
+                Toggle({ type: ToggleType.Switch, isOn: this.state.autoSave })
+                  .selectedColor(this.state.pal.PRIMARY)
+                  .onChange((v: boolean) => { this.actions.setAutoSave(v); })
               }
               .width('100%')
               .constraintSize({ minHeight: 52 })
@@ -220,19 +161,16 @@ struct SettingsPage {
               this.rowDiv(true)
 
               Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
-                this.rowLabel('默认视图', '平板与电脑可选分屏', this.narrow)
+                this.rowLabel('默认视图', '平板与电脑可选分屏', this.state.narrow)
                 Row({ space: 6 }) {
-                SegBtn({ label: '编辑', active: this.defaultView === DefaultView.EDIT, pal: this.pal, action: () => {
-                  this.defaultView = DefaultView.EDIT;
-                  this.persist();
+                SegBtn({ label: '编辑', active: this.state.defaultView === DefaultView.EDIT, pal: this.state.pal, action: () => {
+                  this.actions.setDefaultView(DefaultView.EDIT);
                 } })
-                SegBtn({ label: '预览', active: this.defaultView === DefaultView.PREVIEW, pal: this.pal, action: () => {
-                  this.defaultView = DefaultView.PREVIEW;
-                  this.persist();
+                SegBtn({ label: '预览', active: this.state.defaultView === DefaultView.PREVIEW, pal: this.state.pal, action: () => {
+                  this.actions.setDefaultView(DefaultView.PREVIEW);
                 } })
-                SegBtn({ label: '分屏', active: this.defaultView === DefaultView.SPLIT, pal: this.pal, action: () => {
-                  this.defaultView = DefaultView.SPLIT;
-                  this.persist();
+                SegBtn({ label: '分屏', active: this.state.defaultView === DefaultView.SPLIT, pal: this.state.pal, action: () => {
+                  this.actions.setDefaultView(DefaultView.SPLIT);
                 } })
                 }
               }
@@ -241,7 +179,7 @@ struct SettingsPage {
               .padding({ left: 16, right: 14, top: 8, bottom: 8 })
             }
             .width('100%')
-            .backgroundColor(this.pal.CONTENT)
+            .backgroundColor(this.state.pal.CONTENT)
             .borderRadius(12)
             .alignItems(HorizontalAlign.Start)
 
@@ -250,23 +188,23 @@ struct SettingsPage {
             Column() {
               Row({ space: 12 }) {
                 this.rowLabel('未保存草稿', '应用意外退出时自动保留')
-                Text(`${this.draftCount} 个`)
+                Text(`${this.state.draftCount} 个`)
                   .fontSize(14)
-                  .fontColor(this.pal.TEXT_SUB)
+                  .fontColor(this.state.pal.TEXT_SUB)
               }
               .width('100%')
               .constraintSize({ minHeight: 52 })
               .padding({ left: 16, right: 14 })
               this.rowDiv(true)
 
-              Button(this.draftCount > 0 ? '查看并恢复草稿' : '打开恢复页', { type: ButtonType.Normal })
+              Button(this.state.draftCount > 0 ? '查看并恢复草稿' : '打开恢复页', { type: ButtonType.Normal })
                 .width(180)
                 .margin({ left: 16, top: 10, bottom: 12 })
-                .attributeModifier(new ControlStyle(this.pal, 'secondary'))
+                .attributeModifier(new ControlStyle(this.state.pal, 'secondary'))
                 .onClick(() => router.pushUrl({ url: 'pages/RecoveryPage' }))
             }
             .width('100%')
-            .backgroundColor(this.pal.CONTENT)
+            .backgroundColor(this.state.pal.CONTENT)
             .borderRadius(12)
             .alignItems(HorizontalAlign.Start)
           }
@@ -284,9 +222,9 @@ struct SettingsPage {
     }
     .width('100%')
     .height('100%').padding({ top: this.captionBottom })
-    .onAreaChange((_old: Area, area: Area) => { this.narrow = (area.width as number) < 600; })
+    .onAreaChange((_old: Area, area: Area) => { this.state.narrow = (area.width as number) < 600; })
     .alignItems(HorizontalAlign.Center)
-    .backgroundColor(this.pal.BG)
+    .backgroundColor(this.state.pal.BG)
   }
   build() { Column() { SafePage() { this.pageContent() } }.width('100%').height('100%') }
 }

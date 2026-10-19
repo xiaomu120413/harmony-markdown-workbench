@@ -1,0 +1,52 @@
+[
+  {
+    "file": "landscape-keyboard.jpg",
+    "source": "screenshot_20261019_142904.jpeg",
+    "sourceSize": [
+      2880,
+      1920
+    ],
+    "capturedAt": "2026-10-19T14:29:04+08:00",
+    "processing": "resize only; no retouch"
+  },
+  {
+    "file": "portrait-keyboard.jpg",
+    "source": "screenshot_20261019_143706.jpeg",
+    "sourceSize": [
+      1920,
+      2880
+    ],
+    "capturedAt": "2026-10-19T14:37:06+08:00",
+    "processing": "resize only; no retouch"
+  },
+  {
+    "file": "find-updates.jpg",
+    "source": "element_20261019_152620.jpeg",
+    "sourceSize": [
+      2880,
+      1920
+    ],
+    "capturedAt": "2026-10-19T15:26:20+08:00",
+    "processing": "resize only; no retouch"
+  },
+  {
+    "file": "settings-persisted.jpg",
+    "source": "screenshot_20261019_153311.jpeg",
+    "sourceSize": [
+      2880,
+      1920
+    ],
+    "capturedAt": "2026-10-19T15:33:11+08:00",
+    "processing": "resize only; no retouch"
+  },
+  {
+    "file": "recovery.jpg",
+    "source": "screenshot_20261019_153313.jpeg",
+    "sourceSize": [
+      2880,
+      1920
+    ],
+    "capturedAt": "2026-10-19T15:33:13+08:00",
+    "processing": "resize only; no retouch"
+  }
+]

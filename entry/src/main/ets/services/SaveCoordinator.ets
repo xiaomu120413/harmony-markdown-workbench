@@ -135,6 +135,8 @@ export class SaveCoordinator {
     return this.sched.pending;
   }
 
+  get documentVersion(): number { return this.latestVersion; }
+
   /**
    * 编辑事件。version 为编辑器单调递增版本（可选：旧协议缺省时退化为
    * dirtyAfterSave 布尔门控，不会丢内容，只会多一次收敛保存）。

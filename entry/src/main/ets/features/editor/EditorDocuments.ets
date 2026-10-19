@@ -123,12 +123,13 @@ export class EditorDocuments {
 
   loadOpenedDoc(target: DocumentSource): void {
     const t0 = Date.now();
-    const generation = ++this.host.state.loadGeneration;
     this.host.state.loadState = 'loading';
     this.host.state.saveLabel = '正在打开';
     const src: DocumentFileAdapter = target.kind === 'internal' ? this.host.env.internal : this.host.env.external;
-    src.read(target).then((r) => {
-      if (!this.host.isActive() || generation !== this.host.state.loadGeneration) { return; }
+    const read = src.read(target);
+    this.host.env.documentRead = read;
+    read.then((r) => {
+      if (!this.host.isActive() || read !== this.host.env.documentRead) { return; }
       this.host.state.expectedRevision = r.revision;
       this.host.state.pendingLoad = r.content;
       this.host.state.pendingLoadAt = t0;
@@ -140,7 +141,7 @@ export class EditorDocuments {
         this.host.flushPendingLoad();
       }
     }).catch((e: ESObject) => {
-      if (!this.host.isActive() || generation !== this.host.state.loadGeneration) { return; }
+      if (!this.host.isActive() || read !== this.host.env.documentRead) { return; }
       // A2-04：权限失效（重启后临时授权丢失/文件被移动删除）与普通读取失败分流通
       const msg = String(e);
       this.host.state.loadFailure = e.message === undefined ? msg : String(e.message);

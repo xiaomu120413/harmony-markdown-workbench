@@ -220,7 +220,7 @@ export class EditorLifecycle {
   aboutToDisappear(): void {
     this.host.env.disposed = true;
     this.host.state.pageActive = false;
-    this.host.state.loadGeneration++;
+    this.host.env.documentRead = undefined;
     unwatchBreakpoints(this.host.env.bpListeners);
     this.host.env.bpListeners = [];
     if (this.host.env.flushTimer >= 0) {

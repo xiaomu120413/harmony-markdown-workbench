@@ -17,7 +17,7 @@ export class EditorFind {
     if (this.host.state.viewMode === DefaultView.PREVIEW) {
       this.host.setViewMode(DefaultView.EDIT);
     }
-    this.host.refreshFind().then(() => this.host.jumpNext());
+    this.host.refreshFind().then(() => this.host.locateFirstMatch());
   }
 
   async refreshFind(): Promise<void> {
@@ -27,12 +27,22 @@ export class EditorFind {
       this.host.state.matchIndex = -1;
       return;
     }
-    const text = await this.host.runJsValue('window.__editorApi.getSnapshot();');
+    const session = this.host.state.activeSession;
+    const query = this.host.state.findQuery;
+    const options = this.host.findOpts();
+    const coordinator = this.host.env.coordinator;
+    const snapshot = await this.host.getSnapshotData();
+    if (!this.host.isActive() || session !== this.host.state.activeSession || query !== this.host.state.findQuery ||
+      options.caseSensitive !== this.host.state.findCase || options.wholeWord !== this.host.state.findWord ||
+      coordinator !== this.host.env.coordinator || !snapshot.ok || snapshot.sessionId !== session ||
+      snapshot.version < (coordinator?.documentVersion ?? 0)) { return; }
+    this.host.updateFindMatches(snapshot.content);
+  }
+
+  updateFindMatches(text: string): void {
     this.host.state.findMatches = FindReplaceEngine.findAll(text, this.host.state.findQuery, this.host.findOpts());
     this.host.state.matchCount = this.host.state.findMatches.length;
-    if (this.host.state.matchIndex >= this.host.state.matchCount) {
-      this.host.state.matchIndex = this.host.state.matchCount - 1;
-    }
+    this.host.state.matchIndex = Math.min(Math.max(0, this.host.state.matchIndex), this.host.state.matchCount - 1);
   }
 
   jumpNext(): void {
@@ -41,8 +51,8 @@ export class EditorFind {
   }
 
   locateFirstMatch(): void {
-    if (this.host.state.matchIndex < 0 && this.host.state.matchCount > 0) {
-      this.host.state.matchIndex = 0;
+    if (this.host.isActive() && this.host.state.findVisible && this.host.state.matchCount > 0) {
+      if (this.host.state.matchIndex < 0) { this.host.state.matchIndex = 0; }
       this.host.selectCurrentMatch();
     }
   }

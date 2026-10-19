@@ -137,6 +137,7 @@ node web-tools/build-web.js
 node scripts/test-host.cjs
 node scripts/test-editor-actions.cjs
 node scripts/test-file-transactions.cjs
+node scripts/test-page-viewmodels.cjs
 node scripts/test-window-viewport.cjs
 node scripts/check-source-size.mjs
 ```
@@ -145,3 +146,4 @@ node scripts/check-source-size.mjs
 另存为、图文 ZIP、HTML 和系统打开的实际证据及签名限制见[验证记录](docs/spec/productization-verification.md)。
 手机/平板安全区、软键盘策略、职责拆分与设备验收见[本轮适配记录](docs/spec/mobile-adaptation-2026-10.md)。
 拆分后打开、拖入、保存、导出及实际产物核对见[文件链路回归记录](docs/spec/file-regression-2026-10.md)。
+API 22 实体平板与 MVVM 全局边界检查见[平板验收记录](docs/spec/tablet-mvvm-2026-10.md)。

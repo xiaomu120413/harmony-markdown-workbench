@@ -76,5 +76,57 @@ function fixture() {
   resolveSnapshot('# stale'); await pending;
   assert.equal(late.state.fileSheetVisible, false);
   late.actions.sendBridge('stale'); assert.deepEqual(late.actions.channel.pending, []);
-  console.log('13 editor/home controller scenarios passed (real modules, platform boundaries mocked)');
+  const liveFind = fixture(); delete liveFind.actions.syncDocNow;
+  Object.assign(liveFind.state, { webReady: true, findVisible: true, findQuery: 'MatePad', activeSession: 'find' });
+  const snap = (content, version = 1) => ({ ok: true, sessionId: 'find', version, content });
+  liveFind.actions.getSnapshotData = async () => snap('MatePad MatePad MatePad MatePad');
+  liveFind.actions.scheduleDocSync();
+  await new Promise(resolve => setTimeout(resolve, 350));
+  assert.equal(liveFind.state.matchCount, 4); assert.equal(liveFind.state.matchIndex, 0);
+  liveFind.actions.updateFindMatches('removed'); assert.equal(liveFind.state.matchCount, 0);
+  assert.equal(liveFind.state.matchIndex, -1);
+
+  let resolveFind;
+  liveFind.actions.getSnapshotData = () => new Promise(resolve => { resolveFind = resolve; });
+  const oldFind = liveFind.actions.refreshFind();
+  liveFind.state.findQuery = 'new'; liveFind.actions.updateFindMatches('new new');
+  resolveFind(snap('MatePad')); await oldFind;
+  assert.equal(liveFind.state.matchCount, 2);
+
+  const oldSync = liveFind.actions.syncDocNow();
+  liveFind.actions.env.disposed = true; liveFind.state.pageActive = true;
+  resolveFind(snap('new new new')); await Promise.resolve();
+  assert.equal(liveFind.state.matchCount, 2);
+  assert.equal(oldSync, undefined);
+  const revision = fixture();
+  Object.assign(revision.state, { activeSession: 'find', findQuery: 'new' });
+  revision.actions.env.coordinator = { documentVersion: 2 };
+  revision.actions.getSnapshotData = async () => snap('new new', 1);
+  await revision.actions.refreshFind(); assert.equal(revision.state.matchCount, 0);
+  revision.actions.getSnapshotData = async () => snap('new new', 2);
+  await revision.actions.refreshFind(); assert.equal(revision.state.matchCount, 2);
+  revision.state.matchIndex = -1; revision.actions.openFind();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(revision.state.matchIndex, 0);
+
+  const loads = fixture(); let firstRead, secondRead;
+  loads.actions.env.internal.read = () => new Promise(resolve => { if (!firstRead) firstRead = resolve; else secondRead = resolve; });
+  const target = { kind: 'internal', relativePath: 'library/test.md' };
+  loads.actions.trackRecent = async () => {}; loads.actions.refreshSidebarData = () => {};
+  loads.actions.loadOpenedDoc(target); loads.actions.loadOpenedDoc(target);
+  const readResult = content => ({ content, revision: { size: content.length, contentHash: content },
+    encoding: 'utf-8', lineEnding: 'lf', validUtf8: true });
+  secondRead(readResult('latest')); await Promise.resolve();
+  firstRead(readResult('obsolete')); await Promise.resolve();
+  assert.equal(loads.state.pendingLoad, 'latest');
+  const searchState = new HomeState();
+  const search = new HomeController(searchState, {}, { filesDir: '/test' });
+  searchState.searchQuery = 'old'; let finishRead;
+  search.env.fileSource.listLibrary = () => ['test.md'];
+  search.env.fileSource.read = () => new Promise(resolve => { finishRead = resolve; });
+  const oldSearch = search.runSearch(); searchState.searchQuery = '';
+  await search.runSearch(); assert.equal(searchState.searchBusy, false);
+  finishRead({ content: 'old' }); await oldSearch;
+  assert.deepEqual(searchState.searchResults, []); assert.equal(searchState.searchBusy, false);
+  console.log('19 editor/home controller scenarios passed (real modules, platform boundaries mocked)');
 })().catch(error => { console.error(error); process.exitCode = 1; });
