@@ -1,12 +1,11 @@
 # components/ 层
 
-ArkUI 可复用组件目录。职责（对应 SDD 8.1）：
+ArkUI 可复用组件目录（对应 SDD 8.1），当前实际文件：
 
-- `SaveStatus.ets`：保存状态指示（M5-01 / FR-SAVE-001）
-- `RecentFiles.ets`：最近/固定文件列表（M5-01）
-- `MarkdownToolbar.ets`：移动端 Markdown 快捷栏（M2-04）
-- `OutlinePanel.ets`：大纲侧栏（M3-03）
-- `ConflictDialog.ets`：外部冲突对话框（M4-03）
+- `SafePage.ets`：四个路由页共用的安全区域容器（顶部/底部避让，键盘不重复叠加）。
+- `DocumentSidebar.ets`：编辑页文档侧栏（最近/固定/资料库三段筛选 + 搜索）。
+
+其余编辑页分区（顶栏、工具栏、查找面板、状态栏等）位于 `features/editor/`，首页分区位于 `features/home/`；它们共享可观察 State，不另建跨页组件。
 
 规则：
 

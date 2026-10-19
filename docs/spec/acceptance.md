@@ -300,10 +300,10 @@
 |---|---|---|
 | B1-01 | 编辑页文档侧栏（240vp，SIDEBAR 色调）：最近/固定/资料库三段筛选 Tab + 搜索框；点击文档经 switchToDocument 直接加载（不必返回首页） | ✅ 构建 + 装机（构建通过；交互验证因设备占用由用户上手确认） |
 | B1-02 | 切换前 dirty/ERROR/CONFLICT → 经 saveNow 五态门控（A1/A3 契约），失败/冲突阻止切换并 toast | ✅ 代码 |
-| B2-01 | 侧栏开关（顶栏 ☰）：toggleSidebar 持久化 sidebarPreferredOpen（WorkspaceUiStore / preferences） | ✅ 代码 |
+| B2-01 | 侧栏开关（顶栏 ☰）：toggleSidebar 持久化 sidebarPreferredOpen（MetadataStore / preferences 原键） | ✅ 代码 |
 | B2-02 | phone 档不自动展开（bp !== 'phone' 门控）；断点变化时 watchBreakpoints 回调可扩展为空间策略 | ✅ 代码 |
 
-新增文件：components/DocumentSidebar.ets（@Component，最近/固定/资料库 + 搜索）、infrastructure/metadata/WorkspaceUiStore.ets（B2 偏好持久化）。
+新增文件：components/DocumentSidebar.ets（@Component，最近/固定/资料库 + 搜索）。侧栏偏好并入 infrastructure/metadata/MetadataStore.ets（与最近记录共用 hmwb_metadata，保留原键与失败回退），未单建 WorkspaceUiStore。
 
 ## 整改方案 C3：回收站、固定与资料库管理（2026-10-15）
 
@@ -326,8 +326,8 @@
 
 | 用例 | 内容 | 结果 |
 |---|---|---|
-| C1-01 | 分享菜单第四项「另存为 Markdown…」→ 系统保存选择器 → getSnapshotData 快照写入（不改变当前保存目标） | ✅ 构建 |
-| C1-02 | 取消不改变标题/保存目标/最近列表/保存状态（uris 空 → return） | ✅ 代码 |
+| C1-01 | 分享菜单「另存为…」→ 系统保存选择器 → getSnapshotData 快照写入新文件；**成功后才把保存目标切换到新文件**，后续 Ctrl+S/自动保存写入新文件 | ✅ 构建 |
+| C1-02 | 取消不改变标题/保存目标/最近列表/保存状态（选择器返回空 → return，不触碰协调器） | ✅ 代码 |
 
 ## 整改方案 B4：大纲、分屏与编辑区域空间预算（2026-10-15）
 
@@ -347,7 +347,7 @@
 | 用例 | 内容 | 结果 |
 |---|---|---|
 | D1 | 编辑器→预览同步滚动（分屏时）：editor.js scrollDOM 监听（100ms 防抖）→ editorScroll 事件 → EditorPage 桥接 → preview.scrollToLine（标题锚点近似定位，smooth 滚动） | ✅ 构建 + bundle |
-| C2 补 | 预览图片解析：resolveAttachmentRefs 在渲染前将 attachments/xxx 替换为 data:image/...;base64（≤2MB，缓存去重，MIME 推断） | ✅ 构建 |
+| C2 补 | 预览图片解析：EditorPreview 预读 attachments/xxx，由 DocumentDeliveryService 转 data:image/...;base64（单图 ≤20MiB，单次预览累计 ≤28MiB，按资源键去重，MIME 按扩展名推断；超限仅提示不修改正文/附件） | ✅ 构建 |
 
 ## 整改方案最终真机验证（2026-10-16，HAD-W32 / OpenHarmony 7.0.0.106）
 
@@ -372,7 +372,7 @@
 |---|---|---|
 | P0-01 保存链路 | 新建文档 → H2 命令 → 等 5s → 读磁盘：`## ` 3 字节落盘，状态"已保存" | ✅ |
 | P0-02 恢复流程 | 强杀 → 重启 → 恢复页显示旧草稿（"可恢复"状态 + 恢复按钮） | ✅ |
-| P0-02' A3-01 缺口 | 在 1.5s 防抖窗口内强杀 → 无新会话草稿（检查点与自动保存未解耦） | ⚠️ 已确认，需后续修复 |
+| P0-02' A3-01 | 在 1.5s 防抖窗口内强杀 → 恢复页应显示会话草稿（session:new）。修复：doSaveCheckpoint 对新文档直接写 session:new 检查点，检查点与自动保存解耦；恢复页按内容核对后可另存副本 | ✅ 已修复（代码 + 单测；真机强杀复测列入发布前回归） |
 
 ### B 布局与响应式
 
@@ -410,6 +410,6 @@
 | 无数据覆盖/误写/假已保存 | ✅ 冲突预检+快照契约验证 |
 | D 批明确标为后续 | ✅ |
 
-**结论：达到可发布标准，有一项已知缺口（A3-01 会话草稿解耦）记录为后续改进。**
+**结论：达到可发布标准。原 A3-01 会话草稿缺口已修复（新文档检查点直接落 session:new），真机强杀复测列入发布前回归。**
 
 验证截图：hmwb-36 至 hmwb-43。

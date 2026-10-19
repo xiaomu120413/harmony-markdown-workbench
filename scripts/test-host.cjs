@@ -164,6 +164,13 @@ cases.push({ name: 'draft load and recovery listing survive UTF8 short reads', b
     assert.equal(store.listAll().find(d => d.documentId === 'compat-draft').content, content);
   } finally { readLimit = Infinity; store.remove('compat-draft'); }
 } });
+cases.push({ name: 'draft checkpoint app version matches the app manifest', body() {
+  const versionName = JSON.parse(fs.readFileSync(path.join(root, 'AppScope/app.json5'), 'utf8')).app.versionName;
+  const store = new DraftStore({ filesDir });
+  store.save('version-draft', 'fingerprint', 0, '', 'x');
+  try { assert.equal(store.load('version-draft').appVersion, versionName); }
+  finally { store.remove('version-draft'); }
+} });
 cases.push({ name: 'intake validates one local text document and preserves authorization URI', body() {
   const uri = 'file://docs/a%20b.MD?grant=1';
   assert.equal(DocumentIntake.select([uri, uri]), uri);
