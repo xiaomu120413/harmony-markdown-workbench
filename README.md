@@ -1,8 +1,12 @@
-# 简墨 JianMo
+# 木笺 MuMark
 
 完全离线的 HarmonyOS Markdown 编辑器。规格与执行合同见 `HarmonyMarkdownWorkbench-SDD.md`（SDD 1.0.0），开发遵循 Specification-Driven Development 流程。
 
 **产品原则：打开的是原文件，保存后仍是原文件。**
+
+本轮名称统一为 **木笺 MuMark**，与木枢、MuTransfer 同系列。
+[使用说明](docs/user-guide.md) · [本轮规格](docs/spec/productization-2026-10.md) · [验证与限制](docs/spec/productization-verification.md) · [图标母版](docs/brand/README.md)。
+本轮交付以验证记录为准，下表旧版本“完成”不替代当前设备与异常路径的验收。
 
 ## 当前状态
 
@@ -85,12 +89,12 @@ bash scripts/clean-build.sh
 
 ```
 entry/src/main/ets/
-├── pages/            页面（HomePage 当前为 M0-01 占位，M5-01 实现首页）
+├── pages/            首页、编辑器、设置和恢复页面
 ├── components/       ArkUI 可复用组件（各层 README 写明职责与规划任务）
 ├── domain/           领域模型与规则（document/recovery/settings）
 ├── services/         服务编排（DocumentService/SaveCoordinator/EditorBridge…）
 ├── infrastructure/   平台实现（file/metadata/recovery）
-└── web/              ArkWeb 编辑运行时资源（M2 起填充）
+└── web/              职责说明；源码在 web-tools，包资源在 resources/rawfile/web
 docs/                 规格、ADR、风险、计划（见「相关文档」）
 scripts/              clean-build、图标生成等脚本
 ```
@@ -120,6 +124,13 @@ bash scripts/sign-local.sh entry/build/default/outputs/default/entry-default-uns
 - `docs/assumptions.md` — Clarify 阶段默认值与假设
 - `docs/spikes/` — M0 技术尖峰输出目录
 
-## 下一步
+## 本轮验证
 
-M0-02：外部文件 URI 尖峰（验证选择/读取/重启持久访问/原位保存/权限失效），输出 `docs/spikes/external-uri.md`。
+```powershell
+npm.cmd ci --prefix web-tools --no-audit --no-fund
+node web-tools/build-web.js
+node scripts/test-host.cjs
+```
+
+宿主测试执行真实领域源码并注入平台 IO 故障，不替代 ArkTS 编译和真机验收。
+另存为、图文 ZIP、HTML 和系统打开的实际证据及签名限制见[验证记录](docs/spec/productization-verification.md)。

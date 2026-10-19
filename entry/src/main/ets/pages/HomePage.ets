@@ -575,7 +575,7 @@ struct HomePage {
   @Builder
   sideBar() {
     Column({ space: 2 }) {
-      Text('简墨')
+      Text('木笺')
         .fontSize(18)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)
@@ -747,7 +747,7 @@ struct HomePage {
     Column({ space: 0 }) {
       Blank().height(120)
 
-      Text('简墨')
+      Text('木笺')
         .fontSize(24)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)
@@ -797,7 +797,7 @@ struct HomePage {
   @Builder
   phoneHome() {
     Column({ space: 10 }) {
-      Text('简墨')
+      Text('木笺')
         .fontSize(19)
         .fontWeight(FontWeight.Bold)
         .fontColor(this.pal.TEXT)

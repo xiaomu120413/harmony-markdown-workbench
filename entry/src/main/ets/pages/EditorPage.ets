@@ -1326,7 +1326,7 @@ struct EditorPage {
   /** 快捷键与使用提示面板（V0.4.3） */
   private showHelp(): void {
     AlertDialog.show({
-      title: '快捷键与提示',
+      title: '木笺 MuMark · 快捷键与提示',
       message: [
         '快捷键：',
         '· Ctrl+S 保存　Ctrl+F 查找　Ctrl+Shift+F 大纲',

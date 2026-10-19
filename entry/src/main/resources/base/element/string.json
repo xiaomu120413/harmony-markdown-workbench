@@ -2,7 +2,7 @@
   "string": [
     {
       "name": "module_desc",
-      "value": "简墨——编辑、预览、分屏，打开的是原文件"
+      "value": "木笺——编辑、预览、分屏，打开的是原文件"
     },
     {
       "name": "EntryAbility_desc",
@@ -10,7 +10,7 @@
     },
     {
       "name": "EntryAbility_label",
-      "value": "简墨"
+      "value": "木笺"
     }
   ]
 }
