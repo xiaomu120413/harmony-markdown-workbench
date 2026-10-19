@@ -11,5 +11,5 @@ for layer in ('background', 'foreground'):
 background = (source / 'mumark-background.svg').read_text(encoding='utf-8')
 foreground = (source / 'mumark-foreground.svg').read_text(encoding='utf-8')
 combined = background.replace('</svg>', foreground[foreground.index('>') + 1:])
-(target / 'app_icon.svg').write_text(combined, encoding='utf-8')
+(target / 'app_icon.svg').write_text(combined.rstrip() + '\n', encoding='utf-8')
 print('MuMark icon layers and SVG generated')
