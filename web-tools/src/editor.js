@@ -128,7 +128,7 @@ const appKeymap = keymap.of([
 let editorOptions = { dark: false, fontSize: 15, wrap: false, lineNumbers: true };
 function createEditorState(text) {
   return EditorState.create({ doc: text, extensions: [
-    basicSetup, markdown(), editExt, appKeymap, placeholder('开始输入…'),
+    basicSetup, myTheme, markdown(), editExt, appKeymap, placeholder('开始输入…'),
     editableC.of(EditorView.editable.of(true)),
     themeC.of(editorOptions.dark ? themeDark : []),
     fontC.of(EditorView.theme({ '&': { fontSize: editorOptions.fontSize + 'px' } })),

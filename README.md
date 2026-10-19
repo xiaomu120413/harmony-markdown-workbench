@@ -94,6 +94,7 @@ bash scripts/clean-build.sh
 ```
 entry/src/main/ets/
 ├── pages/            首页、编辑器、设置和恢复页面
+├── features/         首页/编辑器状态、平台依赖、功能控制器与分区视图（每文件 ≤500 行）
 ├── components/       ArkUI 可复用组件（各层 README 写明职责与规划任务）
 ├── domain/           领域模型与规则（document/recovery/settings）
 ├── services/         服务编排（DocumentService/SaveCoordinator/EditorBridge…）
@@ -134,7 +135,11 @@ bash scripts/sign-local.sh entry/build/default/outputs/default/entry-default-uns
 npm.cmd ci --prefix web-tools --no-audit --no-fund
 node web-tools/build-web.js
 node scripts/test-host.cjs
+node scripts/test-editor-actions.cjs
+node scripts/test-window-viewport.cjs
+node scripts/check-source-size.mjs
 ```
 
 宿主测试执行真实领域源码并注入平台 IO 故障，不替代 ArkTS 编译和真机验收。
 另存为、图文 ZIP、HTML 和系统打开的实际证据及签名限制见[验证记录](docs/spec/productization-verification.md)。
+手机/平板安全区、软键盘策略、职责拆分与设备验收见[本轮适配记录](docs/spec/mobile-adaptation-2026-10.md)。

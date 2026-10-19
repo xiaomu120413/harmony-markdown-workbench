@@ -9,8 +9,8 @@ import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
  */
 @Component
 export struct DocumentSidebar {
-  @Link recent: RecentEntry[];
-  @Link libraryFiles: string[];
+  @Prop recent: RecentEntry[] = [];
+  @Prop libraryFiles: string[] = [];
   @Prop pal: AppTheme = AppTheme.light();
   @State filter: 'recent' | 'pinned' | 'library' = 'recent';
   @State searchQuery: string = '';

@@ -1,3 +1,4 @@
+import { SafePage } from '../components/SafePage';
 import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -39,6 +40,7 @@ interface DraftRow {
 @Entry
 @Component
 struct RecoveryPage {
+  @StorageProp('titleControlsBottom') captionBottom: number = 0;
   @State rows: Array<DraftRow> = [];
   @State pal: AppTheme = AppTheme.light();
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
@@ -187,7 +189,8 @@ struct RecoveryPage {
     this.reload();
   }
 
-  build() {
+  @Builder
+  pageContent() {
     // 外层全宽容器负责水平居中（页面根上的 alignSelf 不生效）
     Column() {
     Stack({ alignContent: Alignment.Top }) {
@@ -281,8 +284,9 @@ struct RecoveryPage {
     }
     }
     .width('100%')
-    .height('100%')
+    .height('100%').padding({ top: this.captionBottom })
     .alignItems(HorizontalAlign.Center)
     .backgroundColor(this.pal.BG)
   }
+  build() { Column() { SafePage() { this.pageContent() } }.width('100%').height('100%') }
 }

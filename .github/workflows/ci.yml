@@ -39,6 +39,14 @@ jobs:
       - name: Rebuild bundles
         run: node build-web.js
         working-directory: web-tools
+      - name: Source and behavior gates
+        run: |
+          node scripts/check-source-size.mjs
+          node scripts/check-source-encoding.mjs
+          node scripts/check-docs.mjs
+          node scripts/test-host.cjs
+          node scripts/test-editor-actions.cjs
+          node scripts/test-window-viewport.cjs
       - name: Assert committed bundles unchanged
         run: |
           git diff --exit-code -- entry/src/main/resources/rawfile/web/ \

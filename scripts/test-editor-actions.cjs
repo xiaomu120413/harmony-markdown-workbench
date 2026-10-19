@@ -1,99 +1,80 @@
-/* Execute the actual non-UI page methods with narrow platform stubs.
- * This covers command dispatch/state, not ArkUI rendering or device permissions. */
-const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
 const assert = require('node:assert/strict');
-const { transformSync, buildSync } = require('../web-tools/node_modules/esbuild');
-const source = fs.readFileSync(path.join(__dirname, '../entry/src/main/ets/pages/EditorPage.ets'), 'utf8');
-
-function method(name) {
-  const start = source.indexOf(`  private ${name}(): void {`);
-  assert.notEqual(start, -1, `Missing page method ${name}`);
-  let pos = source.indexOf('{', start) + 1;
-  let depth = 1;
-  let quote = '';
-  for (; depth && pos < source.length; pos++) {
-    const c = source[pos];
-    if (quote) {
-      if (c === '\\') { pos++; continue; }
-      if (c === quote) quote = '';
-    } else if (['"', "'", '`'].includes(c)) quote = c;
-    else if (c === '{') depth++;
-    else if (c === '}') depth--;
-  }
-  assert.equal(depth, 0, `Unclosed method ${name}`);
-  return source.slice(start, pos);
+const createLoader = require('./lib/ets-loader.cjs');
+const dialogs = [], toasts = [], routes = [], storage = new Map();
+const kits = {
+  '@kit.ArkWeb': { webview: { WebviewController: class {} } },
+  '@kit.AbilityKit': {}, '@kit.CoreFileKit': {}, '@kit.ArkTS': {},
+  '@kit.ArkData': {}, '@kit.BasicServicesKit': {},
+  '@kit.PerformanceAnalysisKit': { hilog: { info() {}, warn() {}, error() {} } },
+  '@kit.ArkUI': { promptAction: { showToast: d => toasts.push(d) },
+    router: { getState: () => ({ name: 'HomePage' }), pushUrl: async r => routes.push(r) } },
+};
+const load = createLoader(kits, {
+  Observed: cls => cls, AlertDialog: { show: d => dialogs.push(d) },
+  AppStorage: { get: k => storage.get(k), setOrCreate: (k, v) => storage.set(k, v) },
+});
+const root = path.join(__dirname, '../entry/src/main/ets');
+const { EditorState } = load(`${root}/features/editor/EditorState`);
+const { EditorController } = load(`${root}/features/editor/EditorController`);
+const { HomeState } = load(`${root}/features/home/HomeState`);
+const { HomeController } = load(`${root}/features/home/HomeController`);
+function fixture() {
+  const state = new EditorState({ filesDir: '/test', cacheDir: '/cache' });
+  state.bp = 'pc'; state.contentWidthVp = 1200;
+  const actions = new EditorController(state, {}, { filesDir: '/test', cacheDir: '/cache' });
+  let syncs = 0;
+  actions.syncDocNow = () => syncs++;
+  actions.runJsValue = async () => '# Heading\nBody';
+  return { state, actions, syncs: () => syncs };
 }
+(async () => {
+  const wide = fixture();
+  wide.actions.toggleOutline(); assert.equal(wide.state.outlineVisible, true); assert.equal(wide.syncs(), 1);
+  wide.actions.toggleOutline(); assert.equal(wide.state.outlineVisible, false);
 
-const dialogs = [];
-const policyModule = { exports: {} };
-vm.runInNewContext(buildSync({ entryPoints: [path.join(__dirname, '../entry/src/main/ets/domain/editor/ViewModePolicy.ets')],
-  bundle: true, loader: { '.ets': 'ts' }, resolveExtensions: ['.ets', '.ts', '.js'],
-  format: 'cjs', platform: 'node', write: false }).outputFiles[0].text, { module: policyModule, exports: policyModule.exports });
-const { ViewModePolicy } = policyModule.exports;
-const DefaultView = { EDIT: 'edit', PREVIEW: 'preview', SPLIT: 'split' };
-const toasts = [];
-const fixture = `class Page {
-  bp = 'pc'; outlineVisible = false; fileSheetVisible = false; fileSheetSection = 'root';
-  contentWidthVp = 1200; sidebarVisible = false; viewMode = 'edit';
-  opens = 0; syncs = 0;
-  openPhoneOutline() { this.opens++; this.fileSheetVisible = true; this.fileSheetSection = 'outline'; }
-  syncDocNow() { this.syncs++; }
-  ${method('toggleOutline')}
-  ${method('enforceWorkspaceBudget')}
-  ${method('showHelp')}
-}
-module.exports = Page;`;
-const context = { module: { exports: {} }, ViewModePolicy, DefaultView,
-  promptAction: { showToast: d => toasts.push(d) }, AlertDialog: { show: d => dialogs.push(d) } };
-vm.runInNewContext(transformSync(fixture, { loader: 'ts', format: 'cjs' }).code, context);
-const Page = context.module.exports;
-const wide = new Page();
-wide.toggleOutline();
-assert.equal(wide.outlineVisible, true);
-assert.equal(wide.syncs, 1);
-wide.toggleOutline();
-assert.equal(wide.outlineVisible, false);
-assert.equal(wide.opens, 0);
+  const narrow = fixture(); narrow.state.bp = 'phone'; narrow.state.outlineVisible = true;
+  narrow.actions.toggleOutline(); await Promise.resolve();
+  assert.equal(narrow.state.outlineVisible, false); assert.equal(narrow.state.fileSheetVisible, true);
+  assert.equal(narrow.state.fileSheetSection, 'outline'); assert.equal(narrow.syncs(), 0);
+  assert.equal(narrow.state.outlineEntries[0].text, 'Heading');
+  narrow.actions.toggleOutline(); assert.equal(narrow.state.fileSheetVisible, false);
+  narrow.state.fileSheetSection = 'export'; narrow.state.fileSheetVisible = true;
+  narrow.actions.toggleOutline(); await Promise.resolve(); assert.equal(narrow.state.fileSheetSection, 'outline');
 
-const narrow = new Page();
-narrow.bp = 'phone';
-narrow.outlineVisible = true; // Normalize stale inline state as well.
-narrow.toggleOutline();
-assert.equal(narrow.outlineVisible, false);
-assert.equal(narrow.fileSheetVisible, true);
-assert.equal(narrow.fileSheetSection, 'outline');
-assert.equal(narrow.syncs, 0);
-narrow.toggleOutline();
-assert.equal(narrow.fileSheetVisible, false);
-assert.equal(narrow.opens, 1);
-narrow.fileSheetVisible = true;
-narrow.fileSheetSection = 'export';
-narrow.toggleOutline();
-assert.equal(narrow.fileSheetSection, 'outline');
-assert.equal(narrow.opens, 2);
+  const cramped = fixture(); Object.assign(cramped.state, { bp: 'tablet', contentWidthVp: 676, sidebarVisible: true });
+  cramped.actions.toggleOutline(); assert.equal(cramped.state.outlineVisible, false); assert.equal(toasts.length, 1);
+  Object.assign(cramped.state, { outlineVisible: true, viewMode: 'split' });
+  cramped.actions.enforceWorkspaceBudget(); assert.equal(cramped.state.outlineVisible, false); assert.equal(cramped.state.viewMode, 'edit');
+  Object.assign(cramped.state, { sidebarVisible: false, viewMode: 'split', contentWidthVp: 1000 });
+  cramped.actions.toggleOutline(); assert.equal(cramped.state.outlineVisible, true); assert.equal(cramped.state.viewMode, 'split');
+  cramped.state.contentWidthVp = 800; cramped.actions.enforceWorkspaceBudget(); assert.equal(cramped.state.viewMode, 'edit');
 
-const cramped = new Page();
-cramped.bp = 'tablet'; cramped.contentWidthVp = 676; cramped.sidebarVisible = true;
-cramped.toggleOutline();
-assert.equal(cramped.outlineVisible, false);
-assert.equal(toasts.length, 1);
-cramped.outlineVisible = true; cramped.viewMode = 'split';
-cramped.enforceWorkspaceBudget();
-assert.equal(cramped.outlineVisible, false);
-assert.equal(cramped.viewMode, 'edit');
-cramped.sidebarVisible = false; cramped.viewMode = 'split'; cramped.contentWidthVp = 1000;
-cramped.toggleOutline();
-assert.equal(cramped.outlineVisible, true);
-assert.equal(cramped.viewMode, 'split');
-cramped.contentWidthVp = 800; cramped.enforceWorkspaceBudget();
-assert.equal(cramped.outlineVisible, true);
-assert.equal(cramped.viewMode, 'edit');
+  wide.actions.showHelp(); assert.equal(dialogs.length, 1);
+  assert.ok(dialogs[0].message.includes('\n')); assert.ok(!dialogs[0].message.includes('\\n'));
+  assert.ok(dialogs[0].message.includes('Ctrl+Shift+F'));
 
-wide.showHelp();
-assert.equal(dialogs.length, 1);
-assert.ok(dialogs[0].message.includes('\n'));
-assert.equal(dialogs[0].message.includes('\\n'), false);
-assert.ok(dialogs[0].message.includes('Ctrl+Shift+F'));
-console.log('7 editor action scenarios passed (wide/narrow toggle, panel switch, help, cramped outline, resize budget, split outline)');
+  wide.actions.sendBridge('first'); narrow.actions.sendBridge('second');
+  assert.deepEqual(wide.actions.channel.pending, ['first']); assert.deepEqual(narrow.actions.channel.pending, ['second']);
+  wide.state.pendingOpenUri = 'file://received.md'; assert.equal(storage.get('pendingOpenUri'), 'file://received.md');
+  const home = new HomeState({ filesDir: '/test' }); const homeActions = new HomeController(home, {}, { filesDir: '/test' });
+  homeActions.consumeExternalOpen(); await Promise.resolve();
+  assert.equal(storage.get('pendingOpenUri'), ''); assert.equal(routes[0].params.uri, 'file://received.md');
+  let deferred = 0;
+  wide.actions.dismissFileSheet(() => deferred++); wide.actions.fileSheetClosed(); wide.actions.fileSheetClosed();
+  assert.equal(deferred, 1);
+  wide.actions.dismissFileSheet(() => deferred++); wide.state.pageActive = false; wide.actions.fileSheetClosed();
+  assert.equal(deferred, 1);
+  wide.actions.aboutToDisappear(); wide.actions.sendBridge('late');
+  assert.deepEqual(wide.actions.channel.pending, []);
+  assert.deepEqual(narrow.actions.channel.pending, ['second']);
+  const late = fixture(); late.state.bp = 'phone';
+  let resolveSnapshot;
+  late.actions.runJsValue = () => new Promise(resolve => { resolveSnapshot = resolve; });
+  const pending = late.actions.openPhoneOutline();
+  late.actions.aboutToDisappear(); late.state.pageActive = true; // A new mount reuses the model.
+  resolveSnapshot('# stale'); await pending;
+  assert.equal(late.state.fileSheetVisible, false);
+  late.actions.sendBridge('stale'); assert.deepEqual(late.actions.channel.pending, []);
+  console.log('13 editor/home controller scenarios passed (real modules, platform boundaries mocked)');
+})().catch(error => { console.error(error); process.exitCode = 1; });

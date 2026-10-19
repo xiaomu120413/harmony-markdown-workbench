@@ -1,0 +1,107 @@
+{
+  "device": "HUAWEI HAD-W32 (2in1)",
+  "api": 26,
+  "scale": 1.9,
+  "method": "Native screenshots; crop to application window only; no retouching",
+  "captures": [
+    {
+      "file": "01-editor-wide.jpg",
+      "capturedAt": "2026-10-19 11:26:49 +08:00",
+      "cropPixels": [
+        604,
+        370,
+        2695,
+        1764
+      ],
+      "note": "输入 69 字符，草稿保护与字数显示"
+    },
+    {
+      "file": "02-editor-tablet.jpg",
+      "capturedAt": "2026-10-19 11:27:03 +08:00",
+      "cropPixels": [
+        604,
+        370,
+        1938,
+        1658
+      ],
+      "note": "702vp 宽，保存后正文保持"
+    },
+    {
+      "file": "03-editor-phone.jpg",
+      "capturedAt": "2026-10-19 11:27:13 +08:00",
+      "cropPixels": [
+        604,
+        370,
+        1293,
+        1394
+      ],
+      "note": "363vp 宽，正文换行与侧栏收起"
+    },
+    {
+      "file": "04-find-low-height.jpg",
+      "capturedAt": "2026-10-19 11:27:48 +08:00",
+      "cropPixels": [
+        604,
+        370,
+        1293,
+        1139
+      ],
+      "note": "低高度时隐藏辅助栏、查找区域可滚动"
+    },
+    {
+      "file": "05-file-sheet.jpg",
+      "capturedAt": "2026-10-19 11:30:59 +08:00",
+      "cropPixels": [
+        604,
+        370,
+        1293,
+        1394
+      ],
+      "note": "手机宽度文档操作底部面板"
+    },
+    {
+      "file": "06-home-tablet.jpg",
+      "capturedAt": "2026-10-19 11:34:15 +08:00",
+      "cropPixels": [
+        292,
+        322,
+        1626,
+        1610
+      ],
+      "note": "最终版本两栏与三键避让"
+    },
+    {
+      "file": "07-settings-phone.jpg",
+      "capturedAt": "2026-10-19 11:34:39 +08:00",
+      "cropPixels": [
+        292,
+        322,
+        981,
+        1346
+      ],
+      "note": "最终版本默认视图说明/选项分行"
+    },
+    {
+      "file": "08-home-low-height.jpg",
+      "capturedAt": "2026-10-19 11:35:14 +08:00",
+      "cropPixels": [
+        292,
+        322,
+        981,
+        1091
+      ],
+      "note": "最终版本低高度首页保留搜索、列表与导航"
+    },
+    {
+      "file": "09-library-low-height.jpg",
+      "capturedAt": "2026-10-19 11:35:29 +08:00",
+      "cropPixels": [
+        292,
+        322,
+        981,
+        1091
+      ],
+      "note": "最终版本资料库独立滚动"
+    }
+  ]
+}

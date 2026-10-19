@@ -1,3 +1,4 @@
+import { SafePage } from '../components/SafePage';
 import { ControlStyle } from '../common/ControlStyle';
 import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
@@ -20,6 +21,8 @@ const TAG: string = 'HMWB-SETTINGS';
 @Entry
 @Component
 struct SettingsPage {
+  @State narrow: boolean = true;
+  @StorageProp('titleControlsBottom') captionBottom: number = 0;
   @State themeMode: ThemeMode = ThemeMode.LIGHT;
   @State fontSize: number = 15;
   @State wrap: boolean = true;
@@ -90,7 +93,7 @@ struct SettingsPage {
 
   /** 标签列（主 + 说明） */
   @Builder
-  rowLabel(label: string, sub: string) {
+  rowLabel(label: string, sub: string, fullWidth: boolean = false) {
     Column({ space: 2 }) {
       Text(label).fontSize(15).fontColor(this.pal.TEXT)
       if (sub.length > 0) {
@@ -98,10 +101,13 @@ struct SettingsPage {
       }
     }
     .alignItems(HorizontalAlign.Start)
-    .layoutWeight(1)
+    .layoutWeight(fullWidth ? 0 : 1)
+    .constraintSize({ minWidth: fullWidth ? '100%' : 0 })
+    .padding({ bottom: fullWidth ? 6 : 0 })
   }
 
-  build() {
+  @Builder
+  pageContent() {
     Column() {
       Column() {
         // 顶栏
@@ -145,7 +151,7 @@ struct SettingsPage {
                 } })
               }
               .width('100%')
-              .height(52)
+              .constraintSize({ minHeight: 52 })
               .padding({ left: 16, right: 14 })
               this.rowDiv(true)
 
@@ -169,7 +175,7 @@ struct SettingsPage {
                   .fontColor(this.pal.TEXT_FAINT)
               }
               .width('100%')
-              .height(52)
+              .constraintSize({ minHeight: 52 })
               .padding({ left: 16, right: 14 })
             }
             .width('100%')
@@ -187,7 +193,7 @@ struct SettingsPage {
                   .onChange((v: boolean) => { this.wrap = v; this.persist(); })
               }
               .width('100%')
-              .height(52)
+              .constraintSize({ minHeight: 52 })
               .padding({ left: 16, right: 14 })
               this.rowDiv(true)
 
@@ -198,7 +204,7 @@ struct SettingsPage {
                   .onChange((v: boolean) => { this.lineNumbers = v; this.persist(); })
               }
               .width('100%')
-              .height(52)
+              .constraintSize({ minHeight: 52 })
               .padding({ left: 16, right: 14 })
               this.rowDiv(true)
 
@@ -209,12 +215,13 @@ struct SettingsPage {
                   .onChange((v: boolean) => { this.autoSave = v; this.persist(); })
               }
               .width('100%')
-              .height(52)
+              .constraintSize({ minHeight: 52 })
               .padding({ left: 16, right: 14 })
               this.rowDiv(true)
 
-              Row({ space: 12 }) {
-                this.rowLabel('默认视图', '平板与电脑可选分屏')
+              Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
+                this.rowLabel('默认视图', '平板与电脑可选分屏', this.narrow)
+                Row({ space: 6 }) {
                 SegBtn({ label: '编辑', active: this.defaultView === DefaultView.EDIT, pal: this.pal, action: () => {
                   this.defaultView = DefaultView.EDIT;
                   this.persist();
@@ -227,10 +234,11 @@ struct SettingsPage {
                   this.defaultView = DefaultView.SPLIT;
                   this.persist();
                 } })
+                }
               }
               .width('100%')
-              .height(56)
-              .padding({ left: 16, right: 14 })
+              .constraintSize({ minHeight: 56 })
+              .padding({ left: 16, right: 14, top: 8, bottom: 8 })
             }
             .width('100%')
             .backgroundColor(this.pal.CONTENT)
@@ -247,7 +255,7 @@ struct SettingsPage {
                   .fontColor(this.pal.TEXT_SUB)
               }
               .width('100%')
-              .height(52)
+              .constraintSize({ minHeight: 52 })
               .padding({ left: 16, right: 14 })
               this.rowDiv(true)
 
@@ -275,8 +283,10 @@ struct SettingsPage {
       .height('100%')
     }
     .width('100%')
-    .height('100%')
+    .height('100%').padding({ top: this.captionBottom })
+    .onAreaChange((_old: Area, area: Area) => { this.narrow = (area.width as number) < 600; })
     .alignItems(HorizontalAlign.Center)
     .backgroundColor(this.pal.BG)
   }
+  build() { Column() { SafePage() { this.pageContent() } }.width('100%').height('100%') }
 }
