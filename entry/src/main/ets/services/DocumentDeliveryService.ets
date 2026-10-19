@@ -25,7 +25,7 @@ export class DocumentDeliveryService {
     const tail = path.substring(path.lastIndexOf('/') + 1);
     try {
       const name = decodeURIComponent(tail);
-      return /\.(md|markdown|txt|html|zip)$/i.test(name) ? name : fallback;
+      return name.length > 0 && !/[\x00-\x1f\\/]/.test(name) ? name : fallback;
     } catch (e) { return fallback; }
   }
 

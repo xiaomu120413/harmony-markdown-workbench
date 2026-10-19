@@ -46,6 +46,7 @@ jobs:
           node scripts/check-docs.mjs
           node scripts/test-host.cjs
           node scripts/test-editor-actions.cjs
+          node scripts/test-file-transactions.cjs
           node scripts/test-window-viewport.cjs
       - name: Assert committed bundles unchanged
         run: |

@@ -195,6 +195,14 @@ cases.push({ name: 'delivery result uses filename edited in the system picker', 
   const result = await service.markdown('suggested-name', 'content');
   assert.equal(result.fileName, 'chosen-name.md'); assert.equal(fs.readFileSync(file, 'utf8'), 'content');
 } });
+cases.push({ name: 'delivery reports actual extensionless and custom-extension filenames', async body() {
+  const service = new DocumentDeliveryService({ filesDir, cacheDir: dir });
+  for (const name of ['notes-no-extension', 'notes.custom']) {
+    const file = path.join(dir, name); fs.writeFileSync(file, ''); selection = [file.replaceAll('\\', '/')];
+    const result = await service.markdown('old-title.md', 'fresh');
+    assert.equal(result.fileName, name); assert.equal(fs.readFileSync(file, 'utf8'), 'fresh');
+  }
+} });
 cases.push({ name: 'atomic checkpoint preserves original on fsync failure', body() {
   const file = path.join(dir, 'draft.json'); fs.writeFileSync(file, 'old'); failSync = true;
   try { assert.throws(() => SafeFileIO.atomicText(file, 'new')); }

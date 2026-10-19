@@ -262,12 +262,13 @@ export class EditorPersistence {
   }
 
   async openDocument(): Promise<void> {
-    if (this.host.state.deliveryBusy || this.host.state.dropBusy) { return; }
+    if (!this.host.isActive() || this.host.state.deliveryBusy || this.host.state.dropBusy) { return; }
+    const session = this.host.state.activeSession;
     try {
       const uris = await new picker.DocumentViewPicker(this.host.env.ctx).select({
         maxSelectNumber: 1, fileSuffixFilters: ['.md', '.markdown', '.txt'],
       });
-      if (this.host.state.pageActive && uris.length > 0) { this.host.state.pendingOpenUri = uris[0]; }
+      if (this.host.isActive() && session === this.host.state.activeSession && uris.length > 0) { this.host.state.pendingOpenUri = uris[0]; }
     } catch (e) { this.host.append('[打开] 选择器未完成'); promptAction.showToast({ message: '打开失败，请重试' }); }
   }
 

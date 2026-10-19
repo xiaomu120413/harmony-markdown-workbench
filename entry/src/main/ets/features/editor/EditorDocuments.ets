@@ -152,13 +152,15 @@ export class EditorDocuments {
   }
 
   async reselectExternalFile(): Promise<void> {
+    if (!this.host.isActive()) { return; }
+    const session = this.host.state.activeSession;
     try {
       const documentPicker = new picker.DocumentViewPicker(this.host.env.ctx);
       const result: Array<string> = await documentPicker.select({
         maxSelectNumber: 1,
         fileSuffixFilters: ['.md', '.markdown', '.txt'],
       });
-      if (result.length === 0) {
+      if (!this.host.isActive() || session !== this.host.state.activeSession || result.length === 0) {
         return; // 用户取消：保持恢复面板
       }
       const src: ExternalSource = { kind: 'external', uri: result[0], displayName: result[0] };

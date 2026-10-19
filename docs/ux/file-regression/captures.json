@@ -1,0 +1,122 @@
+[
+  {
+    "file": "cold-open-with.jpg",
+    "capturedAt": "2026-10-19T11:52:39+08:00",
+    "source": "screenshot_20261019_115239.jpeg",
+    "sourceSize": [
+      3120,
+      2080
+    ],
+    "crop": [
+      342,
+      342,
+      2433,
+      1736
+    ],
+    "outputSize": [
+      1254,
+      836
+    ],
+    "processing": "crop to validation app window, resize; no retouch"
+  },
+  {
+    "file": "save-as-actual-name.jpg",
+    "capturedAt": "2026-10-19T11:54:39+08:00",
+    "source": "screenshot_20261019_115439.jpeg",
+    "sourceSize": [
+      3120,
+      2080
+    ],
+    "crop": [
+      342,
+      342,
+      2433,
+      1736
+    ],
+    "outputSize": [
+      1254,
+      836
+    ],
+    "processing": "crop to validation app window, resize; no retouch"
+  },
+  {
+    "file": "unsupported-drop.jpg",
+    "capturedAt": "2026-10-19T11:57:17+08:00",
+    "source": "screenshot_20261019_115717.jpeg",
+    "sourceSize": [
+      3120,
+      2080
+    ],
+    "crop": [
+      342,
+      342,
+      2433,
+      1736
+    ],
+    "outputSize": [
+      1254,
+      836
+    ],
+    "processing": "crop to validation app window, resize; no retouch"
+  },
+  {
+    "file": "dirty-drop-prompt.jpg",
+    "capturedAt": "2026-10-19T11:57:54+08:00",
+    "source": "screenshot_20261019_115754.jpeg",
+    "sourceSize": [
+      3120,
+      2080
+    ],
+    "crop": [
+      342,
+      342,
+      2433,
+      1736
+    ],
+    "outputSize": [
+      1254,
+      836
+    ],
+    "processing": "crop to validation app window, resize; no retouch"
+  },
+  {
+    "file": "dirty-drop-cancelled.jpg",
+    "capturedAt": "2026-10-19T11:58:06+08:00",
+    "source": "screenshot_20261019_115806.jpeg",
+    "sourceSize": [
+      3120,
+      2080
+    ],
+    "crop": [
+      342,
+      342,
+      2433,
+      1736
+    ],
+    "outputSize": [
+      1254,
+      836
+    ],
+    "processing": "crop to validation app window, resize; no retouch"
+  },
+  {
+    "file": "home-drop.jpg",
+    "capturedAt": "2026-10-19T11:58:12+08:00",
+    "source": "screenshot_20261019_115812.jpeg",
+    "sourceSize": [
+      3120,
+      2080
+    ],
+    "crop": [
+      342,
+      342,
+      2433,
+      1736
+    ],
+    "outputSize": [
+      1254,
+      836
+    ],
+    "processing": "crop to validation app window, resize; no retouch"
+  }
+]
