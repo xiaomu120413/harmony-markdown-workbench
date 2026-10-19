@@ -1,5 +1,7 @@
 # 木笺 MuMark 产品化验证记录
 
+本页保留首轮验收事实。原先待验收的真实文件管理器授权入口，后续已完成冷/热启动和保存验证，见[后续验收](file-intake-verification.md)；拖入副本与菜单改进也以该记录为准。
+
 日期：2026-10-19。任务：TASK-SAFE-001 / TASK-DELIVER-001 / TASK-BRAND-001。
 范围与验收见 [增量规格](productization-2026-10.md)。
 

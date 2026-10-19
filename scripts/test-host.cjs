@@ -19,7 +19,9 @@ const io = {
     CREATE: fs.constants.O_CREAT, TRUNC: fs.constants.O_TRUNC },
   openSync: (p, flags) => ({ fd: fs.openSync(p, flags & fs.constants.O_TRUNC ? 'w' : flags) }),
   closeSync: fs.closeSync,
-  statSync: p => { const s = typeof p === 'number' ? fs.fstatSync(p) : fs.statSync(p); return { size: s.size, mtime: s.mtimeMs }; },
+  statSync: p => { const s = typeof p === 'number' ? fs.fstatSync(p) : fs.statSync(p); return {
+    size: s.size, mtime: s.mtimeMs, isFile: () => s.isFile(), isDirectory: () => s.isDirectory(),
+  }; },
   accessSync: p => fs.existsSync(p),
   readSync: (fd, data) => fs.readSync(fd, new Uint8Array(data), 0, Math.min(data.byteLength, readLimit)),
   writeSync: (fd, data) => fs.writeSync(fd, new Uint8Array(data), 0, Math.min(data.byteLength, writeLimit)),
@@ -35,6 +37,7 @@ const hypium = {
   }),
 };
 const kits = {
+  '@kit.ArkData': { unifiedDataChannel: { ProgressIndicator: { NONE: 0 }, ListenerStatus: { FINISHED: 0, PROCESSING: 1 } } },
   '@kit.CoreFileKit': { fileIo: io, picker: { DocumentViewPicker: class { async save() { chooseCount++; return selection; } } } },
   '@kit.ArkTS': { util: {
     TextEncoder: { create: () => ({ encodeInto: s => new TextEncoder().encode(s) }) },
@@ -59,8 +62,61 @@ load(path.join(root, 'entry/src/test/List.test.ets')).default();
 const { SafeFileIO } = load(path.join(root, 'entry/src/main/ets/infrastructure/file/SafeFileIO.ets'));
 const { DocumentDeliveryService } = load(path.join(root, 'entry/src/main/ets/services/DocumentDeliveryService.ets'));
 const { SaveCoordinator } = load(path.join(root, 'entry/src/main/ets/services/SaveCoordinator.ets'));
+const { DocumentIntake } = load(path.join(root, 'entry/src/main/ets/domain/document/DocumentIntake.ets'));
+const { DroppedDocumentReader } = load(path.join(root, 'entry/src/main/ets/services/DroppedDocumentReader.ets'));
+const { DocumentImportService } = load(path.join(root, 'entry/src/main/ets/services/DocumentImportService.ets'));
+cases.push({ name: 'intake validates one local text document and preserves authorization URI', body() {
+  const uri = 'file://docs/a%20b.MD?grant=1';
+  assert.equal(DocumentIntake.select([uri, uri]), uri);
+  for (const input of [[], ['file://a.md','file://b.md'], ['file://a.pdf'], ['https://a.md'], ['file:///%ZZ.md']]) {
+    assert.throws(() => DocumentIntake.select(input));
+  }
+} });
+cases.push({ name: 'drop asynchronously receives URI without synchronous getData', async body() {
+  let callback;
+  const promise = DroppedDocumentReader.receive({ startDataLoading(options) { callback = options.dataProgressListener; } });
+  callback({ status: 1, progress: 50 }, null);
+  callback({ status: 0, progress: 100 }, { getRecords() { return [{
+    getTypes() { return ['general.file-uri']; }, getEntry() { return { oriUri: 'file://docs/a.md' }; },
+  }]; } });
+  assert.equal(await promise, 'file://docs/a.md');
+} });
+cases.push({ name: 'drop timeout releases wait and ignores late callbacks', async body() {
+  let callback, cancelled;
+  const promise = DroppedDocumentReader.receive({ startDataLoading(options) {
+    callback = options.dataProgressListener; return 'task-1';
+  } }, 5, '', key => { cancelled = key; });
+  await assert.rejects(promise, /超时/);
+  assert.equal(cancelled, 'task-1');
+  callback({ status: 0, progress: 100 }, { getRecords() { throw new Error('stale callback must not parse'); } });
+  await assert.rejects(DroppedDocumentReader.receive({ startDataLoading() { throw new Error('system failure'); } }), /system failure/);
+} });
+cases.push({ name: 'failed system transfer rejects once and the next drop can succeed', async body() {
+  await assert.rejects(DroppedDocumentReader.receive({ startDataLoading(options) {
+    options.dataProgressListener({ status: 200, progress: -1 }, null);
+    options.dataProgressListener({ status: 0, progress: 100 }, { getRecords() { throw new Error('late result'); } });
+    return 'failed-task';
+  } }), /授权/);
+  const good = await DroppedDocumentReader.receive({ startDataLoading(options) {
+    options.dataProgressListener({ status: 0, progress: 100 }, { getRecords() { return [{
+      getTypes() { return []; }, uri: 'file://docs/next.txt',
+    }]; } }); return 'good-task';
+  } });
+  assert.equal(good, 'file://docs/next.txt');
+} });
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mumark-tests-'));
 const filesDir = path.join(dir, 'files'); fs.mkdirSync(filesDir); fs.mkdirSync(path.join(filesDir, 'attachments'));
+cases.push({ name: 'import persists document, reuses identical copy and never overwrites different content', async body() {
+  const source = path.join(dir, 'imported.md').replaceAll('\\', '/'); fs.writeFileSync(source, '# 第一份\r\n木笺🙂');
+  const service = new DocumentImportService({ filesDir, cacheDir: dir });
+  const first = await service.importUri(source);
+  assert.equal(first, 'library/imported.md');
+  assert.equal(await service.importUri(source), first);
+  fs.writeFileSync(source, '# 第二份');
+  assert.equal(await service.importUri(source), 'library/imported(2).md');
+  assert.equal(fs.readFileSync(path.join(filesDir, first), 'utf8'), '# 第一份\r\n木笺🙂');
+  assert.equal(fs.readFileSync(source, 'utf8'), '# 第二份');
+} });
 cases.push({ name: 'partial writes are completed, including multibyte text', body() {
   writeLimit = 2;
   const file = path.join(dir, 'partial.txt'); SafeFileIO.writeText(file, '木笺🙂');

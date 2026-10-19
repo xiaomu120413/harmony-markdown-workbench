@@ -2,6 +2,8 @@ import { common } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
 import { router, mediaquery, promptAction } from '@kit.ArkUI';
 import { picker } from '@kit.CoreFileKit';
+import { DocumentImportService } from '../services/DocumentImportService';
+import { DocumentIntake } from '../domain/document/DocumentIntake';
 import { RecentFileList, RecentEntry } from '../domain/document/RecentFileList';
 import { LibrarySearch, DocSearchResult, LibraryDoc } from '../domain/document/LibrarySearch';
 import { FindOptions } from '../domain/editor/FindReplaceEngine';
@@ -25,13 +27,28 @@ const TAG: string = 'HMWB-HOME';
 @Entry
 @Component
 struct HomePage {
+  @State dropBusy: boolean = false;
+
+  private async receiveDrop(event: DragEvent): Promise<void> {
+    if (this.dropBusy) { promptAction.showToast({ message: '正在读取文件，请稍候再拖入' }); return; }
+    this.dropBusy = true;
+    try {
+      const id = await new DocumentImportService(this.ctx,
+        (key: string) => this.getUIContext().getDragController().cancelDataLoading(key)).receive(event);
+      promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
+      AppStorage.setOrCreate('pendingOpenUri', id);
+    } catch (e) {
+      this.note('[拖入] 文件获取失败');
+      promptAction.showToast({ message: String(e).replace(/^Error: /, '') });
+    } finally { this.dropBusy = false; }
+  }
   @StorageLink('pendingOpenUri') @Watch('consumeExternalOpen') pendingOpenUri: string = '';
 
   private consumeExternalOpen(): void {
     if (this.pendingOpenUri.length === 0 || router.getState().name !== 'HomePage') { return; }
     const uri = this.pendingOpenUri;
     this.pendingOpenUri = '';
-    router.pushUrl({ url: 'pages/EditorPage', params: { uri: uri } }).catch(() => {
+    router.pushUrl({ url: 'pages/EditorPage', params: DocumentIntake.route(uri) }).catch(() => {
       this.note('[打开] 无法进入编辑页，请重新打开文件');
       promptAction.showToast({ message: '打开失败，请重新选择文件' });
     });
@@ -416,9 +433,11 @@ struct HomePage {
           .layoutWeight(1)
       }
       .width('100%')
-      Text(this.fmtTime(item.lastOpenedAt))
+      Text(`${RecentFileList.location(item.documentId)} · ${this.fmtTime(item.lastOpenedAt)}`)
         .fontSize(11)
         .fontColor(this.pal.TEXT_FAINT)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
@@ -985,5 +1004,6 @@ struct HomePage {
     .width('100%')
     .height('100%')
     .backgroundColor(this.pal.BG)
+    .onDrop((event: DragEvent) => { this.receiveDrop(event); }, { disableDataPrefetch: true })
   }
 }

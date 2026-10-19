@@ -27,10 +27,10 @@ export struct DocumentSidebar {
   }
 
   private visibleRecent(): RecentEntry[] {
-    if (this.filter === 'pinned') {
-      return this.pinned();
-    }
-    return this.recent;
+    const entries = this.filter === 'pinned' ? this.pinned() : this.recent;
+    const q = this.searchQuery.trim().toLowerCase();
+    return q.length === 0 ? entries : entries.filter((e: RecentEntry): boolean =>
+      RecentFileList.displayName(e.documentId).toLowerCase().includes(q) || RecentFileList.location(e.documentId).toLowerCase().includes(q));
   }
 
   private visibleLibrary(): string[] {
@@ -67,6 +67,8 @@ export struct DocumentSidebar {
       Text(sub)
         .fontSize(10)
         .fontColor(this.pal.TEXT_FAINT)
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
     }
     .alignItems(HorizontalAlign.Start)
     .width('100%')
@@ -113,7 +115,7 @@ export struct DocumentSidebar {
             ListItem() {
               this.docRow(
                 RecentFileList.displayName(item.documentId),
-                this.fmtTime(item.lastOpenedAt),
+                `${RecentFileList.location(item.documentId)} · ${this.fmtTime(item.lastOpenedAt)}`,
                 item.documentId,
               )
             }

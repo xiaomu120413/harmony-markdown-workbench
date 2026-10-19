@@ -22,6 +22,17 @@ import { EditorState, Compartment } from '@codemirror/state';
 import { markdown } from '@codemirror/lang-markdown';
 import { undo, redo } from '@codemirror/commands';
 
+// 文件交给原生 UDMF 授权入口；禁止 Web 默认导航/读取文件覆盖当前编辑状态。
+for (const type of ['dragover', 'drop']) {
+  document.addEventListener(type, event => {
+    const transfer = event.dataTransfer;
+    if (transfer && (Array.from(transfer.types || []).includes('Files') || transfer.files.length > 0)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  }, true);
+}
+
 var notifySeq = 0;
 function genId() {
   notifySeq++;

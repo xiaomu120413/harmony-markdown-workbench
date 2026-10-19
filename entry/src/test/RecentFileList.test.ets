@@ -6,6 +6,37 @@ import { RecentFileList, RECENT_LIMIT } from '../main/ets/domain/document/Recent
  */
 export default function recentFileListTest(): void {
   describe('RecentFileList', () => {
+    it('transient_cache_uris_are_not_recent_documents', 0, () => {
+      const list = new RecentFileList([
+        { documentId: 'file://app/data/storage/el2/base/haps/entry/cache/a.md', lastOpenedAt: 3, pinned: false },
+        { documentId: 'file://app/data/storage/el2/base/cache/b.md', lastOpenedAt: 2, pinned: false },
+        { documentId: 'library/a.md', lastOpenedAt: 1, pinned: false },
+      ]);
+      expect(list.size).assertEqual(1);
+    });
+    it('uri_aliases_merge_latest_address_and_keep_pinned', 0, () => {
+      const list = new RecentFileList([
+        { documentId: 'file://docs/a/%E6%9C%A8%E7%AC%BA.md?old=1', lastOpenedAt: 1, pinned: true },
+        { documentId: 'file://docs/a/木笺.md?new=1', lastOpenedAt: 2, pinned: false },
+      ]);
+      expect(list.size).assertEqual(1);
+      expect(list.snapshot()[0].pinned).assertTrue();
+      list.touch('file://docs/a/木笺.md?grant=3', 3);
+      expect(list.size).assertEqual(1);
+      expect(list.snapshot()[0].documentId).assertEqual('file://docs/a/木笺.md?grant=3');
+      expect(RecentFileList.displayName(list.snapshot()[0].documentId)).assertEqual('木笺.md');
+    });
+
+    it('same_name_different_sources_are_kept_with_locations', 0, () => {
+      const list = new RecentFileList();
+      list.touch('library/a.md', 1);
+      list.touch('file://docs/a/a.md', 2);
+      list.touch('file://docs/b/a.md', 3);
+      expect(list.size).assertEqual(3);
+      expect(RecentFileList.location('library/a.md')).assertEqual('我的文档 · 应用内');
+      expect(RecentFileList.location('file://docs/a/a.md')).assertEqual('外部 · docs/a');
+    });
+
     it('display_name_internal_strips_library_prefix', 0, () => {
       expect(RecentFileList.displayName('library/周报.md')).assertEqual('周报.md');
       expect(RecentFileList.displayName('library/未命名文档(2).md')).assertEqual('未命名文档(2).md');

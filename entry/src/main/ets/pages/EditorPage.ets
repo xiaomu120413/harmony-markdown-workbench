@@ -13,6 +13,8 @@ import { ViewModePolicy } from '../domain/editor/ViewModePolicy';
 import { HeadingOutline } from '../domain/editor/HeadingOutline';
 import { EditorBridge } from '../services/EditorBridge';
 import { DocumentDeliveryService } from '../services/DocumentDeliveryService';
+import { DocumentImportService } from '../services/DocumentImportService';
+import { DocumentIntake } from '../domain/document/DocumentIntake';
 import { SaveCoordinator, SaveCoordinatorDeps, SnapshotData } from '../services/SaveCoordinator';
 import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource, FileRevisionContract, WriteDocumentResult, WriteFailResult, DocumentWriteFormat } from '../domain/document/DocumentFileAdapter';
 import { InternalFileSource } from '../infrastructure/file/InternalFileSource';
@@ -110,6 +112,11 @@ struct EditorPage {
   @State saveLabel: string = '已保存';
   @State recoveryLabel: string = '';
   @State deliveryBusy: boolean = false;
+  @State dropBusy: boolean = false;
+  @State fileHover: boolean = false;
+  @State fileMenuVisible: boolean = false;
+  @State activeToolMenu: string = '';
+  private openPromptVisible: boolean = false;
   @StorageLink('checkpointRequest') @Watch('onCheckpointRequest') checkpointRequest: number = 0;
   @StorageLink('pendingOpenUri') @Watch('onExternalOpen') pendingOpenUri: string = '';
   private activeSession: string = '';
@@ -185,28 +192,60 @@ struct EditorPage {
     return ok;
   }
 
-  private onExternalOpen(): void {
+  private async onExternalOpen(): Promise<void> {
     if (this.deliveryBusy) { return; }
-    if (!this.pageActive || this.pendingOpenUri.length === 0) { return; }
+    if (!this.pageActive || this.openPromptVisible || this.pendingOpenUri.length === 0) { return; }
     const uri = this.pendingOpenUri;
     if (this.loadState !== 'ready' && this.docLength === 0) {
       this.pendingOpenUri = '';
-      router.replaceUrl({ url: 'pages/EditorPage', params: { uri: uri } });
+      this.openReceivedDocument(uri);
+      return;
+    }
+    this.openPromptVisible = true;
+    if (!await this.protectDraft() || !this.pageActive) { this.openPromptVisible = false; return; }
+    if (this.coordinator?.state === SaveState.CLEAN) {
+      this.openPromptVisible = false;
+      if (this.pendingOpenUri !== uri) { this.onExternalOpen(); return; }
+      this.pendingOpenUri = '';
+      this.openReceivedDocument(uri);
       return;
     }
     AlertDialog.show({
-      title: '打开外部文档',
+      title: '打开收到的文档',
       message: '先保留当前文档的恢复草稿，再打开收到的文件。',
       primaryButton: { value: '保留草稿并打开', action: () => {
         this.protectDraft().then((ok: boolean) => {
-          if (!ok || this.pendingOpenUri !== uri) { return; }
+          this.openPromptVisible = false;
+          if (!ok || this.pendingOpenUri !== uri) { this.onExternalOpen(); return; }
           this.pendingOpenUri = '';
-          router.replaceUrl({ url: 'pages/EditorPage', params: { uri: uri } });
+          this.openReceivedDocument(uri);
         });
       } },
-      secondaryButton: { value: '取消', action: () => { this.pendingOpenUri = ''; } },
-      cancel: () => { this.pendingOpenUri = ''; },
+      secondaryButton: { value: '取消', action: () => { this.openPromptVisible = false; this.pendingOpenUri = ''; } },
+      cancel: () => { this.openPromptVisible = false; this.pendingOpenUri = ''; },
     });
+  }
+
+  private openReceivedDocument(id: string): void {
+    router.replaceUrl({ url: 'pages/EditorPage', params: DocumentIntake.route(id) });
+  }
+
+  private async receiveDrop(event: DragEvent): Promise<void> {
+    this.fileHover = false;
+    if (this.dropBusy || this.deliveryBusy) { promptAction.showToast({ message: '文件操作进行中，请稍后再拖入' }); return; }
+    this.dropBusy = true;
+    this.append('[拖入] 开始异步取数');
+    try {
+      const uri = await new DocumentImportService(this.ctx,
+        (key: string) => this.getUIContext().getDragController().cancelDataLoading(key)).receive(event);
+      if (!this.pageActive) { return; }
+      this.append('[拖入] 已取得单文档授权');
+      promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
+      this.pendingOpenUri = uri;
+    } catch (e) {
+      this.append('[拖入] 未完成，当前正文保留');
+      if (this.pageActive) { promptAction.showToast({ message: String(e).replace(/^Error: /, '') }); }
+    } finally { this.dropBusy = false; }
   }
 
   onBackPress(): boolean { this.goBack(); return true; }
@@ -492,7 +531,7 @@ struct EditorPage {
       this.docFormat = { encoding: r.encoding, lineEnding: r.lineEnding };
       this.docValidUtf8 = r.validUtf8;
       this.loadState = 'ready';
-      this.trackRecent(target);
+      this.trackRecent(target).then(() => this.refreshSidebarData());
       if (this.webReady) {
         this.flushPendingLoad();
       }
@@ -1148,29 +1187,110 @@ struct EditorPage {
     this.deliverDocument(0);
   }
 
-  /** 文件菜单严格区分保存目标与副本交付。 */
-  private share(): void {
-    if (this.deliveryBusy) { return; }
-    promptAction.showActionMenu({ title: '文件与导出', buttons: [
-      { text: '另存为 Markdown…', color: this.pal.TEXT },
-      { text: '导出 Markdown 副本…', color: this.pal.TEXT },
-      { text: '导出图文 ZIP…', color: this.pal.TEXT },
-      { text: '导出 HTML（内嵌本地图片）…', color: this.pal.TEXT },
-      { text: '复制内容…', color: this.pal.TEXT },
-      { text: '查看保存位置', color: this.pal.TEXT },
-    ] }).then((r: promptAction.ActionMenuSuccessResponse) => {
-      if (r.index === 5) { this.showLocation(); return; }
-      if (r.index === 4) {
-        promptAction.showActionMenu({ title: '复制内容', buttons: [
-          { text: '复制 Markdown 原文', color: this.pal.TEXT },
-          { text: '复制渲染 HTML', color: this.pal.TEXT },
-        ] }).then((choice: promptAction.ActionMenuSuccessResponse) => this.deliverDocument(choice.index === 0 ? 4 : 7))
-          .catch(() => {});
-        return;
-      }
-      this.deliverDocument(r.index);
-    }).catch(() => { this.append('[文件] 菜单已取消'); });
+  private async openDocument(): Promise<void> {
+    if (this.deliveryBusy || this.dropBusy) { return; }
+    try {
+      const uris = await new picker.DocumentViewPicker(this.ctx).select({
+        maxSelectNumber: 1, fileSuffixFilters: ['.md', '.markdown', '.txt'],
+      });
+      if (this.pageActive && uris.length > 0) { this.pendingOpenUri = uris[0]; }
+    } catch (e) { this.append('[打开] 选择器未完成'); promptAction.showToast({ message: '打开失败，请重试' }); }
   }
+
+  private async newDocument(): Promise<void> {
+    if (this.deliveryBusy || !await this.protectDraft()) { return; }
+    if (this.coordinator?.state === SaveState.CLEAN) {
+      router.replaceUrl({ url: 'pages/EditorPage' }); return;
+    }
+    AlertDialog.show({ title: '新建文档', message: '当前修改已保留为恢复草稿。新建后可从首页“找回未保存内容”继续。',
+      primaryButton: { value: '保留草稿并新建', action: () => {
+        this.protectDraft().then((ok: boolean) => { if (ok) { router.replaceUrl({ url: 'pages/EditorPage' }); } });
+      } }, secondaryButton: { value: '取消', action: () => {} } });
+  }
+
+  @Builder
+  fileMenu() {
+    Menu() {
+      MenuItemGroup({ header: '文档' }) {
+        MenuItem({ content: '新建文档' }).onClick(() => this.newDocument())
+        MenuItem({ content: '打开文档…' }).onClick(() => this.openDocument())
+        MenuItem({ content: '另存为…' }).onClick(() => this.deliverDocument(0))
+      }
+      MenuItemGroup({ header: '导出副本 · 不改变保存位置' }) {
+        MenuItem({ content: '图文 ZIP', labelInfo: '正文 + 图片' }).onClick(() => this.deliverDocument(2))
+        MenuItem({ content: 'HTML 网页', labelInfo: '内嵌本地图片' }).onClick(() => this.deliverDocument(3))
+        MenuItem({ content: 'Markdown', labelInfo: '仅正文' }).onClick(() => this.deliverDocument(1))
+      }
+      MenuItemGroup({ header: '更多' }) {
+        MenuItem({ content: '复制内容', builder: this.copyMenu })
+        MenuItem({ content: '查看保存位置' }).onClick(() => this.showLocation())
+      }
+    }.width(320)
+  }
+
+  @Builder
+  copyMenu() {
+    Menu() {
+      MenuItem({ content: 'Markdown 原文' }).onClick(() => this.deliverDocument(4))
+      MenuItem({ content: '渲染 HTML' }).onClick(() => this.deliverDocument(7))
+    }
+  }
+
+  @Builder
+  commandItem(label: string, cmd: MarkdownCommandName) {
+    MenuItem({ content: label }).onClick(() => this.applyCommand(cmd))
+  }
+
+  @Builder
+  commandMenu(kind: string) {
+    Menu() {
+      if (kind === '标题') {
+        this.commandItem('一级标题 H1', 'h1')
+        this.commandItem('二级标题 H2', 'h2')
+        this.commandItem('三级标题 H3', 'h3')
+        this.commandItem('四级标题 H4', 'h4')
+        this.commandItem('五级标题 H5', 'h5')
+        this.commandItem('六级标题 H6', 'h6')
+      } else if (kind === '格式') {
+        this.commandItem('加粗  Ctrl+B', 'bold')
+        this.commandItem('斜体  Ctrl+I', 'italic')
+        this.commandItem('删除线', 'strike')
+        this.commandItem('行内代码', 'inlineCode')
+        this.commandItem('高亮', 'highlight')
+      } else if (kind === '段落') {
+        MenuItemGroup({ header: '列表' }) {
+          this.commandItem('无序列表', 'ul')
+          this.commandItem('有序列表', 'ol')
+          this.commandItem('任务列表', 'task')
+        }
+        MenuItemGroup({ header: '块与缩进' }) {
+          this.commandItem('引用', 'quote')
+          this.commandItem('代码块', 'codeBlock')
+          this.commandItem('增加缩进', 'indent')
+          this.commandItem('减少缩进', 'outdent')
+        }
+      } else {
+        this.commandItem('链接', 'link')
+        MenuItem({ content: '本地图片…' }).onClick(() => this.insertLocalImage())
+        this.commandItem('表格', 'table')
+        this.commandItem('分隔线', 'hr')
+      }
+    }.width(220)
+  }
+
+  @Builder
+  toolGroup(label: string) {
+    Button(label).fontSize(13).fontColor(this.pal.TEXT).backgroundColor(this.pal.CARD)
+      .borderRadius(8).height(36).padding({ left: 14, right: 14 })
+      .enabled(!this.deliveryBusy)
+      .onClick(() => { this.activeToolMenu = label; })
+      .bindMenu(this.activeToolMenu === label, this.activeCommandMenu, {
+        showInSubWindow: false, onDisappear: () => { this.activeToolMenu = ''; },
+      })
+  }
+
+  @Builder
+  activeCommandMenu() { this.commandMenu(this.activeToolMenu) }
 
   private showLocation(): void {
     const source = this.docTarget;
@@ -1496,7 +1616,11 @@ struct EditorPage {
           .fontColor(this.pal.TEXT)
           .borderRadius(8)
           .height(36)
-          .onClick(() => this.share())
+          .enabled(!this.deliveryBusy && !this.dropBusy)
+          .onClick(() => { this.fileMenuVisible = true; this.append('[菜单] 文件展开'); })
+          .bindMenu(this.fileMenuVisible, this.fileMenu, {
+            showInSubWindow: false, onAppear: () => { this.append('[菜单] 文件已显示'); }, onDisappear: () => { this.fileMenuVisible = false; },
+          })
         Button('帮助')
           .fontSize(13)
           .fontColor(this.pal.TEXT)
@@ -1605,48 +1729,17 @@ struct EditorPage {
       if (this.viewMode !== DefaultView.PREVIEW) {
         Scroll() {
           Row({ space: 2 }) {
-            // 标题等级（h1–h6 全量，Markdown 标准六级）
-            this.toolBtn('H1', 'h1')
-            this.toolBtn('H2', 'h2')
-            this.toolBtn('H3', 'h3')
-            this.toolBtn('H4', 'h4')
-            this.toolBtn('H5', 'h5')
-            this.toolBtn('H6', 'h6')
-            this.toolSep()
-            // 行内样式
-            this.toolBtn('B', 'bold')
-            this.toolBtn('I', 'italic')
-            this.toolBtn('S', 'strike')
-            this.toolBtn('</>', 'inlineCode')
-            this.toolBtn('高亮', 'highlight')
-            this.toolSep()
-            // 块级
-            this.toolBtn('列表', 'ul')
-            this.toolBtn('序号', 'ol')
-            this.toolBtn('任务', 'task')
-            this.toolBtn('引用', 'quote')
-            this.toolBtn('代码块', 'codeBlock')
-            this.toolBtn('缩进', 'indent')
-            this.toolBtn('减少缩进', 'outdent')
-            this.toolSep()
-            // 插入
-            this.toolBtn('链接', 'link')
-            Button('图片')
-              .fontSize(13)
-              .fontColor(this.pal.TEXT)
-              .backgroundColor(this.pal.CARD)
-              .borderRadius(8)
-              .height(36)
-              .padding({ left: 10, right: 10 })
-              .onClick(() => this.insertLocalImage())
-            this.toolBtn('表格', 'table')
-            this.toolBtn('分隔线', 'hr')
+            this.toolGroup('标题')
+            this.toolGroup('格式')
+            this.toolGroup('段落')
+            this.toolGroup('插入')
             this.toolSep()
             this.histBtn('撤销', 'undo')
             this.histBtn('重做', 'redo')
           }
         }
         .scrollable(ScrollDirection.Horizontal)
+        .align(Alignment.Start)
         .scrollBar(BarState.Auto)
         .width('100%')
         .height(44)
@@ -1703,6 +1796,7 @@ struct EditorPage {
       } else {
       // 工作区：大纲（可选）+ 编辑器 + 预览（三端同一布局路径——
       // phone：单栏互斥切换；tablet/pc 分屏：双 Web 并排；隐藏侧 Visibility.None 不占位）
+      Stack() {
       Row({ space: 0 }) {
         // B1/B2：文档侧栏（编辑页内切换文档，phone 档可折叠）
         if (this.sidebarVisible) {
@@ -1763,6 +1857,11 @@ struct EditorPage {
         Column() {
           Web({ src: $rawfile('web/editor.html'), controller: this.controller })
             .javaScriptAccess(true)
+            .enableDrag(false)
+            .onDragEnter(() => { this.fileHover = true; })
+            .onOverrideUrlLoading((request: WebResourceRequest): boolean => {
+              return !request.getRequestUrl().endsWith('/web/editor.html');
+            })
             .javaScriptProxy({
               object: { send: editorBridgeSend },
               name: '__nativeBridge',
@@ -1799,6 +1898,11 @@ struct EditorPage {
         Column() {
           Web({ src: $rawfile('web/preview.html'), controller: this.previewController })
             .javaScriptAccess(true)
+            .enableDrag(false)
+            .onDragEnter(() => { this.fileHover = true; })
+            .onOverrideUrlLoading((request: WebResourceRequest): boolean => {
+              return !request.getRequestUrl().endsWith('/web/preview.html');
+            })
             .onPageEnd(() => {
               this.previewReady = true;
               this.applyPreviewStyle();
@@ -1819,10 +1923,23 @@ struct EditorPage {
       .layoutWeight(1)
       .width('100%')
       .alignItems(VerticalAlign.Center)
+      if (this.fileHover) {
+        Column({ space: 10 }) {
+          Text('松开以导入文档').fontSize(20).fontWeight(FontWeight.Medium).fontColor(this.pal.PRIMARY)
+          Text('Markdown / txt · 副本保存在“我的文档”').fontSize(14).fontColor(this.pal.TEXT_SUB)
+        }
+        .justifyContent(FlexAlign.Center)
+        .width('100%').height('100%').backgroundColor(this.pal.PRIMARY_SOFT)
+        .onDrop((event: DragEvent) => { this.receiveDrop(event); }, { disableDataPrefetch: true })
+        .onDragLeave(() => { this.fileHover = false; })
+      }
+      }
+      .layoutWeight(1).width('100%')
       }
 
       // 状态栏（V0.4.2：字数 + 光标行列，备忘录式底部信息条）
       Row() {
+        if (this.dropBusy) { Text('正在读取拖入文件…').fontSize(11).fontColor(this.pal.PRIMARY) }
         Text(this.recoveryLabel).fontSize(11).fontColor(this.pal.TEXT_SUB).maxLines(1)
         Text(`${this.docLength} 字`)
           .fontSize(11)
@@ -1846,6 +1963,9 @@ struct EditorPage {
     .width('100%')
     .height('100%')
     .backgroundColor(this.pal.CONTENT)
+    .onDragEnter(() => { this.fileHover = true; })
+    .onDragLeave(() => { this.fileHover = false; })
+    .onDrop((event: DragEvent) => { this.receiveDrop(event); }, { disableDataPrefetch: true })
     .onAreaChange((_old: Area, newArea: Area) => {
       // B2-05/B4：实际 vp 尺寸驱动空间决策（不以设备类型或整块屏幕分辨率决定）
       this.contentWidthVp = newArea.width as number;

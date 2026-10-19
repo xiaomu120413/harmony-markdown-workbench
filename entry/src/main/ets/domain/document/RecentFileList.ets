@@ -33,11 +33,26 @@ export class RecentFileList {
     if (id.startsWith('library/')) {
       return id.substring('library/'.length);
     }
-    const slash = id.lastIndexOf('/');
-    if (slash >= 0 && slash + 1 < id.length) {
-      return id.substring(slash + 1);
+    const path = RecentFileList.identity(id);
+    const slash = path.lastIndexOf('/');
+    if (slash >= 0 && slash + 1 < path.length) {
+      return path.substring(slash + 1);
     }
     return id;
+  }
+
+  static identity(id: string): string {
+    if (!id.startsWith('file://')) { return id; }
+    const path = id.split(/[?#]/)[0];
+    try { return decodeURIComponent(path); } catch (e) { return path; }
+  }
+
+  static location(id: string): string {
+    if (id.startsWith('library/')) { return '我的文档 · 应用内'; }
+    const path = RecentFileList.identity(id).replace(/^file:\/\//, '');
+    const slash = path.lastIndexOf('/');
+    const parent = (slash >= 0 ? path.substring(0, slash) : path).replace(/^docs\/storage\/Users\/currentUser/, '个人文件');
+    return `外部 · ${parent}`;
   }
 
   get size(): number {
@@ -54,9 +69,10 @@ export class RecentFileList {
 
   /** 打开/顶置一条记录（不存在则插入，存在则更新时间） */
   touch(documentId: string, at: number, pinned: boolean = false): void {
-    const existing = this.entries.find((e: RecentEntry): boolean => e.documentId === documentId);
+    const existing = this.entries.find((e: RecentEntry): boolean => RecentFileList.identity(e.documentId) === RecentFileList.identity(documentId));
     if (existing !== undefined) {
       existing.lastOpenedAt = at;
+      existing.documentId = documentId;
       if (pinned) {
         existing.pinned = true;
       }
@@ -68,14 +84,14 @@ export class RecentFileList {
 
   /** 固定/取消固定 */
   setPinned(documentId: string, pinned: boolean): void {
-    const existing = this.entries.find((e: RecentEntry): boolean => e.documentId === documentId);
+    const existing = this.entries.find((e: RecentEntry): boolean => RecentFileList.identity(e.documentId) === RecentFileList.identity(documentId));
     if (existing !== undefined) {
       existing.pinned = pinned;
     }
   }
 
   remove(documentId: string): void {
-    this.entries = this.entries.filter((e: RecentEntry): boolean => e.documentId !== documentId);
+    this.entries = this.entries.filter((e: RecentEntry): boolean => RecentFileList.identity(e.documentId) !== RecentFileList.identity(documentId));
   }
 
   /** 淘汰：超过上限时移除最旧的未固定项（固定文件不受淘汰影响，FR-RECENT） */
@@ -107,14 +123,18 @@ export class RecentFileList {
 
   private normalize(): void {
     // 去重 + 时间排序修正（构造输入可能无序）
-    const seen = new Set<string>();
+    const seen = new Map<string, RecentEntry>();
     const unique: RecentEntry[] = [];
     const sorted = this.snapshot();
     for (const e of sorted) {
-      if (!seen.has(e.documentId)) {
-        seen.add(e.documentId);
-        unique.push(e);
-      }
+      if (/\/data\/storage\/el2\/base\/(?:haps\/entry\/)?cache\//.test(e.documentId)) { continue; }
+      const key = RecentFileList.identity(e.documentId);
+      const existing = seen.get(key);
+      if (existing === undefined) {
+        const item: RecentEntry = { documentId: e.documentId, lastOpenedAt: e.lastOpenedAt, pinned: e.pinned };
+        seen.set(key, item);
+        unique.push(item);
+      } else if (e.pinned) { existing.pinned = true; }
     }
     this.entries = unique;
     this.evict();

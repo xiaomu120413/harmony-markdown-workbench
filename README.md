@@ -7,6 +7,7 @@
 本轮名称统一为 **木笺 MuMark**，与木枢、MuTransfer 同系列。
 [使用说明](docs/user-guide.md) · [本轮规格](docs/spec/productization-2026-10.md) · [验证与限制](docs/spec/productization-verification.md) · [图标母版](docs/brand/README.md)。
 本轮交付以验证记录为准，下表旧版本“完成”不替代当前设备与异常路径的验收。
+后续改进：[外部文件入口与操作分组](docs/spec/file-intake-2026-10.md) · [真实授权、拖入与菜单验收](docs/spec/file-intake-verification.md)。
 
 ## 当前状态
 
