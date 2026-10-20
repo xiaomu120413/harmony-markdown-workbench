@@ -1,6 +1,8 @@
 # 木笺 MuMark
 
-完全离线的 HarmonyOS Markdown 编辑器。规格与执行合同见 `HarmonyMarkdownWorkbench-SDD.md`（SDD 1.0.0），开发遵循 Specification-Driven Development 流程。
+代码仓库：https://github.com/xiaomu120413/mumark
+
+完全离线的 HarmonyOS Markdown 编辑器。规格与执行合同见 `MuMark-SDD.md`（SDD 1.0.0），开发遵循 Specification-Driven Development 流程。
 
 **产品原则：打开的是原文件，保存后仍是原文件。**
 

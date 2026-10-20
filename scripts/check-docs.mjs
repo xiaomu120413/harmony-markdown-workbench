@@ -8,7 +8,7 @@ function markdownFiles(directory) {
     return entry.isDirectory() ? markdownFiles(file) : entry.name.endsWith('.md') ? [file] : [];
   });
 }
-const files = [path.join(root, 'README.md'), path.join(root, 'HarmonyMarkdownWorkbench-SDD.md'),
+const files = [path.join(root, 'README.md'), path.join(root, 'MuMark-SDD.md'),
   ...markdownFiles(path.join(root, 'docs'))];
 const errors = [];
 for (const file of files) {

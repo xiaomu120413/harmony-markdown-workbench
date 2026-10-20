@@ -1,6 +1,6 @@
 # 产品规格（稳定版）
 
-> 源文档：`HarmonyMarkdownWorkbench-SDD.md` v1.0.0。本文件提取稳定需求供开发引用；与 SDD 冲突时以 SDD 为准，并在 ADR 中记录。
+> 源文档：`MuMark-SDD.md` v1.0.0。本文件提取稳定需求供开发引用；与 SDD 冲突时以 SDD 为准，并在 ADR 中记录。
 > 版本约定：MUST / SHOULD / MAY。
 
 2026-10-19 增量：产品名称为“木笺 MuMark”。本轮内容安全、文件交付和品牌约束见

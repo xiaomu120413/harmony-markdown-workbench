@@ -1,4 +1,4 @@
-# Harmony Markdown Workbench
+# MuMark（木笺）
 
 > HarmonyOS 原生 Markdown 文件工作台——SDD 规格、实施拆分与验收标准
 
@@ -1337,9 +1337,9 @@ fix(M4-03): prevent overwrite after external modification
 将下面内容与本文档一起交给 ZCode：
 
 ```text
-你正在实现 Harmony Markdown Workbench。
+你正在实现 MuMark（木笺）。
 
-1. 完整阅读 HarmonyMarkdownWorkbench-SDD.md。
+1. 完整阅读 MuMark-SDD.md。
 2. 当前只执行 TASK-M0-01，不要提前实现后续功能。
 3. 先检查仓库现状、HarmonyOS SDK 版本、构建脚本、已有规范和测试。
 4. 输出你对 TASK-M0-01 的理解、会修改的文件、验证命令和风险。
