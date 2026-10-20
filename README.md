@@ -98,10 +98,11 @@ entry/src/main/ets/
 ├── pages/            首页、编辑器、设置和恢复页面
 ├── features/         首页/编辑器状态、平台依赖、功能控制器与分区视图（每文件 ≤500 行）
 ├── components/       ArkUI 可复用组件（各层 README 写明职责与规划任务）
-├── domain/           领域模型与规则（document/recovery/settings）
-├── services/         服务编排（DocumentService/SaveCoordinator/EditorBridge…）
+├── domain/           领域模型与规则（document/editor/recovery/settings）
+├── services/         服务编排（SaveCoordinator/EditorBridge/DocumentDeliveryService…）
 ├── infrastructure/   平台实现（file/metadata/recovery）
-└── web/              职责说明；源码在 web-tools，包资源在 resources/rawfile/web
+└── common/           日志、主题、断点等跨层基础代码
+web-tools/            Web 编辑/预览运行时源码（打包到 resources/rawfile/web）
 docs/                 规格、ADR、风险、计划（见「相关文档」）
 scripts/              clean-build、图标生成等脚本
 ```
