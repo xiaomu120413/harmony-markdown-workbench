@@ -31,7 +31,7 @@
 | `test-window-viewport.cjs` | 窗口与安全区域 |
 | `test-html-preview.cjs` | HTML 只读预览 |
 | `test-html-resources.cjs` | HTML 资源解析 |
-| `test-html-embed.cjs` | HTML 内容块、预览 iframe/图片复用与许可证资源 |
+| `test-html-embed.cjs` | HTML 内容块、预览 iframe/图片复用与资源解析 |
 | `lib/ets-loader.cjs` | ArkTS 源码加载器 |
 | `lib/editor-write-cases.cjs` | 编辑器写回、文档载入、重命名用例 |
 

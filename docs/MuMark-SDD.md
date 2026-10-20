@@ -5,15 +5,14 @@
 | 项目属性 | 内容 |
 |---|---|
 | 文档版本 | 1.0.0 |
-| 文档状态 | 可进入技术验证与开发 |
+| 文档状态 | 已实施，1.0.0 发布候选 |
 | 目标平台 | HarmonyOS 手机、平板；PC/2in1 预留完整工作区 |
 | 开发方式 | Specification-Driven Development（SDD）|
 | 主要执行者 | ZCode / AI Coding Agent + 人工评审 |
 | 产品原则 | 打开的是原文件，保存后仍是原文件 |
 
 > **实现现状（2026-10-20）**：本文是初版规格与执行合同。当前代码目录、构建命令、依赖清单与验收状态以
-> `README.md`、`docs/spec/acceptance.md` 和 `NOTICE.md` 为准；第 8.1 节的目录为初版建议，
-> 实际已按 MVVM 分层调整（`pages` + `features/*` + `domain` + `services` + `infrastructure`）。
+> `README.md`、`docs/spec/acceptance.md` 和 `docs/NOTICE.md` 为准；第 8.1 节已同步为当前目录结构。
 
 ---
 
@@ -555,44 +554,25 @@ flowchart TD
 
 ## 8. 模块与接口
 
-### 8.1 建议目录
+### 8.1 当前目录（2026-10-20）
 
 ```text
 entry/src/main/ets/
-├── pages/
-│   ├── HomePage.ets
-│   ├── EditorPage.ets
-│   └── SettingsPage.ets
-├── components/
-│   ├── SaveStatus.ets
-│   ├── RecentFiles.ets
-│   ├── MarkdownToolbar.ets
-│   ├── OutlinePanel.ets
-│   └── ConflictDialog.ets
-├── domain/
-│   ├── document/
-│   ├── recovery/
-│   └── settings/
-├── services/
-│   ├── DocumentService.ets
-│   ├── SaveCoordinator.ets
-│   ├── ConflictDetector.ets
-│   ├── ShareService.ets
-│   └── EditorBridge.ets
-├── infrastructure/
-│   ├── file/InternalFileSource.ets
-│   ├── file/ExternalUriFileSource.ets
-│   ├── metadata/MetadataStore.ets
-│   └── recovery/DraftStore.ets
-└── web/
-    ├── index.html
-    ├── editor.ts
-    ├── preview.ts
-    ├── bridge.ts
-    └── styles/
+├── pages/             首页、编辑器、设置、恢复、HTML 预览页面
+├── features/          editor/home/preview/recovery/settings 的 State、Controller、ViewModel 与分区视图
+├── components/        SafePage、DocumentSidebar
+├── domain/            bridge/document/editor/recovery/settings 纯规则
+├── services/          SaveCoordinator、EditorBridge、DocumentImportService、DocumentDeliveryService、DroppedDocumentReader
+├── infrastructure/    file/metadata/window 平台实现
+├── common/            MuLogger、AppTheme、Breakpoints、控件样式
+└── entryability/      Ability 入口
+
+web-tools/             Web 编辑/预览源码与 esbuild 打包脚本
+scripts/build|check|test  构建、签名、静态门禁与宿主机测试
+docs/                  规格、验收、ADR、品牌、商店与证据材料
 ```
 
-实际目录可根据工程规范调整，但层次职责必须保留。
+页面入口只连接路由、AppStorage 事件和生命周期；业务状态与平台对象分离。层次职责必须保留，具体文件可按同一职责调整。
 
 ### 8.2 文件适配器接口
 

@@ -1,7 +1,7 @@
 # 木笺 MuMark 品牌资源
 
 2026-10-19 用户确认：中文名称“木笺”，英文名称“MuMark”，与木枢、MuTransfer 同属 Mu 系列。
-本轮参考 `../ftp/AppScope/resources/base/media/app_icon.svg` 的矢量语言。
+本轮参考 `AppScope/resources/base/media/app_icon.svg` 的矢量语言。
 
 - 蓝青底色：`#075AE6 → #087EF0 → #00A6D9`，轻高光。
 - 白色折角文档，薄荷色 `#9BF0E0` 笔形强调编辑语义。
@@ -18,5 +18,5 @@
 python scripts/build/gen-icons.py
 ```
 
-PowerShell 入口调用同一生成脚本，不再包含特定机器的输出目录。
+重建只依赖 `docs/brand` 下的两个 SVG 与 CairoSVG；不再维护单独的 PowerShell 包装。
 保留原 bundleName 和数据目录，品牌重命名不要求清空文档。

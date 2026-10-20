@@ -11,6 +11,7 @@
 - [spec/file-access-permission-justification.md](spec/file-access-permission-justification.md) — 文件持久化权限申请理由
 - [spec/mumark-package-2026-10-20.md](spec/mumark-package-2026-10-20.md) — 包名、版本与签名身份
 - [spec/store-materials-2026-10-20.md](spec/store-materials-2026-10-20.md) — 应用市场素材说明
+- [spec/](spec/) — 全部规格与日期化验收记录（含权限、存储、兼容性记录）
 - [spec/repository-cleanup-2026-10-20.md](spec/repository-cleanup-2026-10-20.md) — 仓库清理与未使用文件审计
 - [user-guide.md](user-guide.md) — 用户使用说明
 

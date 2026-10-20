@@ -27,7 +27,7 @@
 | M3 预览 | ✅ 完成 | markdown-it GFM 渲染、恶意语料转义不执行、大纲/查找，真机验证 |
 | M4 保存链 | ✅ 完成 | SaveCoordinator 编排、自动保存防抖、外部冲突三决策、崩溃恢复入口，真机验证 |
 | M5 工作台 | ✅ 完成 | 首页（最近/打开/恢复入口）、分享（剪贴板降级，API 26 无 ShareKit）、设置持久化，真机验证 |
-| M6 质量 | ✅ 完成 | 窄窗响应式、性能样本 S1–S4 实测、隐私扫描零权限、Release 构建装机，真机验证 |
+| M6 质量 | ✅ 完成 | 窄窗响应式、性能样本 S1–S4 实测、隐私扫描仅单文件持久访问权限、Release 构建与 App Pack 签名，真机验证 |
 | V0.2 三端总装 | ✅ 完成（2026-10-10） | **预览/分屏接入生产编辑器**（phone 切换、tablet/PC 分屏）、**查找替换面板**、**桥协议修复**（打字→自动保存链路）、撤销重做、defaultView 消费、deviceTypes 补 2in1、Spike 页面清出发布包；三端断点真机逐档验证（详见 acceptance.md V0.2 节） |
 | V0.2.1 编辑完整性 | ✅ 完成（2026-10-10） | **标题等级 H1–H3 快捷命令**（h1–h6 同级取消/异级切换）、分隔线/表格/图片按钮、**大纲导航面板**（点击跳转标题行）、**系统标题栏隐藏**（应用内标题区接管窗口拖动）；真机验证（acceptance.md V0.2.1 节） |
 | V0.2.2 产品化 | ✅ 完成（2026-10-10） | **示例按钮等开发痕迹清除**、**智能文档命名**（首行作标题 + 自动名升级重命名）、**全局深色主题**（四页全 chrome 跟随）、设置即改即存（三区卡片）、工具栏分组、首页/恢复页文案与交互打磨；真机验证（acceptance.md V0.2.2 节） |
@@ -98,13 +98,14 @@ bash scripts/build/clean-build.sh
 
 ```
 entry/src/main/ets/
-├── pages/            首页、编辑器、设置和恢复页面
-├── features/         首页/编辑器状态、平台依赖、功能控制器与分区视图（每文件 ≤500 行）
-├── components/       ArkUI 可复用组件（各层 README 写明职责与规划任务）
-├── domain/           领域模型与规则（document/editor/recovery/settings）
+├── pages/            首页、编辑器、设置、恢复、HTML 预览页面
+├── features/         首页/编辑器/预览/恢复/设置的状态、控制器与分区视图
+├── components/       ArkUI 可复用组件（SafePage、DocumentSidebar）
+├── domain/           领域模型与规则（bridge/document/editor/recovery/settings）
 ├── services/         服务编排（SaveCoordinator/EditorBridge/DocumentDeliveryService…）
-├── infrastructure/   平台实现（file/metadata/recovery）
-└── common/           日志、主题、断点等跨层基础代码
+├── infrastructure/   平台实现（file/metadata/window）
+├── common/           日志、主题、断点、控件样式
+└── entryability/     Ability 入口
 web-tools/            Web 编辑/预览运行时源码（打包到 resources/rawfile/web）
 docs/                 规格、验收、ADR、品牌、商店与证据材料；入口 docs/README.md
 scripts/
