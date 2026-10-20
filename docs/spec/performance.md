@@ -31,7 +31,7 @@
 ## M6-03 隐私与安全（SDD 6.3）
 
 - 权限：当前 `entry/src/main/module.json5` 仅声明 `ohos.permission.FILE_ACCESS_PERSIST`，用于用户选中文件的持久访问；未声明 INTERNET 或全盘访问权限。生产权限审批和发布签名仍须完成，详见[持久授权申请](state-access-2026-10.md#权限申请)。
-- 网络：不做任何 network 请求；Web 资源全部来自 rawfile（editor.html/preview.html 内联 bundle）。
+- 网络：不做任何 network 请求；Web 资源全部来自 rawfile（editor.html/preview.html 引用同目录的本地 bundle）。
 - 日志脱敏：应用 hilog 仅输出业务摘要（`[打开] N 字符`、`[保存] 状态`、命令名），**不输出正文/路径全文/剪贴板内容**；
   异常日志 `JSON.stringify(e)` 为错误对象。正文主副本仅存 CM 内存与 library/drafts 私有目录。
 - HTML 安全：markdown 预览 `html:false` + markdown-it 默认链接协议校验（拒绝 `javascript:` 等）；

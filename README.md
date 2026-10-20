@@ -88,7 +88,7 @@ bash scripts/clean-build.sh
 | 单元测试 | hypium 1.0.21（`entry/src/test/`），`hvigorw test` | ✅ |
 | 测试失败拦截 | `clean-build` 脚本检查测试日志中的 hypium 断言 ERROR（hypium 用例失败时 hvigor 任务仍返回成功，见风险 R-07） | ✅ |
 | 无缓存构建 | `scripts/clean-build.sh` / `.bat`：删缓存→ohpm install→构建→测试 | ✅ |
-| CI | `.github/workflows/ci.yml` 预留，需自托管 runner（GitHub-hosted 无 HarmonyOS SDK，见 R-06） | ⚠️ 未实机运行 |
+| CI | `.github/workflows/ci.yml`：GitHub-hosted 跑 web bundle 一致性 + 脚本/清单检查；hvigor 单测与构建需自托管 runner（DEVECO_HOME，见 R-06） | ✅ hosted 门禁通过；hvigor 待自托管 |
 | 静态检查/格式化 | DevEco IDE 内置 Code Linter 与格式化；命令行无等价工具（R-05） | ⚠️ 需 IDE |
 
 ## 目录结构
