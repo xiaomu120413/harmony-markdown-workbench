@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const createLoader = require('./lib/ets-loader.cjs');
 const dialogs = [], storage = new Map();
-let select = async () => [], photo = async () => ({ photoUris: [] });
+let select = async () => [], photo = async () => ({ photoUris: [] }), folderSelection = false;
 const kits = {
   '@kit.AbilityKit': {}, '@kit.ArkData': {},
   '@kit.ArkWeb': { webview: { WebviewController: class {} } },
@@ -13,7 +13,7 @@ const kits = {
   '@kit.PerformanceAnalysisKit': { hilog: { info() {}, warn() {}, error() {} } },
   '@kit.ArkUI': { promptAction: { showToast() {} } },
 };
-const load = createLoader(kits, { Observed: cls => cls, AlertDialog: { show: d => dialogs.push(d) },
+const load = createLoader(kits, { canIUse: () => folderSelection, Observed: cls => cls, AlertDialog: { show: d => dialogs.push(d) },
   AppStorage: { get: k => storage.get(k), setOrCreate: (k, v) => storage.set(k, v) } });
 const root = path.join(__dirname, '../entry/src/main/ets');
 const { EditorState } = load(`${root}/features/editor/EditorState`);
@@ -22,6 +22,7 @@ const { SaveCoordinator } = load(`${root}/services/SaveCoordinator`);
 const { DocumentDeliveryService } = load(`${root}/services/DocumentDeliveryService`);
 const { EditorDelivery } = load(`${root}/features/editor/EditorDelivery`);
 const { DocumentImportService } = load(`${root}/services/DocumentImportService`);
+const { HtmlResourceStore } = load(`${root}/infrastructure/file/HtmlResourceStore`);
 function deferred() { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; }
 function fixture() {
   storage.clear(); dialogs.length = 0;
@@ -147,5 +148,20 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
   await f.actions.receiveDrop({});
   assert.equal(inserted, 'library/drop.html'); assert.equal(f.actions.env.pendingOpenUri, '');
   assert.equal(f.state.dropBusy, false); assert.equal(f.state.docTitle, 'source.md');
-  console.log('19 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
+  kits['@kit.CoreFileKit'].fileUri = { getUriFromPath: p => `file://${p}` };
+  kits['@kit.CoreFileKit'].picker.DocumentSelectMode = { FOLDER: 1 };
+  HtmlResourceStore.prototype.read = () => { throw Error('resource unavailable'); };
+  for (const supported of [false, true]) {
+    folderSelection = supported; f = fixture(); let options, menus = 0;
+    f.actions.runJsChecked = async () => '["main.css"]';
+    kits['@kit.ArkUI'].promptAction.showActionMenu = async () => { menus++; return { index: 0 }; };
+    select = async value => { options = value; return []; };
+    kits['@kit.CoreFileKit'].picker.DocumentViewPicker.prototype.select = function(value) { return select(value); };
+    await assert.rejects(new EditorDelivery(f.actions).htmlResources('library/page.html', '', 'original'), /已取消/);
+    assert.equal(menus, supported ? 1 : 0);
+    assert.equal(options.selectMode, supported ? 1 : undefined);
+    assert.equal(options.maxSelectNumber, supported ? 1 : 128);
+    if (!supported) assert.ok(options.fileSuffixFilters.includes('.css'));
+  }
+  console.log('21 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
 })().catch(e => { console.error(e); process.exitCode = 1; });

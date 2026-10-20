@@ -41,10 +41,11 @@ export class EditorDelivery {
       }
       if (loaded > 0) { continue; } // 新导入 CSS 后再解析其 @import 和图片。
       if (missing === 0) { return resources; }
-      const choice = await promptAction.showActionMenu({ title: `HTML 还缺少 ${missing} 个图片或样式资源`, buttons: [
+      const choice: promptAction.ActionMenuSuccessResponse = canIUse('SystemCapability.FileManagement.UserFileService.FolderSelection')
+        ? await promptAction.showActionMenu({ title: `HTML 还缺少 ${missing} 个图片或样式资源`, buttons: [
         { text: '选择 HTML 所在目录', color: this.host.state.pal.TEXT },
         { text: '选择图片和 CSS 文件', color: this.host.state.pal.TEXT },
-      ] });
+      ] }) : { index: 1 };
       if (!this.isCurrent(session)) { throw new Error('文档已切换，已取消插入'); }
       const viewPicker = new picker.DocumentViewPicker(this.host.env.ctx);
       const uris = choice.index === 0
