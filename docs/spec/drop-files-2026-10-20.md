@@ -20,3 +20,5 @@ REQ-DROP-002：编辑器拖入 PNG/JPEG/GIF/WebP/BMP 时复制图片后在光标
 - `node scripts/check/check-source-size.mjs`：128 个手写源码/测试/脚本符合 500 行上限；`check-source-encoding.mjs` 的 236 个文本文件、`check-docs.mjs` 的 59 个 Markdown 及 `git diff --check` 通过。
 
 原有 build-profile.json5 是用户本机签名配置改动，保留且不提交。发布签名产物使用既有正式签名材料在独立交付目录构建，不新建证书。
+
+正式交付：代码提交 `38cd198` 在 `../local-sign/mumark-release-38cd198-standard` 执行 `hvigorw.bat assembleApp --mode project -p product=default -p buildMode=release --no-daemon`，44 个任务通过（含 SignApp）。SDK `hap-sign-tool.jar verify-app` 验证 APP 摘要及签名成功，提取 Profile 与既有 MumarkRelease.p7b 的 SHA-256 一致。更新忽略目录下的 `dist/mumark-1.0.0-release-signed.app` 和 `dist/mumark-1.0.0-latest-release-signed.hap`，APP SHA-256 为 `bd7913bf913b523c3d5ac968f16b6c55468a4a7d728f4e37d98fec3483a3fc6a`。此正式包用于发布交付；真机验收使用前述既有调试签名覆盖包，两者不混称。
