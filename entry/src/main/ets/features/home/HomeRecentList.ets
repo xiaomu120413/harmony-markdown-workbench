@@ -23,6 +23,7 @@ export struct HomeRecentList {
         .padding({ top: 10, bottom: 10 }).onClick(() => this.actions.openRecent(item))
       Button({ type: ButtonType.Normal }) {
         SymbolGlyph($r('sys.symbol.pin')).fontSize(16)
+          .rotate({ angle: item.pinned ? -45 : 0 })
           .fontColor([item.pinned ? this.state.pal.PRIMARY : this.state.pal.TEXT_FAINT])
       }.attributeModifier(new ControlStyle(this.state.pal, 'quiet', true))
         .accessibilityText(`${item.pinned ? '取消置顶' : '置顶'} ${RecentFileList.displayName(item.documentId)}`)
@@ -135,7 +136,7 @@ export struct HomeRecentList {
             ListItem() {
               this.recentRow(item)
             }
-          }, (item: RecentEntry) => item.documentId)
+          }, (item: RecentEntry) => `${item.documentId}-${item.pinned}`)
         }
         .layoutWeight(1)
         .width('100%')

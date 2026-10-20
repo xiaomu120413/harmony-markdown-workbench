@@ -71,6 +71,7 @@ export struct DocumentSidebar {
       if (this.filter !== 'library') {
         Button({ type: ButtonType.Normal }) {
           SymbolGlyph($r('sys.symbol.pin')).fontSize(16)
+            .rotate({ angle: pinned ? -45 : 0 })
             .fontColor([pinned ? this.pal.PRIMARY : this.pal.TEXT_FAINT])
         }.attributeModifier(new ControlStyle(this.pal, 'quiet', true)).enabled(!this.busy)
           .accessibilityText(`${pinned ? '取消置顶' : '置顶'} ${name}`)
@@ -134,7 +135,7 @@ export struct DocumentSidebar {
                 item.pinned,
               )
             }
-          }, (item: RecentEntry) => `${item.documentId}-${this.filter}`)
+          }, (item: RecentEntry) => `${item.documentId}-${this.filter}-${item.pinned}`)
         }
       }
       .layoutWeight(1)
