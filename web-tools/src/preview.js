@@ -6,7 +6,6 @@
  */
 import { renderMarkdown } from './markdown';
 
-let lastHtml = '';
 // 预览页生命周期内缓存已下发的资源；宿主只发增量，大 HTML/图片不重复跨桥。
 let resourceCache = {};
 let resourceEpoch = -1;
@@ -91,7 +90,6 @@ window.__previewApi = {
       resourceCache[keys[i]] = resources[keys[i]];
     }
     const safe = renderMarkdown(mdText || '', resourceCache);
-    lastHtml = safe;
     mountPreview(document.getElementById('out'), safe);
     return { length: safe.length, html: safe };
   },
@@ -104,12 +102,10 @@ window.__previewApi = {
     // 解析源文本，建立 行号 → 标题文本 映射
     const lines = (sourceText || '').split('\n');
     let bestHeading = '';
-    let bestLine = 0;
     for (let i = 0; i < lines.length && i < line; i++) {
       const m = /^#{1,6}\s+(.+)/.exec(lines[i]);
       if (m) {
         bestHeading = m[1].trim();
-        bestLine = i + 1;
       }
     }
     if (!bestHeading) {
@@ -124,10 +120,6 @@ window.__previewApi = {
         return;
       }
     }
-  },
-  /** 最近一次渲染的 HTML（导出/复制用） */
-  getHtml() {
-    return lastHtml;
   },
   /** 主题跟随编辑器（M5-03 设置：dark） */
   setDark(dark) {

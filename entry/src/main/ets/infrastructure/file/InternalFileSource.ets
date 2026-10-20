@@ -214,9 +214,4 @@ export class InternalFileSource implements DocumentFileAdapter {
     return names;
   }
 
-  /** 附件绝对路径（预览资源映射用） */
-  attachmentPath(name: string): string {
-    return `${this.baseDir}/attachments/${name}`;
-  }
-
 }

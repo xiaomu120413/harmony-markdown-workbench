@@ -46,7 +46,7 @@ function notify(type, payload) {
     try {
       bridge.send(JSON.stringify({ version: 1, id: genId(), type: type, payload: payload }));
     } catch (e) {
-      console.log('HMWB_BRIDGE_SEND_ERR type=' + type + ' err=' + e);
+      console.log('MUMARK_BRIDGE_SEND_ERR type=' + type + ' err=' + e);
     }
   }
 }
@@ -249,5 +249,5 @@ view.scrollDOM.addEventListener('scroll', function () {
 
 // ---- C4：应用快捷键 → 桥转发到原生统一命令（与按钮同一路径） ----
 // 通知原生：Web 就绪
-console.log('HMWB_PAGE_READY bridge=' + (typeof window.__nativeBridge));
+console.log('MUMARK_PAGE_READY bridge=' + (typeof window.__nativeBridge));
 notify('ready', { version: 1 });
