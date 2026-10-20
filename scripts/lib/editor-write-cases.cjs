@@ -8,6 +8,8 @@ module.exports = function registerEditorWriteCases({ load, root, cases, toasts }
   const { EditorController } = load(path.join(root, 'entry/src/main/ets/features/editor/EditorController.ets'));
   const { EditorFind } = load(path.join(root, 'entry/src/main/ets/features/editor/EditorFind.ets'));
   const { EditorDelivery } = load(path.join(root, 'entry/src/main/ets/features/editor/EditorDelivery.ets'));
+  const { EditorPreview } = load(path.join(root, 'entry/src/main/ets/features/editor/EditorPreview.ets'));
+  const { DocumentDeliveryService } = load(path.join(root, 'entry/src/main/ets/services/DocumentDeliveryService.ets'));
   function findHost(handler) {
     const state = {
       deliveryBusy: false, findQuery: 'foo', replaceText: 'bar', findCase: false, findWord: false,
@@ -227,6 +229,32 @@ module.exports = function registerEditorWriteCases({ load, root, cases, toasts }
     assert.equal(host.coordinatorCount(), 1);
     assert.equal(host.state.docLength, 5);
     assert.equal(host.state.loadState, 'ready');
+  } });
+  cases.push({ name: 'preview resource cache reuses attachment encoding across renders', async body() {
+    let calls = 0;
+    const original = DocumentDeliveryService.prototype.resources;
+    DocumentDeliveryService.prototype.resources = function (sources) {
+      calls++;
+      return { [sources[0]]: 'data:image/png;base64,AAAA' };
+    };
+    try {
+      const host = {
+        env: { ctx: {}, activeSession: 's1', previewController: {}, lastPreviewedMd: '' },
+        isActive: () => true,
+        inspectImages: async () => ['attachments/a.png'],
+        runJsChecked: async () => '',
+      };
+      const preview = new EditorPreview(host);
+      host.env.lastPreviewedMd = 'one';
+      await preview.renderPreview('one', 's1');
+      host.env.lastPreviewedMd = 'two';
+      await preview.renderPreview('two', 's1');
+      assert.equal(calls, 1);
+      host.inspectImages = async () => ['attachments/b.png'];
+      host.env.lastPreviewedMd = 'three';
+      await preview.renderPreview('three', 's1');
+      assert.equal(calls, 2);
+    } finally { DocumentDeliveryService.prototype.resources = original; }
   } });
   function homeHost(renamingFrom, renameText, library) {
     const host = Object.create(HomeController.prototype);

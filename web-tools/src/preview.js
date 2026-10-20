@@ -11,7 +11,8 @@ let lastHtml = '';
 /**
  * 用新渲染结果替换预览 DOM。
  * HTML 内容块的 iframe src 是数 MB 的 data URI，整树重建会让每个 iframe 重新加载并闪白；
- * src 未变的 iframe 直接搬移旧节点，保留已加载内容（markdown 已禁用原始 HTML，sandbox iframe 仅来自内容块）。
+ * 图片（尤其大图）重建也会重新解码。src 未变的节点直接搬移旧节点，保留已加载内容；
+ * markdown 已禁用原始 HTML，sandbox iframe 仅来自内容块。
  */
 function htmlEmbedFrames(root) {
   const frames = root.querySelectorAll('iframe[sandbox]');
@@ -23,23 +24,51 @@ function htmlEmbedFrames(root) {
   return found;
 }
 
+function groupBySource(nodes) {
+  const grouped = new Map();
+  for (let i = 0; i < nodes.length; i++) {
+    const key = nodes[i].getAttribute('src');
+    const list = grouped.get(key);
+    if (list) { list.push(nodes[i]); } else { grouped.set(key, [nodes[i]]); }
+  }
+  return grouped;
+}
+
+/** 相同 src 且 alt/title 未变时复用图片节点，避免大图重新解码闪烁。 */
+function reuseImages(out, staging) {
+  const previous = groupBySource(out.querySelectorAll('img[src]'));
+  const next = staging.querySelectorAll('img[src]');
+  for (let i = 0; i < next.length; i++) {
+    const image = next[i];
+    const list = previous.get(image.getAttribute('src'));
+    if (!list || list.length === 0) { continue; }
+    for (let j = 0; j < list.length; j++) {
+      const old = list[j];
+      if (old.getAttribute('alt') === image.getAttribute('alt') &&
+        old.getAttribute('title') === image.getAttribute('title')) {
+        image.replaceWith(old);
+        list.splice(j, 1);
+        break;
+      }
+    }
+  }
+}
+
+function reuseHtmlEmbeds(out, staging) {
+  const previous = groupBySource(htmlEmbedFrames(out));
+  const next = htmlEmbedFrames(staging);
+  for (let i = 0; i < next.length; i++) {
+    const list = previous.get(next[i].getAttribute('src'));
+    const old = list && list.shift();
+    if (old) { next[i].replaceWith(old); }
+  }
+}
+
 function mountPreview(out, safe) {
   const staging = document.createElement('div');
   staging.innerHTML = safe;
-  const previous = new Map();
-  const oldFrames = htmlEmbedFrames(out);
-  for (let i = 0; i < oldFrames.length; i++) {
-    const key = oldFrames[i].getAttribute('src');
-    const list = previous.get(key);
-    if (list) { list.push(oldFrames[i]); } else { previous.set(key, [oldFrames[i]]); }
-  }
-  const nextFrames = htmlEmbedFrames(staging);
-  for (let i = 0; i < nextFrames.length; i++) {
-    const key = nextFrames[i].getAttribute('src');
-    const list = previous.get(key);
-    const old = list && list.shift();
-    if (old) { nextFrames[i].replaceWith(old); }
-  }
+  reuseImages(out, staging);
+  reuseHtmlEmbeds(out, staging);
   while (out.firstChild) { out.removeChild(out.firstChild); }
   while (staging.firstChild) { out.appendChild(staging.firstChild); }
 }

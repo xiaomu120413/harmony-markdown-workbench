@@ -51,7 +51,7 @@ assert.ok(!body.includes('allow-scripts')); assert.ok(!body.includes('allow-same
 assert.deepEqual(JSON.parse(markdown.exports.inspectMarkdown(`![HTML](<${attachment}>)`)).images, [attachment]);
 assert.ok(!markdown.exports.renderMarkdown('<script>BAD</script>').includes('<script>'));
 
-// ---- 预览 DOM：相同 HTML 内容块复用 iframe，避免每次刷新重新加载导致闪白 ----
+// ---- 预览 DOM：相同 iframe/图片复用原节点，避免每次刷新重新加载导致闪白 ----
 class FakeNode {
   constructor(tag) { this.tagName = tag; this.attrs = Object.create(null); this.childNodes = []; this.parentNode = null; }
   get firstChild() { return this.childNodes.length > 0 ? this.childNodes[0] : null; }
@@ -74,23 +74,27 @@ class FakeNode {
   getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attrs, name) ? this.attrs[name] : null; }
   set innerHTML(html) {
     this.childNodes = [];
-    const iframe = /<iframe\b([^>]*)>/gi;
+    const element = /<(iframe|img)\b([^>]*)>/gi;
     let match;
-    while ((match = iframe.exec(html))) {
-      const node = new FakeNode('iframe');
+    while ((match = element.exec(html))) {
+      const node = new FakeNode(match[1].toLowerCase());
       const attr = /([\w-]+)="([^"]*)"/g;
       let found;
-      while ((found = attr.exec(match[1]))) { node.setAttribute(found[1], found[2]); }
+      while ((found = attr.exec(match[2]))) { node.setAttribute(found[1], found[2]); }
       this.appendChild(node);
     }
   }
   get innerHTML() { return ''; }
   querySelectorAll(selector) {
     const found = [];
+    const parsed = /^(\w+)\[([\w-]+)\]$/.exec(selector);
+    if (!parsed) { return found; }
     const visit = node => {
-      const sandboxed = node.tagName === 'iframe' && node.getAttribute('sandbox') !== null;
-      const htmlEmbed = sandboxed && (node.getAttribute('src') || '').startsWith('data:text/html;base64,');
-      if (selector === 'iframe[sandbox]' && htmlEmbed) { found.push(node); }
+      if (node.tagName === parsed[1] && node.getAttribute(parsed[2]) !== null) {
+        const htmlEmbed = node.tagName !== 'iframe' ||
+          (node.getAttribute('src') || '').startsWith('data:text/html;base64,');
+        if (htmlEmbed) { found.push(node); }
+      }
       for (const child of node.childNodes) { visit(child); }
     };
     for (const child of this.childNodes) { visit(child); }
@@ -114,4 +118,12 @@ api.render('before 2\n\n![HTML](<attachments/block.html>)\n\nafter 2', embed);
 assert.equal(out.querySelectorAll('iframe[sandbox]')[0], first);
 api.render('before 3\n\n![HTML](<attachments/block.html>)\n\nafter 3', { [attachment]: data('text/html', '<p>changed</p>') });
 assert.notEqual(out.querySelectorAll('iframe[sandbox]')[0], first);
-console.log('11 HTML embed groups passed (graph, styles, imports, images, cycles, media, escapes, safety, inline position, attachment discovery, iframe reuse)');
+const picture = { 'attachments/pic.png': data('image/png', [137, 80, 78, 71]) };
+api.render('one\n\n![pic](<attachments/pic.png>)\n\ntwo', picture);
+const image = out.querySelectorAll('img[src]')[0];
+assert.ok(image);
+api.render('one changed\n\n![pic](<attachments/pic.png>)\n\ntwo changed', picture);
+assert.equal(out.querySelectorAll('img[src]')[0], image);
+api.render('one changed\n\n![other](<attachments/pic.png>)\n\ntwo changed', picture);
+assert.notEqual(out.querySelectorAll('img[src]')[0], image);
+console.log('12 HTML embed groups passed (graph, styles, imports, images, cycles, media, escapes, safety, inline position, attachment discovery, iframe reuse, image reuse)');

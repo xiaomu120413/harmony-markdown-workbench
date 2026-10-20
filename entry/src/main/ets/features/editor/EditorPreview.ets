@@ -7,8 +7,12 @@ import { DefaultView } from '../../domain/settings/AppSettings';
 import { EditorController } from './EditorController';
 import { OutlineEntry } from './EditorState';
 const PREVIEW_SYNC_DEBOUNCE_MS = 300;
+// 附件不可变（重名导入会另存新文件），预览资源按源路径缓存，避免每次输入重复读盘/base64。
+const PREVIEW_RESOURCE_CACHE_LIMIT = 64 * 1024 * 1024;
 export class EditorPreview {
   private host: EditorController;
+  private resourceCache: Map<string, Record<string, string>> = new Map<string, Record<string, string>>();
+  private resourceCacheChars: number = 0;
   constructor(host: EditorController) { this.host = host; }
   scheduleDocSync(): void {
     if (this.host.state.viewMode === DefaultView.EDIT && !this.host.state.outlineVisible && !this.host.state.findVisible) {
@@ -50,16 +54,31 @@ export class EditorPreview {
     });
   }
 
+  private resourcesOf(source: string): Record<string, string> {
+    const cached = this.resourceCache.get(source);
+    if (cached !== undefined) { return cached; }
+    const service = new DocumentDeliveryService(this.host.env.ctx);
+    const item = service.resources([source]);
+    let size = 0;
+    for (const key of Object.keys(item)) { size += item[key].length; }
+    if (this.resourceCacheChars + size > PREVIEW_RESOURCE_CACHE_LIMIT) {
+      this.resourceCache.clear();
+      this.resourceCacheChars = 0;
+    }
+    this.resourceCache.set(source, item);
+    this.resourceCacheChars += size;
+    return item;
+  }
+
   async renderPreview(md: string, session: string): Promise<void> {
     try {
       const images = await this.host.inspectImages(md);
-      const service = new DocumentDeliveryService(this.host.env.ctx);
       const resources: Record<string, string> = {};
       let total = 0;
       let incomplete = false;
       for (const source of images) {
         try {
-          const item = service.resources([source]);
+          const item = this.resourcesOf(source);
           for (const key of Object.keys(item)) {
             total += item[key].length;
             if (total > 28 * 1024 * 1024) { throw new Error('preview image limit'); }
@@ -71,7 +90,13 @@ export class EditorPreview {
       if (incomplete) { MuLogger.info('[预览] 部分图片无法读取或超过限额，正文及附件未修改'); }
       await this.host.runJsChecked(this.host.env.previewController,
         `window.__previewApi.render(${JSON.stringify(md)}, ${JSON.stringify(resources)});`);
-    } catch (e) { MuLogger.info('[预览] 渲染失败，请重新切换预览视图'); }
+    } catch (e) {
+      if (this.host.isActive() && session === this.host.env.activeSession && md === this.host.env.lastPreviewedMd) {
+        // 允许下一次同步重试，而不是一直停留在旧预览。
+        this.host.env.lastPreviewedMd = '\u0000';
+      }
+      MuLogger.info('[预览] 渲染失败，请重新切换预览视图');
+    }
   }
 
   rebuildOutline(md: string): void {
