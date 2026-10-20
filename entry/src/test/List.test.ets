@@ -17,7 +17,6 @@ import documentNamerTest from './DocumentNamer.test';
 import exportAndSearchTest from './ExportAndSearch.test';
 import textRoundtripTest from './TextRoundtrip.test';
 import headingOutlineTest from './HeadingOutline.test';
-import htmlSafetyTest from './HtmlSafety.test';
 import appSettingsTest from './AppSettings.test';
 import contentSafetyTest from './ContentSafety.test';
 
@@ -26,7 +25,7 @@ import contentSafetyTest from './ContentSafety.test';
  * - BaselineSmoke：框架冒烟
  * - SaveStateMachine / FileRevision / DraftDecision / SaveScheduler / SaveCoordinator：M0-04/M4-01 保存恢复领域层
  * - RecentFileList / FileNameValidator / TextEncoding / AdapterContract：M1 领域层
- * - MarkdownCommands / FindReplaceEngine / HeadingOutline / HtmlSafety：M2/M3 领域层
+ * - MarkdownCommands / FindReplaceEngine / HeadingOutline：M2/M3 领域层
  * 注：每个套件都必须在此注册，否则 hvigor 单测不会运行（M4-01 复核修复）。
  */
 export default function listTest(): void {
@@ -62,7 +61,6 @@ export default function listTest(): void {
   exportAndSearchTest();
   textRoundtripTest();
   headingOutlineTest();
-  htmlSafetyTest();
   appSettingsTest();
   contentSafetyTest();
 }

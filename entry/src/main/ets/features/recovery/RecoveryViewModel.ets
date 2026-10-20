@@ -4,7 +4,7 @@ import { DraftStore } from '../../infrastructure/metadata/DraftStore';
 import { MetadataStore } from '../../infrastructure/metadata/MetadataStore';
 import { RecentFileList } from '../../domain/document/RecentFileList';
 import { InternalFileSource } from '../../infrastructure/file/InternalFileSource';
-import { DraftDecisionEvaluator, RecoveryDecision, RecoveryDraft } from '../../domain/recovery/DraftDecision';
+import { DraftDecisionEvaluator, RecoveryDecision } from '../../domain/recovery/DraftDecision';
 import { FileRevisionContract, InternalSource, WriteFailResult } from '../../domain/document/DocumentFileAdapter';
 import { FileRevision } from '../../domain/document/FileRevision';
 import { HashUtil } from '../../domain/document/HashUtil';

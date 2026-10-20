@@ -312,6 +312,10 @@ cases.push({ name: 'strikethrough content remains escaped and scripts cannot ren
   const html = markdownModule.exports.renderMarkdown('~~<img src=x onerror=alert(1)>~~');
   assert.ok(!html.includes('<img')); assert.match(html, /&lt;img/);
 } });
+cases.push({ name: 'markdown links reject javascript protocols', body() {
+  const html = markdownModule.exports.renderMarkdown('[点我](javascript:alert(1))');
+  assert.ok(!/href="javascript:/i.test(html));
+} });
 // ---- 编辑器写回安全：读取失败必须中止，写失败不得推进保存/命中状态 ----
 const { EditorController } = load(path.join(root, 'entry/src/main/ets/features/editor/EditorController.ets'));
 const { EditorFind } = load(path.join(root, 'entry/src/main/ets/features/editor/EditorFind.ets'));

@@ -34,8 +34,9 @@
 - 网络：不做任何 network 请求；Web 资源全部来自 rawfile（editor.html/preview.html 内联 bundle）。
 - 日志脱敏：应用 hilog 仅输出业务摘要（`[打开] N 字符`、`[保存] 状态`、命令名），**不输出正文/路径全文/剪贴板内容**；
   异常日志 `JSON.stringify(e)` 为错误对象。正文主副本仅存 CM 内存与 library/drafts 私有目录。
-- HTML 安全：markdown-it `html:false` + sanitizeHref + 自研 HtmlSafety 白名单检测（M3-01 真机验证
-  `<script>` 转义为 `&lt;script&gt;`，未执行；事件属性/危险 iframe 检出）。
+- HTML 安全：markdown 预览 `html:false` + markdown-it 默认链接协议校验（拒绝 `javascript:` 等）；
+  独立 HTML 预览用 CSP（`default-src 'none'; script-src 'none'; frame-src 'none'`）包裹后 `loadData`。
+  M3-01 真机验证 `<script>` 输出为 `&lt;script&gt;`，未执行。
 - 依赖：oh-package.json5 无三方依赖；web-tools 仅 codemirror 6.x 与 markdown-it 15（本地打包，不联网）。
 - 分享：剪贴板通道（R-18），分享前强制保存最新内容，不触碰源文件。
 

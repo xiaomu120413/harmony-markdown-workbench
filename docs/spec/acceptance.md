@@ -51,8 +51,8 @@
 
 | 需求 ID | 实现任务 | 自动化用例 | 状态 |
 |---|---|---|---|
-| FR-PREVIEW-001 | M3-01 | 安全语料：`<script>`、事件属性、`javascript:`、危险 iframe 不执行 | ✅ 真机（2026-08-31）：恶意语料渲染输出 `&lt;script&gt;`（HTML 转义未执行）；HtmlSafety 检测 3 类问题（dangerous_tag/event_attribute/dangerous_iframe）；单测 8 用例 |
-| FR-PREVIEW-001 | M3-01 | GFM 快照：表格、任务列表、删除线、嵌套列表、代码块 | ✅ 真机：标记渲染 H1/H2（markdown-it 输出 html 快照）；表格/任务列表/删除线用例在 HtmlSafety/MarkdownCommands 单测覆盖；SpikePreviewPage ① 有完整 GFM 语料入口 |
+| FR-PREVIEW-001 | M3-01 | 安全语料：`<script>`、事件属性、`javascript:`、危险 iframe 不执行 | ✅ 真实渲染：markdown-it `html:false` 转义原始标签（真机 2026-08-31 输出 `&lt;script&gt;`）；链接协议校验拒绝 `javascript:`；独立 HTML 预览由 CSP `script-src 'none'; frame-src 'none'` 收口；宿主机 test-host 覆盖脚本/事件属性语料 |
+| FR-PREVIEW-001 | M3-01 | GFM 快照：表格、任务列表、删除线、嵌套列表、代码块 | ✅ 真机：markdown-it 输出 H1/H2、表格/任务列表/删除线；宿主机 test-host 使用真实 markdown-it 覆盖删除线转义与图片引用；查找/替换由 FindReplaceEngine 单测覆盖 |
 | FR-PREVIEW-002 | M3-02 | 100 标题文档定位误差 ≤ 1 个可视段落；手动滚动不抢滚 | ⚠️ 大纲定位引擎单测通过（HeadingOutline 8 用例）；滚动同步 UI 未实现（V0.1 编辑器/预览分屏不在交付范围，记录为此项限制） |
 | FR-PREVIEW-003 | M3-03 | H1–H6 层级正确；重名标题独立定位；输入时不高频抖动 | ✅ 真机（2026-08-31）：大纲输出 3 项（H1+H2 层级、重名"章节一（重名）"独立 ID 与行号）；单测 8 用例全绿 |
 
