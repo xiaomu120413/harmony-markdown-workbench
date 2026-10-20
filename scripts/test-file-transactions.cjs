@@ -9,7 +9,7 @@ const kits = {
   '@kit.CoreFileKit': { picker: { DocumentViewPicker: class { select() { return select(); } },
     PhotoViewPicker: class { select() { return photo(); } }, PhotoViewMIMETypes: { IMAGE_TYPE: 0 } } },
   '@kit.ArkTS': { util: { TextEncoder: { create: () => ({ encodeInto: s => new TextEncoder().encode(s) }) } } },
-  '@kit.BasicServicesKit': {},
+  '@kit.BasicServicesKit': { deviceInfo: { deviceType: 'phone' } },
   '@kit.PerformanceAnalysisKit': { hilog: { info() {}, warn() {}, error() {} } },
   '@kit.ArkUI': { promptAction: { showToast() {} } },
 };
@@ -151,8 +151,12 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
   kits['@kit.CoreFileKit'].fileUri = { getUriFromPath: p => `file://${p}` };
   kits['@kit.CoreFileKit'].picker.DocumentSelectMode = { FOLDER: 1 };
   HtmlResourceStore.prototype.read = () => { throw Error('resource unavailable'); };
-  for (const supported of [false, true]) {
-    folderSelection = supported; f = fixture(); let options, menus = 0;
+  for (const [type, capability, supported] of [
+    ['phone', true, false], ['tablet', true, true], ['2in1', true, true],
+    ['tablet', false, false], ['unknown', true, false]
+  ]) {
+    kits['@kit.BasicServicesKit'].deviceInfo.deviceType = type;
+    folderSelection = capability; f = fixture(); let options, menus = 0;
     f.actions.runJsChecked = async () => '["main.css"]';
     kits['@kit.ArkUI'].promptAction.showActionMenu = async () => { menus++; return { index: 0 }; };
     select = async value => { options = value; return []; };
@@ -163,5 +167,5 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
     assert.equal(options.maxSelectNumber, supported ? 1 : 128);
     if (!supported) assert.ok(options.fileSuffixFilters.includes('.css'));
   }
-  console.log('21 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
+  console.log('24 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
 })().catch(e => { console.error(e); process.exitCode = 1; });

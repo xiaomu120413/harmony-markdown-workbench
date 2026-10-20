@@ -65,7 +65,7 @@ export class EditorFind {
       return;
     }
     const m = this.host.state.findMatches[this.host.state.matchIndex];
-    this.host.runJsValue(`window.__editorApi.setSelectionRange(${m.from}, ${m.to});`);
+    this.host.runJsValue(`window.__editorApi.setSelectionRange(${m.from}, ${m.to}, false);`);
   }
 
   async replaceCurrent(): Promise<void> {

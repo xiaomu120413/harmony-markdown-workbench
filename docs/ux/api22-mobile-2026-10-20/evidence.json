@@ -1,0 +1,239 @@
+{
+  "date": "2026-10-20",
+  "baseline": "56a3661",
+  "combinedBaseline": "c6e9fb8",
+  "bundle": "com.markdownworkbench.validation",
+  "hapBytes": 2802247,
+  "hapSha256": "b67d68ae7695657071136b60d530506281daf405c60cf99b857f09fd50283520",
+  "devices": [
+    {
+      "model": "PCE-W30 MatePad Pro",
+      "api": 22,
+      "os": "6.0.2.130",
+      "physical": true
+    },
+    {
+      "model": "Pura 90",
+      "api": 24,
+      "os": "6.1.1.125",
+      "physical": false
+    }
+  ],
+  "checks": {
+    "tablet_source_bytes_preserved": true,
+    "tablet_crlf_preserved": true,
+    "tablet_inline_original_and_emoji": true,
+    "tablet_find_keeps_saved_bytes": true,
+    "tablet_saveas_follows_new_target": true,
+    "tablet_saveas_preserves_old_target": true,
+    "tablet_zip_crc": true,
+    "tablet_zip_entries": true,
+    "tablet_zip_markdown": true,
+    "tablet_css_embedded": true,
+    "tablet_script_removed": true,
+    "tablet_image_exact": true,
+    "tablet_sandbox": true,
+    "tablet_html_matches_zip": true,
+    "phone_source_bytes_preserved": true,
+    "phone_crlf_preserved": true,
+    "phone_inline_original_and_emoji": true,
+    "phone_find_keeps_saved_bytes": true,
+    "phone_saveas_follows_new_target": true,
+    "phone_saveas_preserves_old_target": true,
+    "phone_zip_crc": true,
+    "phone_zip_entries": true,
+    "phone_zip_markdown": true,
+    "phone_css_embedded": true,
+    "phone_script_removed": true,
+    "phone_image_exact": true,
+    "phone_sandbox": true,
+    "phone_html_matches_zip": true,
+    "tablet_ime_candidate_committed": true,
+    "tablet_cancel_no_change": true,
+    "phone_cancel_no_change": true
+  },
+  "captures": [
+    {
+      "file": "tablet-find-fixed.jpg",
+      "original": "tablet-find-fixed.jpeg",
+      "phase": "focus-fix",
+      "sourceSize": [
+        2880,
+        1920
+      ],
+      "outputSize": [
+        1100,
+        733
+      ],
+      "transform": "proportional resize only, no crop"
+    },
+    {
+      "file": "tablet-portrait-keyboard.jpg",
+      "original": "tablet-portrait-keyboard.jpeg",
+      "phase": "focus-fix",
+      "sourceSize": [
+        1920,
+        2880
+      ],
+      "outputSize": [
+        600,
+        900
+      ],
+      "transform": "proportional resize only, no crop"
+    },
+    {
+      "file": "tablet-ime-composing.jpg",
+      "original": "tablet-ime-composing.jpeg",
+      "phase": "focus-fix",
+      "sourceSize": [
+        1920,
+        2880
+      ],
+      "outputSize": [
+        600,
+        900
+      ],
+      "transform": "proportional resize only, no crop"
+    },
+    {
+      "file": "tablet-ime-committed.jpg",
+      "original": "tablet-ime-committed.jpeg",
+      "phase": "focus-fix",
+      "sourceSize": [
+        1920,
+        2880
+      ],
+      "outputSize": [
+        600,
+        900
+      ],
+      "transform": "proportional resize only, no crop"
+    },
+    {
+      "file": "phone-find-fixed.jpg",
+      "original": "phone-find-fixed.jpeg",
+      "phase": "focus-fix",
+      "sourceSize": [
+        1320,
+        2856
+      ],
+      "outputSize": [
+        393,
+        850
+      ],
+      "transform": "proportional resize only, no crop"
+    },
+    {
+      "file": "tablet-final-preview.jpg",
+      "original": "tablet-final-preview.jpeg",
+      "phase": "final-combined-build",
+      "sourceSize": [
+        1920,
+        2880
+      ],
+      "outputSize": [
+        600,
+        900
+      ],
+      "transform": "proportional resize only, no crop"
+    },
+    {
+      "file": "phone-final-preview.jpg",
+      "original": "phone-final-preview.jpeg",
+      "phase": "final-combined-build",
+      "sourceSize": [
+        1320,
+        2856
+      ],
+      "outputSize": [
+        393,
+        850
+      ],
+      "transform": "proportional resize only, no crop"
+    }
+  ],
+  "artifacts": {
+    "phone-after-cancel.md": {
+      "bytes": 165,
+      "sha256": "48e896ac4c11c37de95ce4489b2a04262a54ce66fde0f257f0420e11167a5365"
+    },
+    "phone-after-find.md": {
+      "bytes": 156,
+      "sha256": "2ca9a7b7cce584ee9fbcf68f31b2e74ba78c1c118b3cfaf94c174d345ecda993"
+    },
+    "phone-export.html": {
+      "bytes": 3268,
+      "sha256": "96d55a9a9ef0d4953b7c41fd7c7af3424ac665e3b59d148c5e5392c0b8a437f9"
+    },
+    "phone-export.zip": {
+      "bytes": 923,
+      "sha256": "9ec19cdf66456f003fb22089feb8e73bf08ffcda5863b4c071244ffeedee7af8"
+    },
+    "phone-inline.md": {
+      "bytes": 156,
+      "sha256": "2ca9a7b7cce584ee9fbcf68f31b2e74ba78c1c118b3cfaf94c174d345ecda993"
+    },
+    "phone-original-final.md": {
+      "bytes": 156,
+      "sha256": "2ca9a7b7cce584ee9fbcf68f31b2e74ba78c1c118b3cfaf94c174d345ecda993"
+    },
+    "phone-saveas.md": {
+      "bytes": 165,
+      "sha256": "48e896ac4c11c37de95ce4489b2a04262a54ce66fde0f257f0420e11167a5365"
+    },
+    "phone-saved.md": {
+      "bytes": 93,
+      "sha256": "466d69a18b631c889851bd78e9e7bcc48577298426e1886f14d9ae6c4907887d"
+    },
+    "tablet-after-cancel.md": {
+      "bytes": 169,
+      "sha256": "262cd4ac6ee02cb469b253e3c61bf4a9bf57fe2a9d539c4928dc172ecffb1f4b"
+    },
+    "tablet-after-find.md": {
+      "bytes": 156,
+      "sha256": "95997a29c14a2cca1f02df96dc7c870adc0bcd64c5894f08deb7753bd4d9fa21"
+    },
+    "tablet-after-undo.md": {
+      "bytes": 156,
+      "sha256": "95997a29c14a2cca1f02df96dc7c870adc0bcd64c5894f08deb7753bd4d9fa21"
+    },
+    "tablet-export.html": {
+      "bytes": 3269,
+      "sha256": "0cd1e0365a9db682d8653fbab63668bec82bb6ec5c84ae5114db403529a3009c"
+    },
+    "tablet-export.zip": {
+      "bytes": 925,
+      "sha256": "f9c29ef862a31059af47e7f374dc7436c65ccdfd30cd58b2f21b3d64daa97dda"
+    },
+    "tablet-ime.md": {
+      "bytes": 169,
+      "sha256": "262cd4ac6ee02cb469b253e3c61bf4a9bf57fe2a9d539c4928dc172ecffb1f4b"
+    },
+    "tablet-inline.md": {
+      "bytes": 156,
+      "sha256": "95997a29c14a2cca1f02df96dc7c870adc0bcd64c5894f08deb7753bd4d9fa21"
+    },
+    "tablet-original-final.md": {
+      "bytes": 156,
+      "sha256": "95997a29c14a2cca1f02df96dc7c870adc0bcd64c5894f08deb7753bd4d9fa21"
+    },
+    "tablet-saveas.md": {
+      "bytes": 165,
+      "sha256": "b5addf2ad419574ccec8b587a8ed3ab4a5538356d5b4894e73577a66ede26c4e"
+    },
+    "tablet-saved.md": {
+      "bytes": 94,
+      "sha256": "eb6fd54f9bce6417c8a7e141626c3a60b6aa02815024aa0d80524597fdc01b2e"
+    }
+  },
+  "notVerified": [
+    "physical phone",
+    "API 22 phone",
+    "phone landscape",
+    "cross-app drag on tablet/phone",
+    "production signature upgrade",
+    "physical device reboot",
+    "system large font and accessibility matrix",
+    "cloud file providers"
+  ]
+}

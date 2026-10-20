@@ -93,6 +93,11 @@ function fixture() {
   liveFind.actions.scheduleDocSync();
   await new Promise(resolve => setTimeout(resolve, 350));
   assert.equal(liveFind.state.matchCount, 4); assert.equal(liveFind.state.matchIndex, 0);
+  const findScripts = [];
+  liveFind.actions.runJsValue = async script => { findScripts.push(script); return ''; };
+  liveFind.actions.locateFirstMatch(); liveFind.actions.jumpNext(); liveFind.actions.jumpPrev();
+  assert.equal(findScripts.length, 3);
+  assert.ok(findScripts.every(script => /setSelectionRange\(\d+, \d+, false\)/.test(script)));
   liveFind.actions.updateFindMatches('removed'); assert.equal(liveFind.state.matchCount, 0);
   assert.equal(liveFind.state.matchIndex, -1);
 

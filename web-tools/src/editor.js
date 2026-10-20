@@ -198,12 +198,12 @@ window.__editorApi = {
     return text.length;
   },
   /** 查找面板导航：选中 [from,to) 并滚动到可视区 */
-  setSelectionRange(from, to) {
+  setSelectionRange(from, to, focus = true) {
     view.dispatch({
       selection: { anchor: from, head: to },
       effects: EditorView.scrollIntoView(from, { y: 'center' }),
     });
-    view.focus();
+    if (focus) view.focus();
     return to - from;
   },
   setTheme(dark) {
