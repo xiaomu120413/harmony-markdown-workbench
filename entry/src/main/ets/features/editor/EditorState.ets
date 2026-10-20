@@ -18,7 +18,6 @@ export class EditorState {
   fileMenuVisible: boolean = false;
   fileSheetVisible: boolean = false;
   fileSheetSection: string = 'root';
-  activeToolMenu: string = '';
   docLength: number = 0;
   docTitle: string = '未命名';
   get conflictVisible(): boolean { return this.saveState === SaveState.CONFLICT; }

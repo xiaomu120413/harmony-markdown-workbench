@@ -56,6 +56,8 @@ export class EditorController {
   applyPreviewStyle(): void { return this.lifecycle.applyPreviewStyle(); }
   initSidebar(): void { return this.lifecycle.initSidebar(); }
   refreshSidebarData(): void { return this.lifecycle.refreshSidebarData(); }
+  deleteDocument(docId: string): void { this.documents.deleteDocument(docId); }
+  toggleRecentPin(docId: string): Promise<void> { return this.documents.toggleRecentPin(docId); }
   toggleSidebar(): void { return this.lifecycle.toggleSidebar(); }
   aboutToDisappear(): void { return this.lifecycle.aboutToDisappear(); }
   protectDraft(): Promise<boolean> { return this.documents.protectDraft(); }

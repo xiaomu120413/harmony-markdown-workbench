@@ -196,7 +196,9 @@ export class EditorLifecycle {
   refreshSidebarData(): void {
     this.host.state.sidebarLibrary = this.host.env.internal.listLibrary();
     this.host.env.meta.loadRecent().then((entries: RecentEntry[]) => {
-      this.host.state.sidebarRecent = new RecentFileList(entries).snapshot();
+      this.host.state.sidebarRecent = new RecentFileList(entries).snapshot().filter((e: RecentEntry): boolean =>
+        !e.documentId.startsWith('library/') || this.host.state.sidebarLibrary.includes(e.documentId.substring('library/'.length)))
+        .sort((a: RecentEntry, b: RecentEntry): number => a.pinned === b.pinned ? b.lastOpenedAt - a.lastOpenedAt : a.pinned ? -1 : 1);
     }).catch(() => {
       this.host.state.sidebarRecent = [];
     });

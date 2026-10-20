@@ -11,35 +11,29 @@ export struct HomeRecentList {
   @Require actions: HomeController;
   @Builder
   recentRow(item: RecentEntry) {
-    Column({ space: 3 }) {
-      Row({ space: 6 }) {
-        if (item.pinned) {
-          Text('📌').fontSize(11)
-        }
+    Row({ space: 0 }) {
+      Column({ space: 3 }) {
         Text(RecentFileList.displayName(item.documentId))
-          .fontSize(15)
-          .fontWeight(FontWeight.Medium)
-          .fontColor(this.state.pal.TEXT)
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .layoutWeight(1)
-      }
-      .width('100%')
-      Text(`${RecentFileList.location(item.documentId)} · ${this.actions.fmtTime(item.lastOpenedAt)}`)
-        .fontSize(11)
-        .fontColor(this.state.pal.TEXT_FAINT)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-    }
-    .alignItems(HorizontalAlign.Start)
-    .width('100%')
-    .padding({ top: 11, bottom: 11, left: 20, right: 16 })
-    .border({ width: { bottom: 1 }, color: this.state.pal.DIVIDER })
-    .onClick(() => this.actions.openRecent(item))
-    .gesture(
-      LongPressGesture({ repeat: false, duration: 500 })
-        .onActionEnd(() => this.actions.recentRowMenu(item))
-    )
+          .fontSize(14).fontWeight(FontWeight.Medium).fontColor(this.state.pal.TEXT)
+          .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+        Text(RecentFileList.location(item.documentId))
+          .fontSize(11).fontColor(this.state.pal.TEXT_FAINT)
+          .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+      }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+        .padding({ top: 10, bottom: 10 }).onClick(() => this.actions.openRecent(item))
+      Button({ type: ButtonType.Normal }) {
+        SymbolGlyph($r('sys.symbol.pin')).fontSize(16)
+          .fontColor([item.pinned ? this.state.pal.PRIMARY : this.state.pal.TEXT_FAINT])
+      }.attributeModifier(new ControlStyle(this.state.pal, 'quiet', true))
+        .accessibilityText(`${item.pinned ? '取消置顶' : '置顶'} ${RecentFileList.displayName(item.documentId)}`)
+        .accessibilitySelected(item.pinned)
+        .onClick(() => this.actions.togglePin(item.documentId))
+      Button({ type: ButtonType.Normal }) {
+        SymbolGlyph($r('sys.symbol.trash')).fontSize(16).fontColor([this.state.pal.TEXT_SUB])
+      }.attributeModifier(new ControlStyle(this.state.pal, 'quiet', true))
+        .accessibilityText(`删除 ${RecentFileList.displayName(item.documentId)}`)
+        .onClick(() => this.actions.deleteRecent(item.documentId))
+    }.width('100%').padding({ left: 12, right: 4 })
   }
   @Builder
   recentColumn() {

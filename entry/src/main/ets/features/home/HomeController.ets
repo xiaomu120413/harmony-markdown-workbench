@@ -98,8 +98,11 @@ export class HomeController {
 
   async refresh(): Promise<void> {
     const entries = await this.env.meta.loadRecent();
-    // C3-4：固定项排最前，其余按时间倒序
-    this.state.recent = new RecentFileList(entries).snapshot().sort((a: RecentEntry, b: RecentEntry): number => {
+    const names = this.env.fileSource.listLibrary();
+    // 忽略自动改名或删除后残留的应用内记录；外部记录保留授权失效后的重新选择入口。
+    this.state.recent = new RecentFileList(entries).snapshot().filter((e: RecentEntry): boolean =>
+      !e.documentId.startsWith('library/') || names.includes(e.documentId.substring('library/'.length)))
+      .sort((a: RecentEntry, b: RecentEntry): number => {
       if (a.pinned !== b.pinned) {
         return a.pinned ? -1 : 1;
       }
@@ -282,12 +285,16 @@ export class HomeController {
   }
 
   confirmDelete(name: string): void {
+    if (FileNameValidator.validate(name) !== undefined) {
+      promptAction.showToast({ message: '无效的应用内文件名，无法删除' });
+      return;
+    }
     const that = this;
     AlertDialog.show({
-      title: '删除文档',
-      message: `「${name}」将移入回收站（应用私有目录），确定删除？`,
+      title: '移入回收站',
+      message: `“${name}”可在“我的文档”的回收站中恢复。`,
       primaryButton: {
-        value: '删除',
+        value: '移入回收站',
         fontColor: that.state.pal.DANGER,
         action: () => {
           that.doDelete(name);
@@ -303,20 +310,24 @@ export class HomeController {
 
   async doDelete(name: string): Promise<void> {
     if (this.env.fileSource.trashLibrary(name)) {
+      this.state.recent = this.state.recent.filter((e: RecentEntry): boolean => e.documentId !== `library/${name}`);
       try {
         const entries = await this.env.meta.loadRecent();
         const list = new RecentFileList(entries);
         list.remove(`library/${name}`);
         await this.env.meta.saveRecent(list.snapshot());
       } catch (e) {
-        // 元数据失败不阻塞文件操作
+        MuLogger.warn('[最近] 文件已移入回收站，但最近记录更新失败');
+        promptAction.showToast({ message: '已移入回收站，但最近记录更新失败' });
+        this.refreshLibrary();
+        return;
       }
       this.refresh();
       this.refreshLibrary();
       if (this.state.searchQuery.length > 0) {
         this.runSearch();
       }
-      promptAction.showToast({ message: `已删除 ${name}` });
+      promptAction.showToast({ message: '已移入回收站，可在“我的文档”中恢复' });
     } else {
       promptAction.showToast({ message: '删除失败' });
     }
@@ -334,18 +345,12 @@ export class HomeController {
     return dot > 0 ? trashName.substring(0, dot) : trashName;
   }
 
-  recentRowMenu(item: RecentEntry): void {
-    const that = this;
-    promptAction.showActionMenu({
-      title: RecentFileList.displayName(item.documentId),
-      buttons: [
-        { text: item.pinned ? '取消固定' : '固定到顶部', color: that.state.pal.TEXT },
-      ],
-    }).then((r: promptAction.ActionMenuSuccessResponse) => {
-      if (r.index === 0) {
-        that.togglePin(item.documentId);
-      }
-    });
+  deleteRecent(docId: string): void {
+    if (!docId.startsWith('library/')) {
+      promptAction.showToast({ message: '外部原文件请在文件管理器中删除，应用回收站只管理“我的文档”' });
+      return;
+    }
+    this.confirmDelete(docId.substring('library/'.length));
   }
 
   async togglePin(docId: string): Promise<void> {

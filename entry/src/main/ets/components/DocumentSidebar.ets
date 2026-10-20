@@ -4,7 +4,7 @@ import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
 
 /**
  * 文档侧栏（B1/B2：编辑页内切换文档，不必返回首页）。
- * 最近 + 固定 + 资料库三段列表，共用搜索。
+ * 最近、置顶与资料库共用搜索，文件操作由调用方处理。
  * 选择文档经回调（调用方负责 A3 离开流程与加载）。
  */
 @Component
@@ -12,16 +12,12 @@ export struct DocumentSidebar {
   @Prop recent: RecentEntry[] = [];
   @Prop libraryFiles: string[] = [];
   @Prop pal: AppTheme = AppTheme.light();
+  @Prop busy: boolean = false;
   @State filter: 'recent' | 'pinned' | 'library' = 'recent';
   @State searchQuery: string = '';
   onDocSelected: (docId: string) => void = () => {};
-
-  private fmtTime(ms: number): string {
-    const d = new Date(ms);
-    const hh = `${d.getHours()}`.padStart(2, '0');
-    const mm = `${d.getMinutes()}`.padStart(2, '0');
-    return `${d.getMonth() + 1}/${d.getDate()} ${hh}:${mm}`;
-  }
+  onDelete: (docId: string) => void = () => {};
+  onPin: (docId: string) => void = () => {};
 
   private pinned(): RecentEntry[] {
     return this.recent.filter((e: RecentEntry): boolean => e.pinned);
@@ -53,25 +49,39 @@ export struct DocumentSidebar {
   }
 
   @Builder
-  docRow(name: string, sub: string, docId: string) {
-    Column({ space: 2 }) {
-      Text(name)
-        .fontSize(14)
-        .fontWeight(FontWeight.Medium)
-        .fontColor(this.pal.TEXT)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-      Text(sub)
-        .fontSize(10)
-        .fontColor(this.pal.TEXT_FAINT)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-    }
-    .alignItems(HorizontalAlign.Start)
-    .width('100%')
-    .padding({ top: 8, bottom: 8, left: 12, right: 8 })
-    .borderRadius(8)
-    .onClick(() => this.onDocSelected(docId))
+  docRow(name: string, sub: string, docId: string, pinned: boolean = false) {
+    Row({ space: 0 }) {
+      Column({ space: 2 }) {
+        Text(name)
+          .fontSize(14)
+          .fontWeight(FontWeight.Medium)
+          .fontColor(this.pal.TEXT)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+        Text(sub)
+          .fontSize(10)
+          .fontColor(this.pal.TEXT_FAINT)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
+      }
+      .alignItems(HorizontalAlign.Start)
+      .layoutWeight(1)
+      .padding({ top: 10, bottom: 10, left: 8 })
+      .onClick(() => this.onDocSelected(docId))
+      if (this.filter !== 'library') {
+        Button({ type: ButtonType.Normal }) {
+          SymbolGlyph($r('sys.symbol.pin')).fontSize(16)
+            .fontColor([pinned ? this.pal.PRIMARY : this.pal.TEXT_FAINT])
+        }.attributeModifier(new ControlStyle(this.pal, 'quiet', true)).enabled(!this.busy)
+          .accessibilityText(`${pinned ? '取消置顶' : '置顶'} ${name}`)
+          .accessibilitySelected(pinned)
+          .onClick(() => this.onPin(docId))
+      }
+      Button({ type: ButtonType.Normal }) {
+        SymbolGlyph($r('sys.symbol.trash')).fontSize(16).fontColor([this.pal.TEXT_SUB])
+      }.attributeModifier(new ControlStyle(this.pal, 'quiet', true)).enabled(!this.busy)
+        .accessibilityText(`删除 ${name}`).onClick(() => this.onDelete(docId))
+    }.width('100%')
   }
 
   build() {
@@ -79,7 +89,7 @@ export struct DocumentSidebar {
       // 筛选 Tab
       Row({ space: 4 }) {
         this.filterTab('最近', 'recent', this.recent.length)
-        this.filterTab('固定', 'pinned', this.pinned().length)
+        this.filterTab('置顶', 'pinned', this.pinned().length)
         this.filterTab('资料库', 'library', this.libraryFiles.length)
       }
       .width('100%')
@@ -100,6 +110,10 @@ export struct DocumentSidebar {
         })
 
       // 列表
+      if (this.filter === 'pinned' && this.pinned().length === 0) {
+        Text('点击文档旁的图钉，将常用文档置顶')
+          .fontSize(12).fontColor(this.pal.TEXT_FAINT).padding(12)
+      }
       List({ space: 0 }) {
         if (this.filter === 'library') {
           ForEach(this.visibleLibrary(), (name: string) => {
@@ -112,8 +126,9 @@ export struct DocumentSidebar {
             ListItem() {
               this.docRow(
                 RecentFileList.displayName(item.documentId),
-                `${RecentFileList.location(item.documentId)} · ${this.fmtTime(item.lastOpenedAt)}`,
+                RecentFileList.location(item.documentId),
                 item.documentId,
+                item.pinned,
               )
             }
           }, (item: RecentEntry) => `${item.documentId}-${this.filter}`)

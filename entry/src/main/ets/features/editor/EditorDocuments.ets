@@ -6,10 +6,71 @@ import { DocumentImportService } from '../../services/DocumentImportService';
 import { DocumentIntake } from '../../domain/document/DocumentIntake';
 import { DocumentFileAdapter, DocumentSource, InternalSource, ExternalSource } from '../../domain/document/DocumentFileAdapter';
 import { RecentFileList } from '../../domain/document/RecentFileList';
+import { FileNameValidator } from '../../domain/document/FileNameValidator';
 import { EditorController } from './EditorController';
 export class EditorDocuments {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
+  async toggleRecentPin(docId: string): Promise<void> {
+    try {
+      const entries = await this.host.env.meta.loadRecent();
+      const list = new RecentFileList(entries);
+      list.setPinned(docId, !entries.find((e) => e.documentId === docId)?.pinned);
+      await this.host.env.meta.saveRecent(list.snapshot());
+      if (this.host.isActive()) { this.host.refreshSidebarData(); }
+    } catch (e) {
+      MuLogger.warn('[最近] 置顶失败');
+      promptAction.showToast({ message: '置顶失败，请重试' });
+    }
+  }
+
+  deleteDocument(docId: string): void {
+    if (!this.host.isActive() || this.host.state.deliveryBusy) { return; }
+    if (!docId.startsWith('library/')) {
+      promptAction.showToast({ message: '外部原文件请在文件管理器中删除，应用回收站只管理“我的文档”' });
+      return;
+    }
+    if (FileNameValidator.validate(docId.substring('library/'.length)) !== undefined) {
+      promptAction.showToast({ message: '无效的应用内文件名，无法删除' });
+      return;
+    }
+    const target = this.host.state.docTarget;
+    if (target?.kind === 'internal' && target.relativePath === docId) {
+      promptAction.showToast({ message: '请先切换到其他文档，再删除当前文档' });
+      return;
+    }
+    AlertDialog.show({
+      title: '移入回收站', message: `“${RecentFileList.displayName(docId)}”可在“我的文档”的回收站中恢复。`,
+      primaryButton: { value: '移入回收站', fontColor: this.host.state.pal.DANGER,
+        action: () => { this.trashDocument(docId); } },
+      secondaryButton: { value: '取消', action: () => {} },
+    });
+  }
+
+  private async trashDocument(docId: string): Promise<void> {
+    const target = this.host.state.docTarget;
+    if (!this.host.isActive() || this.host.state.deliveryBusy ||
+      (target?.kind === 'internal' && target.relativePath === docId)) { return; }
+    this.host.state.deliveryBusy = true;
+    try {
+      if (!this.host.env.internal.trashLibrary(docId.substring('library/'.length))) {
+        promptAction.showToast({ message: '删除失败，文件未移入回收站' });
+        return;
+      }
+      const entries = await this.host.env.meta.loadRecent();
+      const list = new RecentFileList(entries);
+      list.remove(docId);
+      await this.host.env.meta.saveRecent(list.snapshot());
+      promptAction.showToast({ message: '已移入回收站，可在“我的文档”中恢复' });
+    } catch (e) {
+      MuLogger.warn('[最近] 文件已移入回收站，但最近记录更新失败');
+      promptAction.showToast({ message: '已移入回收站，但最近记录更新失败' });
+    } finally {
+      this.host.state.deliveryBusy = false;
+      if (this.host.isActive()) { this.host.refreshSidebarData(); }
+    }
+  }
+
   async protectDraft(): Promise<boolean> {
     const c = this.host.env.coordinator;
     if (!this.host.isActive() || !this.host.env.webReady || this.host.state.loadState !== 'ready' || c === undefined) { return false; }

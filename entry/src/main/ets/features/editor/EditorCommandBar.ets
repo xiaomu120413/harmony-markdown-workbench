@@ -9,6 +9,7 @@ import { EditorController } from './EditorController';
 export struct EditorCommandBar {
   @ObjectLink state: EditorState;
   @Require actions: EditorController;
+  @State menu: string = '';
   @Builder
   viewControls() {
     SegBtn({ label: '编辑', active: this.state.viewMode === DefaultView.EDIT, pal: this.state.pal, action: () => this.actions.setViewMode(DefaultView.EDIT) })
@@ -28,7 +29,7 @@ export struct EditorCommandBar {
   }
   @Builder
   commandItem(label: string, cmd: MarkdownCommandName) {
-    MenuItem({ content: label }).onClick(() => this.actions.applyCommand(cmd))
+    MenuItem({ content: label }).onClick(() => { this.menu = ''; this.actions.applyCommand(cmd); })
   }
   @Builder
   commandMenu(kind: string) {
@@ -60,8 +61,8 @@ export struct EditorCommandBar {
         }
       } else {
         this.commandItem('链接', 'link')
-        MenuItem({ content: '本地图片…' }).onClick(() => this.actions.insertLocalImage())
-        MenuItem({ content: 'HTML 内容块…' }).onClick(() => this.actions.insertHtml())
+        MenuItem({ content: '本地图片…' }).onClick(() => { this.menu = ''; this.actions.insertLocalImage(); })
+        MenuItem({ content: 'HTML 内容块…' }).onClick(() => { this.menu = ''; this.actions.insertHtml(); })
         this.commandItem('表格', 'table')
         this.commandItem('分隔线', 'hr')
       }
@@ -71,14 +72,13 @@ export struct EditorCommandBar {
   toolGroup(label: string) {
     Button(label, { type: ButtonType.Normal })
       .enabled(!this.state.deliveryBusy)
-      .attributeModifier(new ControlStyle(this.state.pal, this.state.activeToolMenu === label ? 'selected' : 'quiet'))
-      .onClick(() => { this.state.activeToolMenu = label; })
-      .bindMenu(this.state.activeToolMenu === label, this.activeCommandMenu, {
-        showInSubWindow: false, onDisappear: () => { this.state.activeToolMenu = ''; },
+      .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
+      .onClick(() => { this.menu = label; })
+      .bindMenu(this.menu === label, this.commandMenu(label), {
+        showInSubWindow: false,
+        onDisappear: () => { if (this.menu === label) { this.menu = ''; } },
       })
   }
-  @Builder
-  activeCommandMenu() { this.commandMenu(this.state.activeToolMenu) }
   @Builder
   toolSep() {
     Divider()
@@ -86,12 +86,6 @@ export struct EditorCommandBar {
       .height(20)
       .color(this.state.pal.DIVIDER)
       .margin({ left: 5, right: 5 })
-  }
-  @Builder
-  histBtn(label: string, kind: 'undo' | 'redo') {
-    Button(label, { type: ButtonType.Normal })
-      .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
-      .onClick(() => this.actions.applyHistory(kind))
   }
   build() {
       // 预览只保留视图与导航；窄窗命令单行滚动。
@@ -108,8 +102,9 @@ export struct EditorCommandBar {
             this.toolGroup('段落')
             this.toolGroup('插入')
             this.toolSep()
-            this.histBtn('撤销', 'undo')
-            this.histBtn('重做', 'redo')
+            Button('撤销', { type: ButtonType.Normal })
+              .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
+              .onClick(() => this.actions.applyHistory('undo'))
             }
             if (this.state.bp !== 'phone') {
               this.toolSep()

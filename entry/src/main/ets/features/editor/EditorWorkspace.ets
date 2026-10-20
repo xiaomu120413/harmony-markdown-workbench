@@ -56,6 +56,9 @@ export struct EditorWorkspace {
             recent: this.state.sidebarRecent,
             libraryFiles: this.state.sidebarLibrary,
             pal: this.state.pal,
+            busy: this.state.deliveryBusy,
+            onDelete: (docId: string) => this.actions.deleteDocument(docId),
+            onPin: (docId: string) => this.actions.toggleRecentPin(docId),
             onDocSelected: (docId: string): void => {
               this.actions.switchToDocument(docId);
             },
