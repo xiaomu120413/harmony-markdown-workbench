@@ -1,0 +1,183 @@
+{
+  "date": "2026-10-20",
+  "application": "木笺 MuMark",
+  "bundleName": "com.mumark.app",
+  "version": "1.0.0",
+  "tagline": "离线写作，轻松编辑与预览",
+  "taglineCharacters": 12,
+  "introductionCharacters": 461,
+  "images": [
+    {
+      "file": "phone/01-write.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "bytes": 281433,
+      "source": "source/phone-01-edit.jpeg",
+      "provenance": "手机模拟器，本轮演示文档",
+      "screenshotPlacement": {
+        "x": 260,
+        "y": 630,
+        "width": 559,
+        "height": 1210
+      },
+      "sha256": "3c5ebf9e91d5cc418bc3b1dcab5fdfe7419a8a9c55a9146cea400ff5b3a6bd0d"
+    },
+    {
+      "file": "phone/02-preview.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "bytes": 244389,
+      "source": "source/phone-02-preview.jpeg",
+      "provenance": "手机模拟器，本轮演示文档",
+      "screenshotPlacement": {
+        "x": 260,
+        "y": 630,
+        "width": 559,
+        "height": 1210
+      },
+      "sha256": "91b07a06b0b1694dc32ab37f138d7ca033b02dd5c326307e36e875ed4bda66c4"
+    },
+    {
+      "file": "phone/03-outline.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "bytes": 196622,
+      "source": "source/phone-03-outline.jpeg",
+      "provenance": "手机模拟器，本轮演示文档",
+      "screenshotPlacement": {
+        "x": 260,
+        "y": 630,
+        "width": 559,
+        "height": 1210
+      },
+      "sha256": "94b1e6cc43ba03584a5734d2325f05bda72317d95fedebe99c5b9ae7fc2ba490"
+    },
+    {
+      "file": "phone/04-export.png",
+      "size": [
+        1080,
+        1920
+      ],
+      "bytes": 208394,
+      "source": "source/phone-04-export.jpeg",
+      "provenance": "手机模拟器，本轮导出面板",
+      "screenshotPlacement": {
+        "x": 260,
+        "y": 630,
+        "width": 559,
+        "height": 1210
+      },
+      "sha256": "d79bbc0629a51a983cd4efb8cdaa3d81c7b352b11a3e20d1a08dac1dbf99c6ed"
+    },
+    {
+      "file": "tablet/01-space.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "bytes": 235135,
+      "source": "source/tablet-01-split.jpeg",
+      "provenance": "API 22 MatePad 真机，2026-10-19 历史截图",
+      "screenshotPlacement": {
+        "x": 1006,
+        "y": 154,
+        "width": 567,
+        "height": 850
+      },
+      "sha256": "8653141345889401ee2c430c0cb24c6b34eedc03f577f1030d895f364da737cf"
+    },
+    {
+      "file": "tablet/02-content.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "bytes": 169385,
+      "source": "source/tablet-02-preview.jpeg",
+      "provenance": "API 22 MatePad 真机，2026-10-20 验收截图",
+      "screenshotPlacement": {
+        "x": 1006,
+        "y": 154,
+        "width": 567,
+        "height": 850
+      },
+      "sha256": "b853b13e429c4627b86ec2e4500b73baca54a7f0006181ac2f666055f76dd250"
+    },
+    {
+      "file": "tablet/03-comfort.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "bytes": 137146,
+      "source": "source/tablet-03-settings.jpeg",
+      "provenance": "API 22 MatePad 真机，2026-10-19 历史截图",
+      "screenshotPlacement": {
+        "x": 762,
+        "y": 211,
+        "width": 1080,
+        "height": 720
+      },
+      "sha256": "2b9febc4c6dd5b082fe4a917de1b61fa37cc056440ec8a5065bf87f9fa547d22"
+    },
+    {
+      "file": "pc/01-focus.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "bytes": 321907,
+      "source": "source/pc-01-edit.png",
+      "provenance": "API 26 MateBook 真机，本轮演示；从完整桌面裁取木笺窗口",
+      "screenshotPlacement": {
+        "x": 762,
+        "y": 211,
+        "width": 1080,
+        "height": 720
+      },
+      "sha256": "04f22d77f6d11a69a0f15c8e9f0e7a3a2da9a5eb19ac067113e00bfaeb584453"
+    },
+    {
+      "file": "pc/02-theme.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "bytes": 188417,
+      "source": "source/pc-02-settings.jpg",
+      "provenance": "API 26 MateBook 真机，2026-10-19 历史截图",
+      "screenshotPlacement": {
+        "x": 762,
+        "y": 211,
+        "width": 1080,
+        "height": 720
+      },
+      "sha256": "9968e61686bc3feec1717c9a9a7466e78ab47ac07e5cc19ef2ee2cd966bb18df"
+    },
+    {
+      "file": "pc/03-files.png",
+      "size": [
+        1920,
+        1080
+      ],
+      "bytes": 276944,
+      "source": "source/pc-03-actions.jpg",
+      "provenance": "API 26 MateBook 真机窄窗，2026-10-19 历史截图",
+      "screenshotPlacement": {
+        "x": 995,
+        "y": 154,
+        "width": 589,
+        "height": 850
+      },
+      "sha256": "5cc8b40799df633e3fda2a9173a197a0459b5293e7c189ef996f1c6cabdfd79a"
+    }
+  ],
+  "method": "Brand vector layers + typography + unretouched real screenshots; no generated UI",
+  "notSubmitted": true
+}
