@@ -131,13 +131,16 @@ module.exports = function registerEditorWriteCases({ load, root, cases, toasts }
     assert.equal(host.state.docLength, 7); assert.equal(host.editCount(), 1);
   } });
   function deliveryHost(handler) {
-    const calls = { edits: 0, syncs: 0 };
+    const calls = { edits: 0, syncs: 0, removed: [] };
     const host = {
       state: { saveState: 'clean', deliveryBusy: false },
       env: {
         activeSession: 's1', controller: {},
         coordinator: { state: 'dirty', onEdit: () => { calls.edits++; } },
-        internal: { copyToAttachments: () => 'attachments/picked.png' },
+        internal: {
+          copyToAttachments: () => 'attachments/picked.png',
+          remove: source => { calls.removed.push(source.relativePath); },
+        },
       },
       isActive: () => true,
       scheduleDocSync: () => { calls.syncs++; },
@@ -185,6 +188,7 @@ module.exports = function registerEditorWriteCases({ load, root, cases, toasts }
     });
     await new EditorDelivery(host).insertLocalImage();
     assert.deepEqual(toasts, ['图片插入失败，请重试']);
+    assert.deepEqual(host.calls.removed, ['attachments/picked.png']);
     assert.equal(host.calls.edits, 0);
   } });
   cases.push({ name: 'image picker reports success only after the insert write resolves', async body() {
@@ -192,6 +196,7 @@ module.exports = function registerEditorWriteCases({ load, root, cases, toasts }
     const host = deliveryHost(script => script.includes('getSelectionRange') ? '{"from":0,"to":0}' : undefined);
     await new EditorDelivery(host).insertLocalImage();
     assert.deepEqual(toasts, ['已插入 picked.png']);
+    assert.deepEqual(host.calls.removed, []);
     assert.equal(host.calls.edits, 1);
   } });
   // ---- 资料库重命名：复用 FileNameValidator，非法名不得进入文件操作 ----
@@ -230,8 +235,9 @@ module.exports = function registerEditorWriteCases({ load, root, cases, toasts }
     assert.equal(host.state.docLength, 5);
     assert.equal(host.state.loadState, 'ready');
   } });
-  cases.push({ name: 'preview resource cache reuses attachment encoding across renders', async body() {
+  cases.push({ name: 'preview sends attachment resources once per Web epoch', async body() {
     let calls = 0;
+    const scripts = [];
     const original = DocumentDeliveryService.prototype.resources;
     DocumentDeliveryService.prototype.resources = function (sources) {
       calls++;
@@ -239,10 +245,10 @@ module.exports = function registerEditorWriteCases({ load, root, cases, toasts }
     };
     try {
       const host = {
-        env: { ctx: {}, activeSession: 's1', previewController: {}, lastPreviewedMd: '' },
+        env: { ctx: {}, activeSession: 's1', previewController: {}, lastPreviewedMd: '', previewEpoch: 1 },
         isActive: () => true,
         inspectImages: async () => ['attachments/a.png'],
-        runJsChecked: async () => '',
+        runJsChecked: async (ctrl, script) => { scripts.push(script); return ''; },
       };
       const preview = new EditorPreview(host);
       host.env.lastPreviewedMd = 'one';
@@ -250,10 +256,19 @@ module.exports = function registerEditorWriteCases({ load, root, cases, toasts }
       host.env.lastPreviewedMd = 'two';
       await preview.renderPreview('two', 's1');
       assert.equal(calls, 1);
+      assert.ok(scripts[0].includes('attachments/a.png'));
+      assert.ok(!scripts[1].includes('attachments/a.png'));
       host.inspectImages = async () => ['attachments/b.png'];
       host.env.lastPreviewedMd = 'three';
       await preview.renderPreview('three', 's1');
       assert.equal(calls, 2);
+      assert.ok(scripts[2].includes('attachments/b.png'));
+      assert.ok(!scripts[2].includes('attachments/a.png'));
+      host.env.previewEpoch = 2;
+      host.inspectImages = async () => ['attachments/a.png'];
+      host.env.lastPreviewedMd = 'four';
+      await preview.renderPreview('four', 's1');
+      assert.ok(scripts[3].includes('attachments/a.png'));
     } finally { DocumentDeliveryService.prototype.resources = original; }
   } });
   function homeHost(renamingFrom, renameText, library) {

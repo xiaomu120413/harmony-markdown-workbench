@@ -5,7 +5,7 @@ import { util } from '@kit.ArkTS';
 import { picker, fileUri, fileIo as fs } from '@kit.CoreFileKit';
 import { SaveState } from '../../domain/recovery/SaveStateMachine';
 import { DocumentDeliveryService } from '../../services/DocumentDeliveryService';
-import { ExternalSource } from '../../domain/document/DocumentFileAdapter';
+import { ExternalSource, InternalSource } from '../../domain/document/DocumentFileAdapter';
 import { HashUtil } from '../../domain/document/HashUtil';
 import { EditorController } from './EditorController';
 import { SafeFileIO } from '../../infrastructure/file/SafeFileIO';
@@ -16,6 +16,12 @@ export class EditorDelivery {
   constructor(host: EditorController) { this.host = host; }
   private isCurrent(session: string): boolean {
     return this.host.isActive() && session === this.host.env.activeSession;
+  }
+  /** 写回失败时清理刚复制/生成的附件；文档切换场景保留，避免旧会话已引用而断链。 */
+  private removeAttachment(path: string): void {
+    if (path.length === 0) { return; }
+    const source: InternalSource = { kind: 'internal', relativePath: path };
+    this.host.env.internal.remove(source);
   }
   private async htmlResources(id: string, html: string, session: string): Promise<Record<string, string>> {
     const source = fileUri.getUriFromPath(`${this.host.env.ctx.filesDir}/${id}`);
@@ -64,6 +70,7 @@ export class EditorDelivery {
     if (!this.host.isActive() || this.host.state.deliveryBusy || this.host.state.loadState !== 'ready') { return; }
     const session = this.host.env.activeSession;
     this.host.state.deliveryBusy = true;
+    let attachmentPath = '';
     try {
       await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(false);', true);
       if (id === undefined) {
@@ -83,11 +90,16 @@ export class EditorDelivery {
       const folder = `${this.host.env.ctx.filesDir}/attachments`;
       if (!fs.accessSync(folder)) { fs.mkdirSync(folder); }
       const name = `html-${Date.now()}-${Math.floor(Math.random() * 0xffffff)}.html`;
+      attachmentPath = `attachments/${name}`;
       SafeFileIO.atomicBytes(`${folder}/${name}`, bytes);
-      const inserted = await this.insertAttachment(`attachments/${name}`, 'HTML', session);
+      const inserted = await this.insertAttachment(attachmentPath, 'HTML', session);
       if (inserted && this.isCurrent(session)) {
+        attachmentPath = '';
         promptAction.showToast({ message: 'HTML 已插入光标处，可切换预览查看' });
-      }    } catch (e) {
+      }
+    } catch (e) {
+      this.removeAttachment(attachmentPath);
+      attachmentPath = '';
       MuLogger.warn('HTML insertion incomplete');
       const error: ESObject = e as ESObject;
       if (this.isCurrent(session) && error.code !== 1006 && error.code !== 1007) {
@@ -246,6 +258,7 @@ export class EditorDelivery {
       } catch (e) {
         const err: ESObject = e as ESObject;
         MuLogger.info(`[图片] 插入失败：${JSON.stringify(err)}`);
+        this.removeAttachment(attPath);
         if (this.isCurrent(session)) { promptAction.showToast({ message: '图片插入失败，请重试' }); }
         return;
       }

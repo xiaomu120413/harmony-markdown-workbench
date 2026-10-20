@@ -29,6 +29,8 @@ export class EditorEnvironment {
   pendingLoadAt: number = 0;
   webReady: boolean = false;
   previewReady: boolean = false;
+  // 预览 Web 每次重新加载递增；宿主据此重发全部 base64 资源（Web 侧缓存已清空）。
+  previewEpoch: number = 0;
   lastPreviewedMd: string = '\u0000';
   get pendingOpenUri(): string { return AppStorage.get<string>('pendingOpenUri') ?? ''; }
   set pendingOpenUri(uri: string) { AppStorage.setOrCreate('pendingOpenUri', uri); }

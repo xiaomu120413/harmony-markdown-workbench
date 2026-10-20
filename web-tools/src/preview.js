@@ -7,6 +7,9 @@
 import { renderMarkdown } from './markdown';
 
 let lastHtml = '';
+// 预览页生命周期内缓存已下发的资源；宿主只发增量，大 HTML/图片不重复跨桥。
+let resourceCache = {};
+let resourceEpoch = -1;
 
 /**
  * 用新渲染结果替换预览 DOM。
@@ -65,18 +68,29 @@ function reuseHtmlEmbeds(out, staging) {
 }
 
 function mountPreview(out, safe) {
+  const scroller = document.scrollingElement || document.documentElement;
+  const scrollTop = scroller ? scroller.scrollTop : 0;
   const staging = document.createElement('div');
   staging.innerHTML = safe;
   reuseImages(out, staging);
   reuseHtmlEmbeds(out, staging);
   while (out.firstChild) { out.removeChild(out.firstChild); }
   while (staging.firstChild) { out.appendChild(staging.firstChild); }
+  if (scroller) { scroller.scrollTop = scrollTop; }
 }
 
 window.__previewApi = {
   version: 1,
-  render(mdText, resources = {}) {
-    const safe = renderMarkdown(mdText || '', resources);
+  render(mdText, resources = {}, epoch = 0) {
+    if (epoch !== resourceEpoch) {
+      resourceCache = {};
+      resourceEpoch = epoch;
+    }
+    const keys = Object.keys(resources);
+    for (let i = 0; i < keys.length; i++) {
+      resourceCache[keys[i]] = resources[keys[i]];
+    }
+    const safe = renderMarkdown(mdText || '', resourceCache);
     lastHtml = safe;
     mountPreview(document.getElementById('out'), safe);
     return { length: safe.length, html: safe };

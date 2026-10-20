@@ -103,7 +103,7 @@ class FakeNode {
 }
 const out = new FakeNode('out');
 global.window = {};
-global.document = { createElement: tag => new FakeNode(tag), getElementById: () => out };
+global.document = { createElement: tag => new FakeNode(tag), getElementById: () => out, scrollingElement: { scrollTop: 0 } };
 const previewCode = buildSync({ entryPoints: [path.join(__dirname, '../web-tools/src/preview.js')], bundle: true,
   platform: 'browser', format: 'cjs', write: false }).outputFiles[0].text;
 const preview = { exports: {} };
@@ -126,4 +126,11 @@ api.render('one changed\n\n![pic](<attachments/pic.png>)\n\ntwo changed', pictur
 assert.equal(out.querySelectorAll('img[src]')[0], image);
 api.render('one changed\n\n![other](<attachments/pic.png>)\n\ntwo changed', picture);
 assert.notEqual(out.querySelectorAll('img[src]')[0], image);
-console.log('12 HTML embed groups passed (graph, styles, imports, images, cycles, media, escapes, safety, inline position, attachment discovery, iframe reuse, image reuse)');
+// 宿主只发增量：同一 epoch 复用 Web 缓存，epoch 变化后清空。
+api.render('epoch same\n\n![HTML](<attachments/block.html>)', {}, 0);
+assert.equal(out.querySelectorAll('iframe[sandbox]').length, 1);
+api.render('epoch new\n\n![HTML](<attachments/block.html>)', {}, 1);
+assert.equal(out.querySelectorAll('iframe[sandbox]').length, 0);
+api.render('epoch new again\n\n![HTML](<attachments/block.html>)', embed, 1);
+assert.equal(out.querySelectorAll('iframe[sandbox]').length, 1);
+console.log('13 HTML embed groups passed (graph, styles, imports, images, cycles, media, escapes, safety, inline position, attachment discovery, iframe reuse, image reuse, resource delta)');

@@ -13,6 +13,9 @@ export class EditorPreview {
   private host: EditorController;
   private resourceCache: Map<string, Record<string, string>> = new Map<string, Record<string, string>>();
   private resourceCacheChars: number = 0;
+  // 已成功下发给当前预览页的资源键；预览页重载（epoch 变化）后清空重发。
+  private sentResources: Set<string> = new Set<string>();
+  private sentEpoch: number = -1;
   constructor(host: EditorController) { this.host = host; }
   scheduleDocSync(): void {
     if (this.host.state.viewMode === DefaultView.EDIT && !this.host.state.outlineVisible && !this.host.state.findVisible) {
@@ -87,9 +90,20 @@ export class EditorPreview {
         } catch (e) { incomplete = true; }
       }
       if (!this.host.isActive() || session !== this.host.env.activeSession || md !== this.host.env.lastPreviewedMd) { return; }
+      const epoch = this.host.env.previewEpoch;
+      if (epoch !== this.sentEpoch) {
+        this.sentResources.clear();
+        this.sentEpoch = epoch;
+      }
+      // 只下发当前预览页还没有的资源；大 HTML/图片不再每次输入全量跨桥。
+      const delta: Record<string, string> = {};
+      for (const key of Object.keys(resources)) {
+        if (!this.sentResources.has(key)) { delta[key] = resources[key]; }
+      }
       if (incomplete) { MuLogger.info('[预览] 部分图片无法读取或超过限额，正文及附件未修改'); }
       await this.host.runJsChecked(this.host.env.previewController,
-        `window.__previewApi.render(${JSON.stringify(md)}, ${JSON.stringify(resources)});`);
+        `window.__previewApi.render(${JSON.stringify(md)}, ${JSON.stringify(delta)}, ${epoch});`);
+      for (const key of Object.keys(delta)) { this.sentResources.add(key); }
     } catch (e) {
       if (this.host.isActive() && session === this.host.env.activeSession && md === this.host.env.lastPreviewedMd) {
         // 允许下一次同步重试，而不是一直停留在旧预览。

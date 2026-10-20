@@ -159,6 +159,7 @@ export struct EditorWorkspace {
               return !request.getRequestUrl().endsWith('/web/preview.html');
             })
             .onPageEnd(() => {
+              this.actions.env.previewEpoch++;
               this.actions.env.previewReady = true;
               this.actions.applyPreviewStyle();
               this.actions.syncDocNow();
