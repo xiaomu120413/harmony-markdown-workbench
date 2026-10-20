@@ -212,6 +212,35 @@ cases.push({ name: 'failed system transfer rejects once and the next drop can su
 } });
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mumark-tests-'));
 const filesDir = path.join(dir, 'files'); fs.mkdirSync(filesDir); fs.mkdirSync(path.join(filesDir, 'attachments'));
+const { InternalFileSource } = load(path.join(root, 'entry/src/main/ets/infrastructure/file/InternalFileSource.ets'));
+cases.push({ name: 'confirmed library deletion unlinks only the selected file and creates no recycle copy', body() {
+  const lib = path.join(filesDir, 'library'); fs.mkdirSync(lib, { recursive: true });
+  fs.writeFileSync(path.join(lib, 'delete-me.md'), 'delete fixture');
+  fs.writeFileSync(path.join(lib, 'keep-me.md'), 'keep fixture');
+  const source = new InternalFileSource({ filesDir });
+  assert.equal(source.deleteLibrary('delete-me.md'), true);
+  assert.equal(fs.existsSync(path.join(lib, 'delete-me.md')), false);
+  assert.equal(fs.existsSync(path.join(lib, '.trash')), false);
+  assert.equal(fs.readFileSync(path.join(lib, 'keep-me.md'), 'utf8'), 'keep fixture');
+  assert.equal(source.deleteLibrary('delete-me.md'), false);
+} });
+cases.push({ name: 'library deletion rejects traversal and directories without touching other data', body() {
+  const source = new InternalFileSource({ filesDir });
+  const outside = path.join(filesDir, 'outside.md'); fs.writeFileSync(outside, 'outside fixture');
+  assert.equal(source.deleteLibrary('../outside.md'), false);
+  assert.equal(fs.readFileSync(outside, 'utf8'), 'outside fixture');
+  const folder = path.join(filesDir, 'library', 'folder'); fs.mkdirSync(folder);
+  assert.equal(source.deleteLibrary('folder'), false);
+  assert.equal(fs.statSync(folder).isDirectory(), true);
+} });
+cases.push({ name: 'new deletion does not purge or restore legacy recycled files', body() {
+  const lib = path.join(filesDir, 'library'), legacy = path.join(lib, '.trash');
+  fs.mkdirSync(legacy); fs.writeFileSync(path.join(legacy, 'legacy.md.123'), 'legacy fixture');
+  fs.writeFileSync(path.join(lib, 'new-delete.md'), 'new fixture');
+  assert.equal(new InternalFileSource({ filesDir }).deleteLibrary('new-delete.md'), true);
+  assert.deepEqual(fs.readdirSync(legacy), ['legacy.md.123']);
+  assert.equal(fs.existsSync(path.join(lib, 'legacy.md')), false);
+} });
 cases.push({ name: 'import persists document, reuses identical copy and never overwrites different content', async body() {
   const source = path.join(dir, 'imported.md').replaceAll('\\', '/'); fs.writeFileSync(source, '# 第一份\r\n木笺🙂');
   const service = new DocumentImportService({ filesDir, cacheDir: dir });

@@ -13,8 +13,6 @@ export class HomeState {
   pickingFile: boolean = false;
   renamingFrom: string = '';
   renameText: string = '';
-  trashFiles: string[] = [];
-  trashOpen: boolean = false;
   searchQuery: string = '';
   recentCollapsed: boolean = false;
   searchResults: DocSearchResult[] = [];

@@ -27,7 +27,7 @@ export class EditorDocuments {
   deleteDocument(docId: string): void {
     if (!this.host.isActive() || this.host.state.deliveryBusy) { return; }
     if (!docId.startsWith('library/')) {
-      promptAction.showToast({ message: '外部原文件请在文件管理器中删除，应用回收站只管理“我的文档”' });
+      promptAction.showToast({ message: '外部原文件请在文件管理器中删除' });
       return;
     }
     if (FileNameValidator.validate(docId.substring('library/'.length)) !== undefined) {
@@ -40,31 +40,32 @@ export class EditorDocuments {
       return;
     }
     AlertDialog.show({
-      title: '移入回收站', message: `“${RecentFileList.displayName(docId)}”可在“我的文档”的回收站中恢复。`,
-      primaryButton: { value: '移入回收站', fontColor: this.host.state.pal.DANGER,
-        action: () => { this.trashDocument(docId); } },
+      title: '删除文档', message: `确定删除“${RecentFileList.displayName(docId)}”？文件将直接删除，无法恢复。`,
+      primaryButton: { value: '删除', fontColor: this.host.state.pal.DANGER,
+        action: () => { this.deleteConfirmed(docId); } },
       secondaryButton: { value: '取消', action: () => {} },
     });
   }
 
-  private async trashDocument(docId: string): Promise<void> {
+  private async deleteConfirmed(docId: string): Promise<void> {
     const target = this.host.state.docTarget;
     if (!this.host.isActive() || this.host.state.deliveryBusy ||
       (target?.kind === 'internal' && target.relativePath === docId)) { return; }
     this.host.state.deliveryBusy = true;
     try {
-      if (!this.host.env.internal.trashLibrary(docId.substring('library/'.length))) {
-        promptAction.showToast({ message: '删除失败，文件未移入回收站' });
+      if (!this.host.env.internal.deleteLibrary(docId.substring('library/'.length))) {
+        promptAction.showToast({ message: '删除失败，请重试' });
         return;
       }
+      this.host.env.drafts.remove(`internal:${docId}`);
       const entries = await this.host.env.meta.loadRecent();
       const list = new RecentFileList(entries);
       list.remove(docId);
       await this.host.env.meta.saveRecent(list.snapshot());
-      promptAction.showToast({ message: '已移入回收站，可在“我的文档”中恢复' });
+      promptAction.showToast({ message: '已删除' });
     } catch (e) {
-      MuLogger.warn('[最近] 文件已移入回收站，但最近记录更新失败');
-      promptAction.showToast({ message: '已移入回收站，但最近记录更新失败' });
+      MuLogger.warn('[最近] 文件已删除，但最近记录更新失败');
+      promptAction.showToast({ message: '文件已删除，但最近记录更新失败' });
     } finally {
       this.host.state.deliveryBusy = false;
       if (this.host.isActive()) { this.host.refreshSidebarData(); }
@@ -208,7 +209,7 @@ export class EditorDocuments {
       this.host.env.docFormat = { encoding: r.encoding, lineEnding: r.lineEnding };
       this.host.env.docValidUtf8 = r.validUtf8;
       this.host.state.loadState = 'ready';
-      this.host.trackRecent(target).then(() => this.host.refreshSidebarData());
+      this.host.trackRecent(target);
       if (this.host.env.webReady) {
         this.host.flushPendingLoad();
       }
@@ -253,6 +254,7 @@ export class EditorDocuments {
       const list = new RecentFileList(entries);
       list.touch(id, Date.now());
       await this.host.env.meta.saveRecent(list.snapshot());
+      if (this.host.isActive()) { this.host.refreshSidebarData(); }
     } catch (e) {
       // 元数据失败不影响正文保存
     }

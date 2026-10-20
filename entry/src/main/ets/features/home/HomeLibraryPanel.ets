@@ -88,40 +88,6 @@ export struct HomeLibraryPanel {
       }
       .constraintSize({ maxHeight: 200 })
       .width('100%')
-
-      // 回收站（可见、可恢复）
-      if (this.state.trashFiles.length > 0 || this.state.trashOpen) {
-        Divider().color(this.state.pal.DIVIDER).margin({ top: 4, bottom: 4 })
-        Row() {
-          Text(`回收站 · ${this.state.trashFiles.length}`)
-            .fontSize(13)
-            .fontColor(this.state.pal.TEXT_SUB)
-            .layoutWeight(1)
-          Button(this.state.trashOpen ? '收起' : '展开', { type: ButtonType.Normal })
-            .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
-            .onClick(() => {
-              this.state.trashOpen = !this.state.trashOpen;
-            })
-        }
-        .width('100%')
-        if (this.state.trashOpen) {
-          ForEach(this.state.trashFiles, (trashName: string) => {
-            Row({ space: 10 }) {
-              Text(this.actions.trashDisplayName(trashName))
-                .fontSize(13)
-                .fontColor(this.state.pal.TEXT_SUB)
-                .maxLines(1)
-                .layoutWeight(1)
-              Button('恢复', { type: ButtonType.Normal })
-                .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
-                .onClick(() => this.actions.restoreFromTrash(trashName))
-            }
-            .width('100%')
-            .height(ControlMetrics.HEIGHT)
-            .padding({ left: 12, right: 12 })
-          }, (trashName: string) => trashName)
-        }
-      }
     }
     .width('100%')
     .padding(14)

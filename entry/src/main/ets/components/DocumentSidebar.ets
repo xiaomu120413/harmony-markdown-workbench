@@ -110,7 +110,10 @@ export struct DocumentSidebar {
         })
 
       // 列表
-      if (this.filter === 'pinned' && this.pinned().length === 0) {
+      if (this.searchQuery.trim().length > 0 &&
+        (this.filter === 'library' ? this.visibleLibrary().length === 0 : this.visibleRecent().length === 0)) {
+        Text('没有匹配的文档').fontSize(12).fontColor(this.pal.TEXT_FAINT).padding(12)
+      } else if (this.filter === 'pinned' && this.pinned().length === 0) {
         Text('点击文档旁的图钉，将常用文档置顶')
           .fontSize(12).fontColor(this.pal.TEXT_FAINT).padding(12)
       }

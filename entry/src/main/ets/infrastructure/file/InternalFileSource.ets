@@ -14,6 +14,8 @@ import { TextEncodingDetector } from '../../domain/document/TextEncoding';
 import { TextRoundtrip, DocumentWriteFormat } from '../../domain/document/DocumentFileAdapter';
 import { util } from '@kit.ArkTS';
 import { SafeFileIO } from './SafeFileIO';
+import { FileNameValidator } from '../../domain/document/FileNameValidator';
+import { MuLogger } from '../../common/MuLogger';
 
 /**
  * 内部资料库文件适配器（FR-FILE-001 / M1-01）。
@@ -150,23 +152,17 @@ export class InternalFileSource implements DocumentFileAdapter {
     }
   }
 
-  /**
-   * 移入回收站（V0.4.2 库管理；C3-1 唯一回收 ID）。
-   * 回收名 = 原名.<时间戳>（两次删除同名文档不互相覆盖）。
-   */
-  trashLibrary(name: string): boolean {
-    const libDir = `${this.baseDir}/library`;
-    const trashDir = `${libDir}/.trash`;
-    const trashName = `${name}.${Date.now()}`;
+  /** 用户确认后直接删除应用内文件，不建立回收副本。 */
+  deleteLibrary(name: string): boolean {
+    if (FileNameValidator.validate(name) !== undefined) {
+      MuLogger.warn('[删除] 拒绝无效的应用内文件名');
+      return false;
+    }
     try {
-      try {
-        fs.mkdirSync(trashDir);
-      } catch (e) {
-        // 已存在
-      }
-      fs.renameSync(`${libDir}/${name}`, `${trashDir}/${trashName}`);
+      fs.unlinkSync(`${this.baseDir}/library/${name}`);
       return true;
     } catch (e) {
+      MuLogger.warn('[删除] 应用内文件删除失败');
       return false;
     }
   }
@@ -223,46 +219,4 @@ export class InternalFileSource implements DocumentFileAdapter {
     return `${this.baseDir}/attachments/${name}`;
   }
 
-  /** 枚举回收站（V0.4.4：回收站可见可恢复，兑现"回收站"承诺） */
-  listTrash(): string[] {
-    const names: string[] = [];
-    try {
-      const all = fs.listFileSync(`${this.baseDir}/library/.trash`);
-      for (let i = 0; i < all.length; i++) {
-        if (!all[i].startsWith('.')) {
-          names.push(all[i]);
-        }
-      }
-    } catch (e) {
-      // 目录不存在 → 空列表
-    }
-    return names;
-  }
-
-  /**
-   * 从回收站恢复（C3-2：重名自动避让 原名(N).恢复.md；不覆盖现有文档）。
-   * 返回恢复后的文件名（失败返回空串）。
-   */
-  restoreTrash(trashName: string): string {
-    const libDir = `${this.baseDir}/library`;
-    // 回收名格式：原名.<时间戳> → 提取原名
-    const dot = trashName.lastIndexOf('.');
-    const origName = dot > 0 ? trashName.substring(0, dot) : trashName;
-    try {
-      let target = origName;
-      const existing = this.listLibrary();
-      let n = 2;
-      while (existing.indexOf(target) !== -1) {
-        const mdDot = origName.lastIndexOf('.md');
-        target = mdDot > 0
-          ? `${origName.substring(0, mdDot)}(${n})${origName.substring(mdDot)}`
-          : `${origName}(${n})`;
-        n++;
-      }
-      fs.renameSync(`${libDir}/.trash/${trashName}`, `${libDir}/${target}`);
-      return target;
-    } catch (e) {
-      return '';
-    }
-  }
 }
