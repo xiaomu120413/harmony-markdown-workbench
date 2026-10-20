@@ -19,9 +19,9 @@ REQ-SIMPLIFY-001：删除没有独立规则的回调适配、运行时转发、�
 - 删除 5 个实现文件，生产源码净减少 107 行；Controller 为 212 行，MetadataStore 为 78 行。没有增加类、接口、观察字段或依赖。
 - draftIdOf 与 fingerprintOf 原实现完全相同，统一使用 draftIdOf；大纲的范围类型保留，只有未使用的路由类型删除。
 - SaveCoordinatorDeps 使用现有回调接口的函数属性形式，符合 ArkTS 对有类型对象字面量的要求。三个初始化位置共用相同回调绑定，加载/另存时的 session/version 设置原样保留。
-- `node scripts/test-host.cjs`：237/237，通过原领域/文件回归及旧侧栏键、最近索引不被覆盖、偏好失败回退测试。
-- `node scripts/test-editor-actions.cjs`：24 组，通过每次挂载的队列隔离、退出后不接收旧事件、查找/加载过期回包，以及严格 Web 读取失败与可降级返回值的区分。
-- `node scripts/test-file-transactions.cjs`：14 组，通过另存目标切换和继续保存、导出不换目标、取消/失败保留原会话、旧选择器回调丢弃。
+- `node scripts/test/test-host.cjs`：237/237，通过原领域/文件回归及旧侧栏键、最近索引不被覆盖、偏好失败回退测试。
+- `node scripts/test/test-editor-actions.cjs`：24 组，通过每次挂载的队列隔离、退出后不接收旧事件、查找/加载过期回包，以及严格 Web 读取失败与可降级返回值的区分。
+- `node scripts/test/test-file-transactions.cjs`：14 组，通过另存目标切换和继续保存、导出不换目标、取消/失败保留原会话、旧选择器回调丢弃。
 - `test-page-viewmodels.cjs`、`test-external-access.cjs`、`test-window-viewport.cjs`：7、9、8 组通过。上述平台边界均为 mock。
 - `hvigorw.bat test --mode module -p product=default`、`hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release`：BUILD SUCCESSFUL，日志 `build-logs/simplify-test.log`、`build-logs/simplify-release.log`；既有 ESObject/弃用警告保留。
 - `check-source-size.mjs`、`check-source-encoding.mjs`、`check-docs.mjs`、`git diff --check`：通过；122 个手写源文件/测试/脚本均不超过 500 行，中文回读正常。

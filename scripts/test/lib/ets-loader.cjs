@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
-const { transformSync } = require('../../web-tools/node_modules/esbuild');
+const { transformSync } = require('../../../web-tools/node_modules/esbuild');
 
 /** Runs real non-UI ArkTS modules; platform boundaries and decorators are explicit stubs. */
 module.exports = function createLoader(kits, globals = {}) {

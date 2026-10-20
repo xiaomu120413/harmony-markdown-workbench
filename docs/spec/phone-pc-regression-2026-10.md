@@ -56,16 +56,16 @@ python build-logs/device-regression/verify_evidence.py
 
 本轮再次运行：
 
-- `node scripts/test-host.cjs`：237/237。
-- `node scripts/test-editor-actions.cjs`：24 组。
-- `node scripts/test-file-transactions.cjs`：14 组。
-- `node scripts/test-page-viewmodels.cjs`：7 组。
-- `node scripts/test-external-access.cjs`：9 组。
-- `node scripts/test-window-viewport.cjs`：8 组。
+- `node scripts/test/test-host.cjs`：237/237。
+- `node scripts/test/test-editor-actions.cjs`：24 组。
+- `node scripts/test/test-file-transactions.cjs`：14 组。
+- `node scripts/test/test-page-viewmodels.cjs`：7 组。
+- `node scripts/test/test-external-access.cjs`：9 组。
+- `node scripts/test/test-window-viewport.cjs`：8 组。
 
 上述主机测试使用真实业务模块，但平台边界为 mock，不代替设备授权验证。本轮未改源码，沿用基线已通过的 ArkTS test / Release HAP 构建及同一验证 HAP，不重复签名构建。
 
-提交前 `node scripts/check-source-size.mjs`、`node scripts/check-source-encoding.mjs`、`node scripts/check-docs.mjs`、`git diff --check` 均通过：122 个手写源码/测试/脚本符合 500 行限制，197 个文本文件通过严格 UTF-8 检查，42 个 Markdown 文件通过编码与本地链接检查。中文按 UTF-8 回读正常，截图已逐张检查。
+提交前 `node scripts/check/check-source-size.mjs`、`node scripts/check/check-source-encoding.mjs`、`node scripts/check/check-docs.mjs`、`git diff --check` 均通过：122 个手写源码/测试/脚本符合 500 行限制，197 个文本文件通过严格 UTF-8 检查，42 个 Markdown 文件通过编码与本地链接检查。中文按 UTF-8 回读正常，截图已逐张检查。
 
 ## 限制与回滚
 

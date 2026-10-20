@@ -51,11 +51,11 @@
 
 | 验证 | 结果 |
 |---|---|
-| `node scripts/test-host.cjs` | 228/228 通过，平台 IO 为 mock；验证保存和交付业务不替代原生授权 |
+| `node scripts/test/test-host.cjs` | 228/228 通过，平台 IO 为 mock；验证保存和交付业务不替代原生授权 |
 | `hvigorw.bat test --mode module -p product=default` | 最终源码 BUILD SUCCESSFUL，exit 0 |
 | `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` | 最终源码 BUILD SUCCESSFUL，exit 0 |
 | `powershell -ExecutionPolicy Bypass -File build-logs/rebuild-validation.ps1` | Debug 构建、验证签名及主体交互运行通过；最终源码已再次构建并后台升级安装，没有切换设备前台 |
-| `node scripts/check-docs.mjs` | 32 个 Markdown 文件 UTF-8 与本地链接检查通过 |
+| `node scripts/check/check-docs.mjs` | 32 个 Markdown 文件 UTF-8 与本地链接检查通过 |
 | `git diff --check` | 通过 |
 
 ## 需求结论与未验证项

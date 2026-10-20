@@ -3,7 +3,7 @@ rem TASK-M0-01 clean-build：模拟无缓存环境从零构建并执行测试门
 rem 删除项目内缓存（oh_modules/.hvigor/build/.test）后：ohpm install → assembleHap → test。
 rem 门禁：测试日志中出现 hypium 断言错误（hvigor 对用例失败仍返回成功）即判定失败。
 setlocal enabledelayedexpansion
-cd /d %~dp0..
+cd /d %~dp0..\..
 
 set "OHPM="
 if defined DEVECO_STUDIO_PATH (

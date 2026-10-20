@@ -25,7 +25,7 @@
 
 ## A-05 CI 策略
 
-- GitHub-hosted runner 无 HarmonyOS SDK；CI 采用**自托管 runner + clean-build 脚本**模式，本地以 `scripts/clean-build.sh` 作为"无缓存环境"等价验证。workflow 未实跑通过前不作为门禁（R-06）。
+- GitHub-hosted runner 无 HarmonyOS SDK；CI 采用**自托管 runner + clean-build 脚本**模式，本地以 `scripts/build/clean-build.sh` 作为"无缓存环境"等价验证。workflow 未实跑通过前不作为门禁（R-06）。
 
 ## A-06 日志与隐私
 
@@ -38,7 +38,7 @@
 
 ## A-08 签名与真机调试策略（M0-02 实测，2026-08-29）
 
-- 工程保持 `signingConfigs` 为空（密码零入库）；`scripts/sign-local.sh` 产出官方 OpenHarmony CA 签名安装包（材料在工程外 `../local-sign/`，不入库）。
+- 工程保持 `signingConfigs` 为空（密码零入库）；`scripts/build/sign-local.sh` 产出官方 OpenHarmony CA 签名安装包（材料在工程外 `../local-sign/`，不入库）。
 - **真机安装已验证**（MateBook Pro / OpenHarmony 7.0.0.28）：官方 CA 体系 + 设备信任库补入 Profile CA（一次性操作，见 external-uri.md 第 5 节）。
 - module.json5 `deliveryWithInstall=false`（true 会被动态交付机制回收）。
 - **外部 URI 为单次运行临时授权**（重启实测失效 13900001）：V0.1 产品明示"临时访问"，最近文件提供"重新定位"（ADR-009 草案）。

@@ -30,17 +30,17 @@
 
 | 验证命令 | 结果 |
 |---|---|
-| `node scripts/test-host.cjs` | 234/234，通过真实领域逻辑与模拟平台 IO |
-| `node scripts/test-editor-actions.cjs` | 23 组，含派生状态、过期快照、旧页面回调与设置返回保留视图 |
-| `node scripts/test-file-transactions.cjs` | 14 组，另存切换、导出、取消/失败与后续保存 |
-| `node scripts/test-external-access.cjs` | 9 组，首次保留、重启激活、只读降级、拒绝、撤销、临时读取与禁止无权写回；系统授权边界为 mock |
-| `node scripts/test-page-viewmodels.cjs` | 7 组通过 |
-| `node scripts/test-window-viewport.cjs` | 8 组通过 |
+| `node scripts/test/test-host.cjs` | 234/234，通过真实领域逻辑与模拟平台 IO |
+| `node scripts/test/test-editor-actions.cjs` | 23 组，含派生状态、过期快照、旧页面回调与设置返回保留视图 |
+| `node scripts/test/test-file-transactions.cjs` | 14 组，另存切换、导出、取消/失败与后续保存 |
+| `node scripts/test/test-external-access.cjs` | 9 组，首次保留、重启激活、只读降级、拒绝、撤销、临时读取与禁止无权写回；系统授权边界为 mock |
+| `node scripts/test/test-page-viewmodels.cjs` | 7 组通过 |
+| `node scripts/test/test-window-viewport.cjs` | 8 组通过 |
 | `node web-tools/build-web.js` | 成功，重新生成并提交 editor bundle |
 | `hvigorw.bat test --mode module -p product=default` | BUILD SUCCESSFUL，无测试断言错误；日志 `build-logs/state-test.log` |
 | `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` | BUILD SUCCESSFUL，日志 `build-logs/state-release.log`；仍有既存弃用/ESObject 警告 |
-| `node scripts/check-source-size.mjs` | 126 个手写源文件/测试/脚本均不超过 500 行 |
-| `node scripts/check-source-encoding.mjs`、`node scripts/check-docs.mjs`、`git diff --check` | 通过；中文回读正常 |
+| `node scripts/check/check-source-size.mjs` | 126 个手写源文件/测试/脚本均不超过 500 行 |
+| `node scripts/check/check-source-encoding.mjs`、`node scripts/check/check-docs.mjs`、`git diff --check` | 通过；中文回读正常 |
 
 EditorState 的存储字段从 51 减到 35；13 个非展示字段移至现有 Environment，删除 pageActive，matchCount 和 conflictVisible 改为 getter；saveLabel 从 loadState 与单一 SaveState 派生。没有新增刷新计数、状态管理库或帮助 ViewModel。
 

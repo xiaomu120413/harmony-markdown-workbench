@@ -43,14 +43,14 @@
 
 ### 自动化与构建
 
-- `node scripts/test-host.cjs`：234/234 通过，新增无扩展名与自定义扩展名交付文件名用例。
-- `node scripts/test-editor-actions.cjs`：13 组通过。
-- `node scripts/test-file-transactions.cjs`：14 组通过，运行真实 Controller / SaveCoordinator，mock 系统边界，覆盖另存为取消 / 失败 / 成功后继续保存、三种导出不改目标、打开 / 重选的过期结果、交付及照片选择在页面销毁后的结果。已加入 CI。
-- `node scripts/test-window-viewport.cjs`：8 组通过。
+- `node scripts/test/test-host.cjs`：234/234 通过，新增无扩展名与自定义扩展名交付文件名用例。
+- `node scripts/test/test-editor-actions.cjs`：13 组通过。
+- `node scripts/test/test-file-transactions.cjs`：14 组通过，运行真实 Controller / SaveCoordinator，mock 系统边界，覆盖另存为取消 / 失败 / 成功后继续保存、三种导出不改目标、打开 / 重选的过期结果、交付及照片选择在页面销毁后的结果。已加入 CI。
+- `node scripts/test/test-window-viewport.cjs`：8 组通过。
 - `hvigorw.bat test --mode module -p product=default`：BUILD SUCCESSFUL；日志 `build-logs/files-regression-test.log`。
 - `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release`：BUILD SUCCESSFUL；日志 `build-logs/files-regression-release.log`。保留既有 ESObject / 废弃 API 告警；Release 未签正式证书。
 - 独立验证包本地构建、签名、覆盖安装成功；签名过程未改变生产 bundle 配置。
-- `node scripts/check-source-size.mjs`、`node scripts/check-source-encoding.mjs`、`node scripts/check-docs.mjs`、`git diff --check`：通过，所有手写代码 / 测试 / 脚本不超过 500 行。
+- `node scripts/check/check-source-size.mjs`、`node scripts/check/check-source-encoding.mjs`、`node scripts/check/check-docs.mjs`、`git diff --check`：通过，所有手写代码 / 测试 / 脚本不超过 500 行。
 
 ### 核对摘要
 

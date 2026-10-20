@@ -19,10 +19,10 @@
 
 | 命令 | 本轮结果 |
 |---|---|
-| `node scripts/test-host.cjs` | 233/233，通过真实领域源码与平台 IO mock；新增代理码点、分隔线临界值、小数断点/双向变化与监听清理、API 门控、草稿 7 字节短读恢复 |
-| `node scripts/test-editor-actions.cjs` | 7 组场景通过；执行当前页面真实方法及真实 ViewModePolicy，覆盖窄窗大纲、面板切换、空间不足拦截、收窄退出分屏等；不代表 ArkUI 渲染 |
-| `node scripts/check-source-encoding.mjs` | 145 个源码/配置/文档文本文件严格 UTF-8 解码及 U+FFFD 检查通过；不保证发现所有历史可解码乱码 |
-| `node scripts/check-docs.mjs` | 34 个 Markdown UTF-8 与本地链接通过 |
+| `node scripts/test/test-host.cjs` | 233/233，通过真实领域源码与平台 IO mock；新增代理码点、分隔线临界值、小数断点/双向变化与监听清理、API 门控、草稿 7 字节短读恢复 |
+| `node scripts/test/test-editor-actions.cjs` | 7 组场景通过；执行当前页面真实方法及真实 ViewModePolicy，覆盖窄窗大纲、面板切换、空间不足拦截、收窄退出分屏等；不代表 ArkUI 渲染 |
+| `node scripts/check/check-source-encoding.mjs` | 145 个源码/配置/文档文本文件严格 UTF-8 解码及 U+FFFD 检查通过；不保证发现所有历史可解码乱码 |
+| `node scripts/check/check-docs.mjs` | 34 个 Markdown UTF-8 与本地链接通过 |
 | `hvigorw.bat test --mode module -p product=default` | BUILD SUCCESSFUL，exit 0；日志 `build-logs/compat-test.log` |
 | `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` | BUILD SUCCESSFUL，exit 0；日志 `build-logs/compat-release.log`；新接口版本告警已消除 |
 | `git diff --check` | 通过 |

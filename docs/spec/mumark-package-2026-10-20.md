@@ -10,9 +10,9 @@ REQ-BRAND-002：正式 bundleName 改为 com.mumark.app，versionName 为 1.0.0�
 
 ## 验证记录
 
-- Windows / 当前 DevEco SDK / 内置 JBR：`node scripts/test-host.cjs` 255/255 通过，包含草稿 appVersion 与 AppScope versionName 的一致性验证。
+- Windows / 当前 DevEco SDK / 内置 JBR：`node scripts/test/test-host.cjs` 255/255 通过，包含草稿 appVersion 与 AppScope versionName 的一致性验证。
 - `hvigorw.bat test --mode module -p product=default`、`hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` 均 BUILD SUCCESSFUL，日志在忽略目录 build-logs/mumark-package-test.log 与 mumark-package-release.log。既有 ArkTS 弃用/ESObject 等警告保留。
 - Python zipfile 读取实际 Release unsigned HAP 的 module.json：bundleName=com.mumark.app、versionName=1.0.0、versionCode=1000000、vendor=MuMark，断言全部通过；最低与目标 API 仍为 22（打包值 60002022）。
-- Git Bash `bash -n scripts/sign-local.sh` 通过；源码行数、严格 UTF-8、文档链接与 `git diff --check` 通过，手写文件仍不超过 500 行。
+- Git Bash `bash -n scripts/build/sign-local.sh` 通过；源码行数、严格 UTF-8、文档链接与 `git diff --check` 通过，手写文件仍不超过 500 行。
 
 未进行新正式包装机、正式签名或旧数据迁移验收：本轮产物为 unsigned HAP，新包对应的正式证书/Profile 待用户申请；没有复用旧包身份或卸载旧应用。

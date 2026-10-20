@@ -2,7 +2,7 @@
 from pathlib import Path
 import cairosvg
 
-root = Path(__file__).resolve().parent.parent
+root = Path(__file__).resolve().parent.parent.parent
 source = root / 'docs' / 'brand'
 target = root / 'AppScope' / 'resources' / 'base' / 'media'
 for layer in ('background', 'foreground'):

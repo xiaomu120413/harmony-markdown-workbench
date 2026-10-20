@@ -14,6 +14,6 @@ ST-STORE-001：沿用蓝青品牌、现有图标与真实应用截图做排版�
 
 手机为本轮模拟器干净演示文档；PC 第一张采集自本轮 MateBook 的应用窗口；PC 其余两张与平板三张引用已留存真实界面，保留实际示例文件名。PC 设备有其他任务使用，用户表示暂不便独占后未再操作该设备。原始来源图、裁剪说明、缩放位置和海报哈希保存在[来源清单](../store/mumark-1.0.0/manifest.json)。不将任何历史图称为本轮新采集。
 
-`python scripts/generate-store-assets.py` 通过全部尺寸、大小、文案长度断言；生成器 AST 解析通过。ZIP 26 个文件 CRC 检查通过。[总览](../store/mumark-1.0.0/preview.jpg)及手机写作/导出、平板分屏、PC 写作代表图已实际打开检查，无文字裁切或界面拉伸。`check-source-size.mjs`：129 个手写文件均小于 500 行；`check-source-encoding.mjs`：228 文本文件通过；`check-docs.mjs`：50 个 Markdown 通过；`git diff --check` 通过。
+`python scripts/build/generate-store-assets.py` 通过全部尺寸、大小、文案长度断言；生成器 AST 解析通过。ZIP 26 个文件 CRC 检查通过。[总览](../store/mumark-1.0.0/preview.jpg)及手机写作/导出、平板分屏、PC 写作代表图已实际打开检查，无文字裁切或界面拉伸。`check-source-size.mjs`：129 个手写文件均小于 500 行；`check-source-encoding.mjs`：228 文本文件通过；`check-docs.mjs`：50 个 Markdown 通过；`git diff --check` 通过。
 
 资料位于[素材目录](../store/mumark-1.0.0/README.md)。压缩包另复制到用户桌面；不提交生成 ZIP 或系统字体，不包含 sign_tools。本轮不改应用代码，因此不新增业务测试或重复 HAP/设备功能回归；未执行后台上传、保存草稿或提交审核。

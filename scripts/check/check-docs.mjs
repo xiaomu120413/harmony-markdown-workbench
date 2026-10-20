@@ -1,14 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const root = path.resolve(import.meta.dirname, '..');
+const root = path.resolve(import.meta.dirname, '../..');
 function markdownFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const file = path.join(directory, entry.name);
     return entry.isDirectory() ? markdownFiles(file) : entry.name.endsWith('.md') ? [file] : [];
   });
 }
-const files = [path.join(root, 'README.md'), path.join(root, 'MuMark-SDD.md'),
+const files = [path.join(root, 'README.md'), path.join(root, 'docs/MuMark-SDD.md'),
   ...markdownFiles(path.join(root, 'docs'))];
 const errors = [];
 for (const file of files) {

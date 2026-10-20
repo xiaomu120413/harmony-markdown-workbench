@@ -7,7 +7,7 @@ const load = createLoader({
   '@kit.PerformanceAnalysisKit': { hilog: { info() {}, warn() {}, error() {} } },
   '@kit.ArkUI': { promptAction: { showToast: value => toasts.push(value) } },
 }, { Observed: cls => cls });
-const root = path.join(__dirname, '../entry/src/main/ets');
+const root = path.join(__dirname, '../../entry/src/main/ets');
 const { SettingsState } = load(`${root}/features/settings/SettingsState`);
 const { SettingsViewModel } = load(`${root}/features/settings/SettingsViewModel`);
 const { RecoveryState } = load(`${root}/features/recovery/RecoveryState`);

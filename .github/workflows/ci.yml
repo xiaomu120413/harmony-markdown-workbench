@@ -41,18 +41,18 @@ jobs:
         working-directory: web-tools
       - name: Source and behavior gates
         run: |
-          node scripts/check-source-size.mjs
-          node scripts/check-source-encoding.mjs
-          node scripts/check-docs.mjs
-          node scripts/test-host.cjs
-          node scripts/test-editor-actions.cjs
-          node scripts/test-file-transactions.cjs
-          node scripts/test-external-access.cjs
-          node scripts/test-page-viewmodels.cjs
-          node scripts/test-window-viewport.cjs
-          node scripts/test-html-preview.cjs
-          node scripts/test-html-resources.cjs
-          node scripts/test-html-embed.cjs
+          node scripts/check/check-source-size.mjs
+          node scripts/check/check-source-encoding.mjs
+          node scripts/check/check-docs.mjs
+          node scripts/test/test-host.cjs
+          node scripts/test/test-editor-actions.cjs
+          node scripts/test/test-file-transactions.cjs
+          node scripts/test/test-external-access.cjs
+          node scripts/test/test-page-viewmodels.cjs
+          node scripts/test/test-window-viewport.cjs
+          node scripts/test/test-html-preview.cjs
+          node scripts/test/test-html-resources.cjs
+          node scripts/test/test-html-embed.cjs
       - name: Assert committed bundles unchanged
         run: |
           git diff --exit-code -- entry/src/main/resources/rawfile/web/ \
@@ -66,7 +66,7 @@ jobs:
       - name: Shell syntax
         run: |
           set -e
-          for f in scripts/*.sh; do bash -n "$f"; done
+          for f in scripts/build/*.sh; do bash -n "$f"; done
       - name: Manifest JSON parse
         run: |
           set -e

@@ -44,11 +44,11 @@ EditorState / HomeState 是可观察的展示状态，Controller 与其功能协
 
 ### 命令与结果
 
-- `node scripts/test-host.cjs`：234/234。
-- `node scripts/test-editor-actions.cjs`：19 组；新增编辑后查找重算、查询变更、销毁后的结果、真实正文版本门控、连续加载相同目标时旧读失效、清空首页搜索。
-- `node scripts/test-file-transactions.cjs`：14 组。
-- `node scripts/test-page-viewmodels.cjs`：7 组；快速设置串行写入、失败/重试、字号校验、离页加载、恢复冲突和副本失败保留草稿。已加入 CI。
-- `node scripts/test-window-viewport.cjs`：8 组。
+- `node scripts/test/test-host.cjs`：234/234。
+- `node scripts/test/test-editor-actions.cjs`：19 组；新增编辑后查找重算、查询变更、销毁后的结果、真实正文版本门控、连续加载相同目标时旧读失效、清空首页搜索。
+- `node scripts/test/test-file-transactions.cjs`：14 组。
+- `node scripts/test/test-page-viewmodels.cjs`：7 组；快速设置串行写入、失败/重试、字号校验、离页加载、恢复冲突和副本失败保留草稿。已加入 CI。
+- `node scripts/test/test-window-viewport.cjs`：8 组。
 - `hvigorw.bat test --mode module -p product=default`、`assembleHap --mode module -p product=default -p buildMode=release`：BUILD SUCCESSFUL；日志分别在 `build-logs/tablet-test.log`、`build-logs/tablet-release.log`。保留原有 ESObject / 废弃 API 告警。
 - 本地签名验证包构建、覆盖安装成功；生产 bundle 配置恢复后重新构建 Release。
 - 源码大小、严格 UTF-8、文档链接、`git diff --check` 通过；手写源码/测试/脚本均不超过 500 行。

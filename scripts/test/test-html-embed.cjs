@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { buildSync } = require('../web-tools/node_modules/esbuild');
-const source = path.join(__dirname, '../web-tools/src/html-embed.js');
+const { buildSync } = require('../../web-tools/node_modules/esbuild');
+const source = path.join(__dirname, '../../web-tools/src/html-embed.js');
 const code = buildSync({ entryPoints: [source], bundle: true, platform: 'browser', format: 'cjs', write: false }).outputFiles[0].text;
 const moduleObject = { exports: {} };
 new Function('module', 'exports', 'require', code)(moduleObject, moduleObject.exports, require);
@@ -30,7 +30,7 @@ const media = { ...resources, 'styles/main.css': data('text/css', '@import "nest
 assert.ok(bundleHtml(html, media).includes('@media screen'));
 const escaped = '<style>p{background:url("images/a\\20 b.png")}</style><p>中文🙂</p>';
 assert.deepEqual(JSON.parse(inspectHtml(escaped)), ['images/a b.png']);
-assert.ok(require('../web-tools/node_modules/entities').decodeHTML(bundleHtml(escaped,
+assert.ok(require('../../web-tools/node_modules/entities').decodeHTML(bundleHtml(escaped,
   { 'images/a b.png': resources['images/photo.png'] })).includes('中文🙂'));
 const attacks = '<meta http-equiv="refresh" content="0;url=https://evil.invalid"><base href="file:///private/"><form action="https://evil.invalid"><button onclick="alert(1)">GO</button></form><a href="javascript:alert(1)">LINK</a><img src="../../secret.png">';
 const safe = bundleHtml(attacks);
@@ -40,7 +40,7 @@ const largeCss = data('text/css', '/*' + 'x'.repeat(4 * 1024 * 1024 - 4) + '*/')
 assert.throws(() => bundleHtml('<link rel="stylesheet" href="large.css">'.repeat(5), { 'large.css': largeCss }), /总量|展开/);
 assert.throws(() => bundleHtml('<link rel="stylesheet" href="bad.css">', { 'bad.css': data('text/css', [0xff,0xfe]) }));
 
-const markdownCode = buildSync({ entryPoints: [path.join(__dirname, '../web-tools/src/markdown.js')], bundle: true,
+const markdownCode = buildSync({ entryPoints: [path.join(__dirname, '../../web-tools/src/markdown.js')], bundle: true,
   platform: 'node', format: 'cjs', write: false }).outputFiles[0].text;
 const markdown = { exports: {} }; new Function('module', 'exports', 'require', markdownCode)(markdown, markdown.exports, require);
 const attachment = 'attachments/block.html';
@@ -104,7 +104,7 @@ class FakeNode {
 const out = new FakeNode('out');
 global.window = {};
 global.document = { createElement: tag => new FakeNode(tag), getElementById: () => out, scrollingElement: { scrollTop: 0 } };
-const previewCode = buildSync({ entryPoints: [path.join(__dirname, '../web-tools/src/preview.js')], bundle: true,
+const previewCode = buildSync({ entryPoints: [path.join(__dirname, '../../web-tools/src/preview.js')], bundle: true,
   platform: 'browser', format: 'cjs', write: false }).outputFiles[0].text;
 const preview = { exports: {} };
 new Function('module', 'exports', 'require', previewCode)(preview, preview.exports, require);

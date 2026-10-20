@@ -38,9 +38,9 @@ HTML 和 CSS 使用本地 htmlparser2 12.0.0 / css-tree 3.2.1 解析树处理，
 
 命令与结果：
 
-- `node scripts/test-host.cjs`：237/237。
+- `node scripts/test/test-host.cjs`：237/237。
 - `test-editor-actions.cjs`、`test-file-transactions.cjs`、`test-page-viewmodels.cjs`、`test-external-access.cjs`、`test-window-viewport.cjs`、`test-html-preview.cjs`：24、19、7、9、8、8 组通过。
-- `node scripts/test-html-resources.cjs`、`node scripts/test-html-embed.cjs`：各 10 组通过。覆盖编码路径绕过、符号链接、资源限额、CSS 扩张限额、非 UTF-8 CSS、循环/@media/转义、单次集合隔离、资源合成及 sandbox。上述平台 IO 为 mock，设备授权以上述实测为准。
+- `node scripts/test/test-html-resources.cjs`、`node scripts/test/test-html-embed.cjs`：各 10 组通过。覆盖编码路径绕过、符号链接、资源限额、CSS 扩张限额、非 UTF-8 CSS、循环/@media/转义、单次集合隔离、资源合成及 sandbox。上述平台 IO 为 mock，设备授权以上述实测为准。
 - `node web-tools/build-web.js`：两份 Web bundle 重新生成。htmlparser2 与 CSS Tree 固定版本，9 份直接/传递依赖许可证原文已确认包含在验证 HAP 中。
 - `hvigorw.bat test --mode module -p product=default`、`hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release`：BUILD SUCCESSFUL。日志为 build-logs/html-insert-test.log、html-insert-release.log，既有 ESObject/弃用警告保留。验证包构建后再次构建正式包输出，配置仍为正式 bundleName。
 - HDC `file recv` 取回 ZIP、HTML、Markdown；`python build-logs/device-regression/verify_inline_delivery.py`：17/17 通过。辅助脚本、原样本和完整输出保存在忽略目录。

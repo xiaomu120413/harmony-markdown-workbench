@@ -12,7 +12,7 @@
 ## Web 运行时依赖（随 HAP 打包）
 
 版本以 `web-tools/package-lock.json` 为准。所有直接依赖与传递依赖的完整许可证原文见
-[`entry/src/main/resources/rawfile/licenses/web-runtime.txt`](entry/src/main/resources/rawfile/licenses/web-runtime.txt)
+[`entry/src/main/resources/rawfile/licenses/web-runtime.txt`](../entry/src/main/resources/rawfile/licenses/web-runtime.txt)
 （39 个包，构建时从 `web-tools/node_modules` 汇总）。
 
 | 组件 | 版本 | 用途 | 许可证 |
@@ -47,14 +47,14 @@ HTML/CSS 解析在本地 Web 运行时完成，不执行被解析文档中的脚
 
 | 组件 | 版本 | 许可证原文 | 来源 |
 |---|---|---|---|
-| htmlparser2 | 12.0.0 | [MIT](entry/src/main/resources/rawfile/licenses/htmlparser2.txt) | https://github.com/fb55/htmlparser2 |
-| css-tree | 3.2.1 | [MIT](entry/src/main/resources/rawfile/licenses/css-tree.txt) | https://github.com/csstree/csstree |
-| domelementtype | 3.0.0 | [BSD-2-Clause](entry/src/main/resources/rawfile/licenses/domelementtype.txt) | https://github.com/fb55/domelementtype |
-| domhandler | 6.0.1 | [BSD-2-Clause](entry/src/main/resources/rawfile/licenses/domhandler.txt) | https://github.com/fb55/domhandler |
-| domutils | 4.0.2 | [BSD-2-Clause](entry/src/main/resources/rawfile/licenses/domutils.txt) | https://github.com/fb55/domutils |
-| dom-serializer | 3.1.1 | [MIT](entry/src/main/resources/rawfile/licenses/dom-serializer.txt) | https://github.com/cheeriojs/dom-serializer |
-| entities | 8.0.0 | [BSD-2-Clause](entry/src/main/resources/rawfile/licenses/entities.txt) | https://github.com/fb55/entities |
-| mdn-data | 2.27.1 | [CC0-1.0](entry/src/main/resources/rawfile/licenses/mdn-data.txt) | https://github.com/mdn/data |
-| source-map-js | 1.2.2 | [BSD-3-Clause](entry/src/main/resources/rawfile/licenses/source-map-js.txt) | https://github.com/7rulnik/source-map-js |
+| htmlparser2 | 12.0.0 | [MIT](../entry/src/main/resources/rawfile/licenses/htmlparser2.txt) | https://github.com/fb55/htmlparser2 |
+| css-tree | 3.2.1 | [MIT](../entry/src/main/resources/rawfile/licenses/css-tree.txt) | https://github.com/csstree/csstree |
+| domelementtype | 3.0.0 | [BSD-2-Clause](../entry/src/main/resources/rawfile/licenses/domelementtype.txt) | https://github.com/fb55/domelementtype |
+| domhandler | 6.0.1 | [BSD-2-Clause](../entry/src/main/resources/rawfile/licenses/domhandler.txt) | https://github.com/fb55/domhandler |
+| domutils | 4.0.2 | [BSD-2-Clause](../entry/src/main/resources/rawfile/licenses/domutils.txt) | https://github.com/fb55/domutils |
+| dom-serializer | 3.1.1 | [MIT](../entry/src/main/resources/rawfile/licenses/dom-serializer.txt) | https://github.com/cheeriojs/dom-serializer |
+| entities | 8.0.0 | [BSD-2-Clause](../entry/src/main/resources/rawfile/licenses/entities.txt) | https://github.com/fb55/entities |
+| mdn-data | 2.27.1 | [CC0-1.0](../entry/src/main/resources/rawfile/licenses/mdn-data.txt) | https://github.com/mdn/data |
+| source-map-js | 1.2.2 | [BSD-3-Clause](../entry/src/main/resources/rawfile/licenses/source-map-js.txt) | https://github.com/7rulnik/source-map-js |
 
 参考项目（仅作调研，未复制代码）：Markor、MarkText、Harmony-Markdown-Editor、SiYuan-HarmonyOS（SDD 22 章）。引用任何开源代码前重新核对许可证。

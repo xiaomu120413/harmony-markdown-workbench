@@ -15,7 +15,7 @@
 重建（Python 需 CairoSVG）：
 
 ```powershell
-python scripts/gen-icons.py
+python scripts/build/gen-icons.py
 ```
 
 PowerShell 入口调用同一生成脚本，不再包含特定机器的输出目录。

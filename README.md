@@ -2,7 +2,7 @@
 
 代码仓库：https://github.com/xiaomu120413/mumark
 
-完全离线的 HarmonyOS Markdown 编辑器。规格与执行合同见 `MuMark-SDD.md`（SDD 1.0.0），开发遵循 Specification-Driven Development 流程。
+完全离线的 HarmonyOS Markdown 编辑器。规格与执行合同见 `docs/MuMark-SDD.md`（SDD 1.0.0），开发遵循 Specification-Driven Development 流程。
 
 **产品原则：打开的是原文件，保存后仍是原文件。**
 
@@ -76,7 +76,7 @@ Git Bash：
 ```bash
 ./hvigorw assembleHap --mode module -p product=default
 ./hvigorw test --mode module -p product=default
-bash scripts/clean-build.sh
+bash scripts/build/clean-build.sh
 ```
 
 产物位置：`entry/build/default/outputs/default/entry-default-unsigned.hap`
@@ -90,7 +90,7 @@ bash scripts/clean-build.sh
 | 编译严格性 | `build-profile.json5` strictMode（大小写敏感、规范化 OHM URL） | ✅ |
 | 单元测试 | hypium 1.0.21（`entry/src/test/`），`hvigorw test` | ✅ |
 | 测试失败拦截 | `clean-build` 脚本检查测试日志中的 hypium 断言 ERROR（hypium 用例失败时 hvigor 任务仍返回成功，见风险 R-07） | ✅ |
-| 无缓存构建 | `scripts/clean-build.sh` / `.bat`：删缓存→ohpm install→构建→测试 | ✅ |
+| 无缓存构建 | `scripts/build/clean-build.sh` / `.bat`：删缓存→ohpm install→构建→测试 | ✅ |
 | CI | `.github/workflows/ci.yml`：GitHub-hosted 跑 web bundle 一致性 + 脚本/清单检查；hvigor 单测与构建需自托管 runner（DEVECO_HOME，见 R-06） | ✅ hosted 门禁通过；hvigor 待自托管 |
 | 静态检查/格式化 | DevEco IDE 内置 Code Linter 与格式化；命令行无等价工具（R-05） | ⚠️ 需 IDE |
 
@@ -106,8 +106,11 @@ entry/src/main/ets/
 ├── infrastructure/   平台实现（file/metadata/recovery）
 └── common/           日志、主题、断点等跨层基础代码
 web-tools/            Web 编辑/预览运行时源码（打包到 resources/rawfile/web）
-docs/                 规格、ADR、风险、计划（见「相关文档」）
-scripts/              clean-build、图标生成等脚本
+docs/                 规格、验收、ADR、品牌、商店与证据材料；入口 docs/README.md
+scripts/
+├── build/             clean-build、签名、图标、商店素材生成
+├── check/             文档链接、源码编码、500 行门禁
+└── test/              宿主机测试与测试加载器
 ```
 
 层次职责与约束详见各层 `README.md`（对应 SDD 8.1）。
@@ -118,7 +121,7 @@ scripts/              clean-build、图标生成等脚本
 
 ```bash
 # 生成官方 OpenHarmony CA 签名的安装包（材料在工程外 ../local-sign/，勿入库）
-bash scripts/sign-local.sh entry/build/default/outputs/default/entry-default-unsigned.hap
+bash scripts/build/sign-local.sh entry/build/default/outputs/default/entry-default-unsigned.hap
 ```
 
 签名链路（app 证书由 OpenHarmony Application CA 签发、profile 由官方 Profile Debug CA 签发）已在 M0-02 尖峰完整打通，详见 `docs/spikes/external-uri.md`。
@@ -127,11 +130,13 @@ bash scripts/sign-local.sh entry/build/default/outputs/default/entry-default-uns
 
 ## 相关文档
 
+- `docs/README.md` — 文档总索引
+- `docs/MuMark-SDD.md` — 规格与执行合同（SDD）
 - `docs/spec/product-spec.md` — 产品规格（稳定版）
 - `docs/spec/acceptance.md` — 需求到验收用例映射
 - `docs/user-guide.md` — 用户使用说明
 - `docs/spec/repository-cleanup-2026-10-20.md` — 仓库清理与未使用文件审计
-- `NOTICE.md` — 第三方组件与许可证清单
+- `docs/NOTICE.md` — 第三方组件与许可证清单
 - `docs/adr/` — 技术决策记录（001–005 来自 SDD，006–008 为 M0-01 新决策）
 - `docs/risks.md` — 风险清单（含本机实测发现）
 - `docs/plan.md` — 里程碑与任务计划
@@ -143,16 +148,16 @@ bash scripts/sign-local.sh entry/build/default/outputs/default/entry-default-uns
 ```powershell
 npm.cmd ci --prefix web-tools --no-audit --no-fund
 node web-tools/build-web.js
-node scripts/test-host.cjs
-node scripts/test-editor-actions.cjs
-node scripts/test-file-transactions.cjs
-node scripts/test-external-access.cjs
-node scripts/test-page-viewmodels.cjs
-node scripts/test-window-viewport.cjs
-node scripts/test-html-preview.cjs
-node scripts/test-html-resources.cjs
-node scripts/test-html-embed.cjs
-node scripts/check-source-size.mjs
+node scripts/test/test-host.cjs
+node scripts/test/test-editor-actions.cjs
+node scripts/test/test-file-transactions.cjs
+node scripts/test/test-external-access.cjs
+node scripts/test/test-page-viewmodels.cjs
+node scripts/test/test-window-viewport.cjs
+node scripts/test/test-html-preview.cjs
+node scripts/test/test-html-resources.cjs
+node scripts/test/test-html-embed.cjs
+node scripts/check/check-source-size.mjs
 ```
 
 宿主测试执行真实领域源码并注入平台 IO 故障，不替代 ArkTS 编译和真机验收。

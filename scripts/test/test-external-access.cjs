@@ -18,7 +18,7 @@ const load = createLoader({
   '@kit.PerformanceAnalysisKit': { hilog: { info: (...v) => logs.push(v), warn: (...v) => logs.push(v) } },
   '@kit.ArkTS': { util: { TextDecoder: { create: () => ({ decodeToString: () => '' }) } } },
 }, { canIUse: () => supported });
-const root = path.join(__dirname, '../entry/src/main/ets');
+const root = path.join(__dirname, '../../entry/src/main/ets');
 const { ExternalFileAccess } = load(`${root}/infrastructure/file/ExternalFileAccess`);
 const { ExternalUriFileSource } = load(`${root}/infrastructure/file/ExternalUriFileSource`);
 const uri = 'file://docs/private-name.md';

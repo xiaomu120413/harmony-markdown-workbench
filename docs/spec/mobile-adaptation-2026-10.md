@@ -28,12 +28,12 @@ TASK-MOBILE-001：新增窗口适配、状态/控制器与视图模块，修改�
 
 | 命令 | 结果 |
 |---|---|
-| `node scripts/test-host.cjs` | 233/233 通过；原有保存/恢复/短读写/交付与拖入回归 |
-| `node scripts/test-editor-actions.cjs` | 13 组通过；直接加载真实状态和控制器；大纲/分屏、桥队列隔离、外部打开转发、面板关闭后动作、销毁后的迟到回调隔离 |
-| `node scripts/test-window-viewport.cjs` | 8 组通过；原生边界 mock，覆盖重叠取最大值、单位、旋转侧边、空区、键盘不叠加、动态失败、系统安全布局回退、监听释放 |
-| `node scripts/check-source-size.mjs` | 118 个手写应用/测试/脚本文件全部 ≤500 行；应用 ArkTS 最大为 HomeController 352 行；仅排除生成的 Web bundle |
-| `node scripts/check-source-encoding.mjs` | 183 个文本文件严格 UTF-8 检查通过 |
-| `node scripts/check-docs.mjs` | 36 个入口/规格 Markdown 文件通过 |
+| `node scripts/test/test-host.cjs` | 233/233 通过；原有保存/恢复/短读写/交付与拖入回归 |
+| `node scripts/test/test-editor-actions.cjs` | 13 组通过；直接加载真实状态和控制器；大纲/分屏、桥队列隔离、外部打开转发、面板关闭后动作、销毁后的迟到回调隔离 |
+| `node scripts/test/test-window-viewport.cjs` | 8 组通过；原生边界 mock，覆盖重叠取最大值、单位、旋转侧边、空区、键盘不叠加、动态失败、系统安全布局回退、监听释放 |
+| `node scripts/check/check-source-size.mjs` | 118 个手写应用/测试/脚本文件全部 ≤500 行；应用 ArkTS 最大为 HomeController 352 行；仅排除生成的 Web bundle |
+| `node scripts/check/check-source-encoding.mjs` | 183 个文本文件严格 UTF-8 检查通过 |
+| `node scripts/check/check-docs.mjs` | 36 个入口/规格 Markdown 文件通过 |
 | `hvigorw.bat test --mode module -p product=default` | BUILD SUCCESSFUL；`build-logs/mobile-test.log` |
 | `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` | BUILD SUCCESSFUL；`build-logs/mobile-release.log` |
 | `node web-tools/build-web.js` | 编辑器资源重新生成；预览 bundle 未变；CI 继续验证 bundle 与源码一致 |

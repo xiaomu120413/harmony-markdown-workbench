@@ -30,14 +30,14 @@
 
 | 脚本 | 用途 | 入口 |
 |---|---|---|
-| `scripts/test-*.cjs`（9 个） | 宿主机测试 | `.github/workflows/ci.yml` |
-| `scripts/check-docs.mjs` | Markdown 编码与本地链接检查 | CI |
-| `scripts/check-source-encoding.mjs` | 源码严格 UTF-8 检查 | CI |
-| `scripts/check-source-size.mjs` | 500 行单文件门禁 | CI |
-| `scripts/clean-build.sh` / `.bat` | 无缓存构建 + 测试 | README |
-| `scripts/sign-local.sh` | 本地签名 HAP | README |
-| `scripts/gen-icons.py` | 图标母版重建 | `docs/brand/README.md` |
-| `scripts/generate-store-assets.py` | 应用市场素材生成 | `docs/spec/store-materials-2026-10-20.md` |
+| `scripts/test/test-*.cjs`（9 个） | 宿主机测试 | `.github/workflows/ci.yml` |
+| `scripts/check/check-docs.mjs` | Markdown 编码与本地链接检查 | CI |
+| `scripts/check/check-source-encoding.mjs` | 源码严格 UTF-8 检查 | CI |
+| `scripts/check/check-source-size.mjs` | 500 行单文件门禁 | CI |
+| `scripts/build/clean-build.sh` / `.bat` | 无缓存构建 + 测试 | README |
+| `scripts/build/sign-local.sh` | 本地签名 HAP | README |
+| `scripts/build/gen-icons.py` | 图标母版重建 | `docs/brand/README.md` |
+| `scripts/build/generate-store-assets.py` | 应用市场素材生成 | `docs/spec/store-materials-2026-10-20.md` |
 | `scripts/lib/ets-loader.cjs` | ArkTS 源码加载器 | 宿主机测试 |
 | `scripts/lib/editor-write-cases.cjs` | 编辑器/文档/重命名用例 | `test-host.cjs` |
 
@@ -47,12 +47,12 @@
 - 21 个 `*.test.ets` 全部在 `entry/src/test/List.test.ets` 注册。
 - 所有脚本均被 CI、README 或规格文档引用；无其它无引用脚本。
 - 图标、Web bundle、许可证和验收截图均有引用或法务用途。
-- web-tools 依赖已按实际 import 清理，第三方许可证汇总见 `NOTICE.md` 与 `rawfile/licenses/web-runtime.txt`。
+- web-tools 依赖已按实际 import 清理，第三方许可证汇总见 `../NOTICE.md` 与 `rawfile/licenses/web-runtime.txt`。
 
 ## 验证
 
-- `node scripts/test-host.cjs`：255/255
-- `node scripts/test-editor-actions.cjs`：24/24
+- `node scripts/test/test-host.cjs`：255/255
+- `node scripts/test/test-editor-actions.cjs`：24/24
 - 其余脚本测试、`hvigorw test`、Debug/Release `assembleHap`：通过
 - `git diff --check`、文档链接检查：通过
 

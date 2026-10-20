@@ -1343,7 +1343,7 @@ fix(M4-03): prevent overwrite after external modification
 ```text
 你正在实现 MuMark（木笺）。
 
-1. 完整阅读 MuMark-SDD.md。
+1. 完整阅读 docs/MuMark-SDD.md。
 2. 当前只执行 TASK-M0-01，不要提前实现后续功能。
 3. 先检查仓库现状、HarmonyOS SDK 版本、构建脚本、已有规范和测试。
 4. 输出你对 TASK-M0-01 的理解、会修改的文件、验证命令和风险。

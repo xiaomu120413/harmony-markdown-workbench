@@ -18,8 +18,8 @@
 |---|---|
 | `npm.cmd ci --no-audit --no-fund`（web-tools） | 成功，依赖锁文件未变 |
 | `node web-tools/build-web.js` | 成功，编辑器与预览 bundle 已同步提交 |
-| `node scripts/test-host.cjs` | 220/220 通过；执行实际领域/服务代码，平台 IO 使用宿主机文件及故障注入替身 |
-| `node scripts/check-docs.mjs` | 26 个 Markdown 文件通过 UTF-8 和本地链接检查 |
+| `node scripts/test/test-host.cjs` | 220/220 通过；执行实际领域/服务代码，平台 IO 使用宿主机文件及故障注入替身 |
+| `node scripts/check/check-docs.mjs` | 26 个 Markdown 文件通过 UTF-8 和本地链接检查 |
 | `hvigorw.bat test --mode module -p product=default` | BUILD SUCCESSFUL，Hypium 测试构建/执行完成 |
 | `hvigorw.bat assembleHap --mode module -p product=default` | Debug HAP 构建通过 |
 | `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` | Release HAP 构建通过 |

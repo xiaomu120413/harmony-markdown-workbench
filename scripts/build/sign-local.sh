@@ -17,14 +17,14 @@
 #   7. module.json5 须 deliveryWithInstall=false，否则应用会被按需回收。
 #
 # 用法：
-#   bash scripts/sign-local.sh <unsigned.hap> [输出路径] [UDID] [bundleName]
+#   bash scripts/build/sign-local.sh <unsigned.hap> [输出路径] [UDID] [bundleName]
 # 材料目录：../local-sign/（工程外，不入库）。
 # 需要：DevEco Studio 完整安装（SDK toolchains）、openssl、python。
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 BASE_DIR="$(cd "${ROOT}/.." && pwd)/local-sign"
 
 IN_HAP="${1:-${ROOT}/entry/build/default/outputs/default/entry-default-unsigned.hap}"

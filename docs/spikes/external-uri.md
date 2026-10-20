@@ -37,7 +37,7 @@
 4. `@ohos.application.uriPermissionManager` 在 API 26 Beta 中 **namespace 为空**（无 persistPermission 类型）→ 编译期不可调用（R-10）。
 5. preferences 保存/读取（最近文件模型）正常工作。
 
-## 4. 签名与安装链路（完整排障记录，已成脚本 `scripts/sign-local.sh`）
+## 4. 签名与安装链路（完整排障记录，已成脚本 `scripts/build/sign-local.sh`）
 
 设备侧最终校验成功的签名体系（逐层排障结论）：
 

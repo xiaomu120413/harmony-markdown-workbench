@@ -6,7 +6,7 @@ import math
 import zipfile
 from PIL import Image, ImageDraw, ImageFilter, ImageFont, ImageOps
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 OUT = ROOT / 'docs/store/mumark-1.0.0'
 SOURCE = OUT / 'source'
 FONT = Path('C:/Windows/Fonts')
@@ -202,7 +202,7 @@ def text_files():
 
 此页面当前显示的硬性约束已检查；平台是否接受带宣传排版的截图仍以实际上传/审核结果为准。如要求原始截图，请从 source 选择对应真实界面，不要上传本目录的其他清单文件。未执行实际后台上传、保存或提交审核。
 
-重建：在仓库根目录运行 python scripts/generate-store-assets.py，需 Pillow 和 Windows 系统字体。ZIP 由同一脚本生成到 build-logs；包含所有上传图片、文案、来源清单和预览。
+重建：在仓库根目录运行 python scripts/build/generate-store-assets.py，需 Pillow 和 Windows 系统字体。ZIP 由同一脚本生成到 build-logs；包含所有上传图片、文案、来源清单和预览。
 '''
     (OUT/'上传说明.txt').write_text(instructions,encoding='utf-8')
     (OUT/'README.md').write_text('# 木笺 1.0.0 上架截图\n\n'

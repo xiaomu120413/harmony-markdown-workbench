@@ -14,7 +14,7 @@ const load = createLoader(kits, {
   canIUse: () => false, Observed: cls => cls, AlertDialog: { show: d => dialogs.push(d) },
   AppStorage: { get: k => storage.get(k), setOrCreate: (k, v) => storage.set(k, v) },
 });
-const root = path.join(__dirname, '../entry/src/main/ets');
+const root = path.join(__dirname, '../../entry/src/main/ets');
 const { EditorState } = load(`${root}/features/editor/EditorState`);
 const { EditorController } = load(`${root}/features/editor/EditorController`);
 const { HomeState } = load(`${root}/features/home/HomeState`);

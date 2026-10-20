@@ -8,7 +8,7 @@ const load = createLoader({
   } } },
   '@kit.PerformanceAnalysisKit': { hilog: { info() {}, error: (...v) => errors.push(v) } },
 }, { AppStorage: { get: k => storage.get(k), setOrCreate: (k, v) => storage.set(k, v) } });
-const root = path.join(__dirname, '../entry/src/main/ets');
+const root = path.join(__dirname, '../../entry/src/main/ets');
 const { SafeAreaPolicy } = load(`${root}/domain/editor/SafeAreaPolicy`);
 const { WindowViewportAdapter } = load(`${root}/infrastructure/window/WindowViewportAdapter`);
 const rect = (left = 0, top = 0, width = 0, height = 0) => ({ left, top, width, height });

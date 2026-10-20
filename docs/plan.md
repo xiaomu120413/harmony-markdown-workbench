@@ -74,5 +74,5 @@ flowchart TD
 ```bash
 ./hvigorw assembleHap --mode module -p product=default   # Debug HAP
 ./hvigorw test --mode module -p product=default          # 单元测试
-bash scripts/clean-build.sh                              # 无缓存全量验证（门禁）
+bash scripts/build/clean-build.sh                              # 无缓存全量验证（门禁）
 ```

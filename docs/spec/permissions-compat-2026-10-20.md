@@ -14,9 +14,9 @@ REQ-COMPAT-001：HTML 补资源仅在支持目录选择的设备提供目录入�
 
 ## 本轮验证
 
-- `node scripts/test-file-transactions.cjs`：21 场景通过，含目录能力存在/缺失时的选择器参数及取消保护；平台接口为 stub。
-- `node scripts/test-html-resources.cjs`、`node scripts/test-html-embed.cjs`：各 10 组通过；`node scripts/test-external-access.cjs`：9 场景通过。
+- `node scripts/test/test-file-transactions.cjs`：21 场景通过，含目录能力存在/缺失时的选择器参数及取消保护；平台接口为 stub。
+- `node scripts/test/test-html-resources.cjs`、`node scripts/test/test-html-embed.cjs`：各 10 组通过；`node scripts/test/test-external-access.cjs`：9 场景通过。
 - DevEco 内置 JBR：`hvigorw.bat test --mode module -p product=default` 与 `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` 均 BUILD SUCCESSFUL；日志保存在忽略目录 build-logs/compat-review-test.log 与 compat-review-release.log。既有弃用 API / ESObject 警告仍在。
-- `node scripts/check-source-size.mjs`：128 个手写文件不超过 500 行；`node scripts/check-source-encoding.mjs`、`node scripts/check-docs.mjs`、`git diff --check` 通过。
+- `node scripts/check/check-source-size.mjs`：128 个手写文件不超过 500 行；`node scripts/check/check-source-encoding.mjs`、`node scripts/check/check-docs.mjs`、`git diff --check` 通过。
 
 本轮入口分支依赖系统能力，主机 stub 验证两侧行为不等同于真机验收；仅检查到手机模拟器在线，未重新部署执行设备交互矩阵或正式签名升级。此前设备证据仍仅代表对应版本和场景。

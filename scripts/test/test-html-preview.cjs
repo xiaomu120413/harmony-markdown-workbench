@@ -9,7 +9,7 @@ const load = createLoader({
   '@kit.PerformanceAnalysisKit': { hilog: { info() {}, warn() {}, error() {} } },
   '@kit.ArkUI': { promptAction: { showToast() {} }, router: { pushUrl: async r => routes.push(r), replaceUrl: async r => routes.push(r) } },
 }, { Observed: cls => cls });
-const root = path.join(__dirname, '../entry/src/main/ets');
+const root = path.join(__dirname, '../../entry/src/main/ets');
 const { DocumentIntake } = load(`${root}/domain/document/DocumentIntake`);
 const { HtmlPreviewState, HtmlPreviewViewModel } = load(`${root}/features/preview/HtmlPreviewViewModel`);
 const { InternalFileSource } = load(`${root}/infrastructure/file/InternalFileSource`);

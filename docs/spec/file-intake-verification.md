@@ -32,11 +32,11 @@
 | 命令 | 结果 |
 |---|---|
 | `node web-tools/build-web.js` | 两份运行时 bundle 同步生成 |
-| `node scripts/test-host.cjs` | 228/228 通过；真实领域/服务代码，平台 API 使用替身及实际宿主机文件 |
+| `node scripts/test/test-host.cjs` | 228/228 通过；真实领域/服务代码，平台 API 使用替身及实际宿主机文件 |
 | `hvigorw.bat test --mode module -p product=default` | ArkTS 单测任务成功 |
 | `hvigorw.bat assembleHap --mode module -p product=default` | Debug HAP 构建成功；隔离签名包覆盖安装成功 |
 | `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` | Release HAP 构建成功；正式包名保持 com.markdownworkbench.app |
-| `node scripts/check-docs.mjs` / `git diff --check` | 28 个 Markdown UTF-8/本地链接及差异空白检查通过 |
+| `node scripts/check/check-docs.mjs` / `git diff --check` | 28 个 Markdown UTF-8/本地链接及差异空白检查通过 |
 
 新增覆盖：URI 编码/查询别名、固定状态保留、不同来源同名、缓存 URI 排除；单文件类型门控；异步进度、系统错误、重复回调、超时取消及迟到回包；导入副本持久化、重复导入复用、同名不同正文避让及原文件不变。
 

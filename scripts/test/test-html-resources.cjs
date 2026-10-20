@@ -22,7 +22,7 @@ const load = createLoader({
   '@kit.ArkTS': { util: { TextEncoder: { create: () => ({ encodeInto: s => new TextEncoder().encode(s) }) },
     TextDecoder: { create: () => ({ decodeToString: bytes => new TextDecoder().decode(bytes) }) } } },
 }, { canIUse: () => false });
-const { HtmlResourceStore } = load(path.join(__dirname, '../entry/src/main/ets/infrastructure/file/HtmlResourceStore'));
+const { HtmlResourceStore } = load(path.join(__dirname, '../../entry/src/main/ets/infrastructure/file/HtmlResourceStore'));
 const B = HtmlResourceStore.BASE;
 const source = path.join(temporary, 'source'), privateDir = path.join(temporary, 'private');
 fs.mkdirSync(source); fs.mkdirSync(privateDir);

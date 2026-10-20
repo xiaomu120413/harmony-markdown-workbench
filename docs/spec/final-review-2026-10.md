@@ -19,11 +19,11 @@
 
 | 命令 | 结果 |
 |---|---|
-| `node scripts/test-editor-actions.cjs` | 4 个场景通过：宽窗大纲开关、窄窗大纲开关、其他面板切换到大纲、帮助实际换行 |
-| `node scripts/test-host.cjs` | 228/228 通过；平台 IO 使用 mock |
+| `node scripts/test/test-editor-actions.cjs` | 4 个场景通过：宽窗大纲开关、窄窗大纲开关、其他面板切换到大纲、帮助实际换行 |
+| `node scripts/test/test-host.cjs` | 228/228 通过；平台 IO 使用 mock |
 | `hvigorw.bat test --mode module -p product=default` | BUILD SUCCESSFUL，exit 0 |
 | `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` | BUILD SUCCESSFUL，exit 0 |
-| `node scripts/check-docs.mjs` | 33 个 Markdown 文件 UTF-8 和本地链接检查通过 |
+| `node scripts/check/check-docs.mjs` | 33 个 Markdown 文件 UTF-8 和本地链接检查通过 |
 | `git diff --check` | 通过 |
 | tracked 文件检查 | 未追踪签名密钥、HAP、日志和本地签名目录；本次无权限、包结构变更 |
 

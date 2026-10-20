@@ -4,7 +4,7 @@
 # 门禁：测试日志中出现 hypium 断言错误（hvigor 对用例失败仍返回成功）即判定失败。
 set -u
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 ROOT="$(pwd)"
 
 # ---- 定位 DevEco 工具（ohpm）----

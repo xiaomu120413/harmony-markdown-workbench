@@ -36,9 +36,9 @@ API 22 真机查找输入时，首个字符产生匹配后，setSelectionRange �
 
 命令、环境与结果：
 
-- Windows / 当前 DevEco SDK / 内置 JBR，`node scripts/test-host.cjs`：254/254；editor-actions 24 场景、file-transactions 24 场景、page-viewmodels 7、external-access 9、window-viewport 8、html-preview 8、html-resources 10、html-embed 11 组通过。真实模块执行，平台 IO/装饰器为显式 stub，不替代上述设备验证。
+- Windows / 当前 DevEco SDK / 内置 JBR，`node scripts/test/test-host.cjs`：254/254；editor-actions 24 场景、file-transactions 24 场景、page-viewmodels 7、external-access 9、window-viewport 8、html-preview 8、html-resources 10、html-embed 11 组通过。真实模块执行，平台 IO/装饰器为显式 stub，不替代上述设备验证。
 - `node web-tools/build-web.js` 重新生成本地 Web 资源。`hvigorw.bat test --mode module -p product=default`、`hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` 均 BUILD SUCCESSFUL，日志为忽略目录 build-logs/api22-test.log、api22-release.log。验证包构建后恢复正式 bundleName 再构建 Release；保留既有弃用/ESObject 等警告。
 - HDC 仅推送自建样本、安装验证包、取回已由系统选择器授权保存的产物；实际打开/资源选择/导出使用系统 UI。`python build-logs/api22-regression/verify_delivery.py`：31/31 通过。辅助脚本、原产物与完整日志保存在忽略目录。
-- `node scripts/check-source-size.mjs`、`node scripts/check-source-encoding.mjs`、`node scripts/check-docs.mjs`、`git diff --check` 提交前检查通过，所有手写文件不超过 500 行。没有新增可观察状态或封装。
+- `node scripts/check/check-source-size.mjs`、`node scripts/check/check-source-encoding.mjs`、`node scripts/check/check-docs.mjs`、`git diff --check` 提交前检查通过，所有手写文件不超过 500 行。没有新增可观察状态或封装。
 
 未验证：真实手机/API 22 手机、手机横屏、两端真实跨应用拖放、系统字体放大与读屏完整矩阵、云盘提供方、物理设备重启及正式签名覆盖升级。手机横屏尝试中模拟器实例离线，旋转命令未成功；重新启动既有实例后继续回归，不能将其写成应用崩溃或横屏通过。正式持久权限仍由用户申请；验证包的读写/重启成功不代表生产获批。权限与 SDK 下限、包划分均未改变。

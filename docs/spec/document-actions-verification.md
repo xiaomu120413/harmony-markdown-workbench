@@ -25,8 +25,8 @@ Windows PowerShell，DevEco SDK API 26；HUAWEI HAD-W32 / OpenHarmony 7.0.0.106�
 
 | 命令 | 结果 |
 |---|---|
-| `node scripts/test-host.cjs` | 228/228 通过；平台 IO 使用 mock，不替代真机授权验收 |
-| `node scripts/check-docs.mjs` | 30 个 Markdown 文件 UTF-8 与本地链接通过 |
+| `node scripts/test/test-host.cjs` | 228/228 通过；平台 IO 使用 mock，不替代真机授权验收 |
+| `node scripts/check/check-docs.mjs` | 30 个 Markdown 文件 UTF-8 与本地链接通过 |
 | `hvigorw.bat test --mode module -p product=default` | BUILD SUCCESSFUL，exit 0 |
 | `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release` | 最终源码 BUILD SUCCESSFUL，exit 0 |
 | `powershell -ExecutionPolicy Bypass -File build-logs/rebuild-validation.ps1` | Debug 构建和复用本地验证证书签名成功，安装运行成功；临时包名修改已还原 |

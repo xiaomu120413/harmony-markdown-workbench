@@ -12,7 +12,7 @@ REQ-LOG-001：业务与平台适配代码不再直接调用 hilog，统一域、
 
 2026-10-19，Windows / DevEco JBR / API 26 SDK：
 
-- `node scripts/test-host.cjs`：235/235，通过新增的四级日志、固定 tag、私有格式和字面量测试。
+- `node scripts/test/test-host.cjs`：235/235，通过新增的四级日志、固定 tag、私有格式和字面量测试。
 - `test-editor-actions.cjs`、`test-file-transactions.cjs`、`test-page-viewmodels.cjs`、`test-external-access.cjs`、`test-window-viewport.cjs`：分别 23、14、7、9、8 组通过，平台边界为 mock。
 - `hvigorw.bat test --mode module -p product=default`、Release `assembleHap`：BUILD SUCCESSFUL，日志 `build-logs/logger-test.log`、`build-logs/logger-release.log`，既有弃用/ESObject 警告保留。
 - `check-source-size.mjs`、`check-source-encoding.mjs`、`check-docs.mjs`、`git diff --check`：通过；127 个手写源文件/测试/脚本均不超过 500 行，中文回读正常。

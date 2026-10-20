@@ -24,7 +24,7 @@ REQ-HTML-002：使用独立 Web 实例，禁用 JavaScript、文件访问、网�
 
 命令及结果：
 
-- `node scripts/test-html-preview.cjs`：8 组通过，覆盖路由/HTML 重命名、读取与 Web 装载先后、重复页面完成事件、CSP、无效 UTF-8、大小限制、读取失败和销毁后回包。平台读写 mock；Web 禁用配置通过源码检查，真实渲染以上述设备结果为准。
+- `node scripts/test/test-html-preview.cjs`：8 组通过，覆盖路由/HTML 重命名、读取与 Web 装载先后、重复页面完成事件、CSP、无效 UTF-8、大小限制、读取失败和销毁后回包。平台读写 mock；Web 禁用配置通过源码检查，真实渲染以上述设备结果为准。
 - 原主机回归 `test-host.cjs`、`test-editor-actions.cjs`、`test-file-transactions.cjs`、`test-page-viewmodels.cjs`、`test-external-access.cjs`、`test-window-viewport.cjs`：237/237、24、14、7、9、8 组通过。
 - `hvigorw.bat test --mode module -p product=default` 与 `hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release`：BUILD SUCCESSFUL；日志位于忽略目录 build-logs/html-test.log、html-release.log，既有 ESObject/弃用警告保留。
 - HDC `file recv` 分别取回应用内 HTML、原 Markdown、手机外部 HTML；与本机样本比较，html_copy_exact、markdown_unchanged、phone_html_unchanged 均为 True。样本及脚本在 build-logs/device-regression/。

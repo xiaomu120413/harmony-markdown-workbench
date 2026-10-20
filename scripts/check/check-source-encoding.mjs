@@ -3,7 +3,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: root })
   .toString('utf8').split('\0').filter(Boolean);
 const extensions = new Set(['.ets','.ts','.js','.mjs','.cjs','.json','.json5','.md','.html','.css','.svg','.xml','.yaml','.yml','.txt']);
