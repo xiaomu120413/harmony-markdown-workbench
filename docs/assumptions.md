@@ -12,8 +12,8 @@
 
 ## A-02 bundleName 与 vendor
 
-- **默认值**：`com.markdownworkbench.app`，vendor `HMWB`，versionCode 1000000，versionName 1.0.0。
-- 上架前如需变更 bundleName，仅修改 `AppScope/app.json5` 及相关签名配置，不影响构建。
+- **当前确认值**（2026-10-20）：`com.mumark.app`，vendor `MuMark`，versionCode 1000000，versionName 1.0.0。取代最初的 `com.markdownworkbench.app` 默认值。
+- 包名变更需重新申请匹配的证书/Profile；新旧包不能覆盖升级或自动共享沙箱。详见[身份变更记录](spec/mumark-package-2026-10-20.md)。
 
 ## A-03 设备类型声明
 

@@ -30,7 +30,7 @@ BASE_DIR="$(cd "${ROOT}/.." && pwd)/local-sign"
 IN_HAP="${1:-${ROOT}/entry/build/default/outputs/default/entry-default-unsigned.hap}"
 OUT_HAP="${2:-${BASE_DIR}/entry-signed-local.hap}"
 UDID="${3:-$(hdc list targets 2>/dev/null | head -1 | tr -d '[:space:]')}"
-BUNDLE_NAME="${4:-com.markdownworkbench.app}"
+BUNDLE_NAME="${4:-com.mumark.app}"
 
 TOOLCHAINS='C:/Program Files/Huawei/DevEco Studio/sdk/default/openharmony/toolchains'
 HAP_SIGN_TOOL="${TOOLCHAINS}/lib/hap-sign-tool.jar"

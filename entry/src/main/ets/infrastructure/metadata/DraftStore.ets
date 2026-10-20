@@ -13,7 +13,7 @@ import { SafeFileIO } from '../file/SafeFileIO';
 export class DraftStore {
   private readonly draftsDir: string;
   // 与 AppScope/app.json5 的 versionName 保持一致（宿主机测试会校验）。
-  private readonly appVersion: string = '1.1.0';
+  private readonly appVersion: string = '1.0.0';
 
   constructor(ctx: common.UIAbilityContext) {
     this.draftsDir = `${ctx.filesDir}/drafts`;
