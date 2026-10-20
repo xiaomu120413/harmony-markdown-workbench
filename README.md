@@ -129,6 +129,9 @@ bash scripts/sign-local.sh entry/build/default/outputs/default/entry-default-uns
 
 - `docs/spec/product-spec.md` — 产品规格（稳定版）
 - `docs/spec/acceptance.md` — 需求到验收用例映射
+- `docs/user-guide.md` — 用户使用说明
+- `docs/spec/repository-cleanup-2026-10-20.md` — 仓库清理与未使用文件审计
+- `NOTICE.md` — 第三方组件与许可证清单
 - `docs/adr/` — 技术决策记录（001–005 来自 SDD，006–008 为 M0-01 新决策）
 - `docs/risks.md` — 风险清单（含本机实测发现）
 - `docs/plan.md` — 里程碑与任务计划

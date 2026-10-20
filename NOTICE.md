@@ -2,19 +2,44 @@
 
 第三方组件与许可证清单。引入新依赖前必须核对许可证、版本、维护状态与分发义务（SDD 阶段 0 第 8 条）。
 
-## 当前依赖（M0-01）
+## 测试依赖
 
 | 组件 | 版本 | 用途 | 许可证 | 来源 |
 |---|---|---|---|---|
 | @ohos/hypium | 1.0.21 | 单元测试框架 | Apache-2.0 | ohpm.openharmony.cn |
 | @ohos/hamock | 1.0.0 | 测试 mock 库 | Apache-2.0 | ohpm.openharmony.cn |
 
-## 构建工具链（随 DevEco Studio 分发，非项目依赖）
+## Web 运行时依赖（随 HAP 打包）
+
+版本以 `web-tools/package-lock.json` 为准。所有直接依赖与传递依赖的完整许可证原文见
+[`entry/src/main/resources/rawfile/licenses/web-runtime.txt`](entry/src/main/resources/rawfile/licenses/web-runtime.txt)
+（39 个包，构建时从 `web-tools/node_modules` 汇总）。
+
+| 组件 | 版本 | 用途 | 许可证 |
+|---|---|---|---|
+| codemirror | 6.0.2 | CodeMirror 6 元包（含 autocomplete/search/lint/language） | MIT |
+| @codemirror/commands | 6.11.0 | 撤销重做、快捷键命令 | MIT |
+| @codemirror/lang-markdown | 6.5.2 | Markdown 语法支持 | MIT |
+| @codemirror/state | 6.7.1 | 编辑器状态与变更 | MIT |
+| @codemirror/view | 6.43.9 | 编辑器视图与选区 | MIT |
+| markdown-it | 15.0.1 | Markdown 解析 | MIT |
+| markdown-it-task-lists | 2.1.1 | 任务列表 | ISC |
+| markdown-it-footnote | 4.0.0 | 脚注 | MIT |
+| markdown-it-mark | 4.0.0 | `==高亮==` | MIT |
+| highlight.js | 11.12.0 | 代码块高亮 | BSD-3-Clause |
+| htmlparser2 | 12.0.0 | HTML 内容块解析 | MIT |
+| css-tree | 3.2.1 | HTML 内容块 CSS 处理 | MIT |
+
+CodeMirror/Lezer、linkify-it、entities 等传递依赖同样随 bundle 分发，名称、版本与许可证原文均在上面的 `web-runtime.txt` 中。
+当前未引入 DOMPurify。
+
+## 构建工具链（不随 HAP 分发）
 
 | 组件 | 说明 |
 |---|---|
 | @ohos/hvigor / hvigor-ohos-plugin | hvigor 6.26.1，位于 `{DEVECO_STUDIO_PATH}/tools/hvigor`，工程 wrapper 转发调用 |
-| CodeMirror 6 / markdown-it | 已使用的本地 Web 编辑与 Markdown 解析依赖，实际版本见 web-tools/package-lock.json；未引入 DOMPurify |
+| esbuild | 0.28.2（MIT），仅用于本地打包 Web bundle，不进入 HAP |
+| @ohos/hypium / @ohos/hamock | 仅测试构建使用 |
 
 ## HTML 内容块（ST-HTML-002）
 

@@ -11,6 +11,10 @@
 | 主要执行者 | ZCode / AI Coding Agent + 人工评审 |
 | 产品原则 | 打开的是原文件，保存后仍是原文件 |
 
+> **实现现状（2026-10-20）**：本文是初版规格与执行合同。当前代码目录、构建命令、依赖清单与验收状态以
+> `README.md`、`docs/spec/acceptance.md` 和 `NOTICE.md` 为准；第 8.1 节的目录为初版建议，
+> 实际已按 MVVM 分层调整（`pages` + `features/*` + `domain` + `services` + `infrastructure`）。
+
 ---
 
 ## 0. 如何使用本文档
