@@ -50,4 +50,68 @@ assert.match(body, /sandbox=""/); assert.match(body, /src="data:text\/html;base6
 assert.ok(!body.includes('allow-scripts')); assert.ok(!body.includes('allow-same-origin'));
 assert.deepEqual(JSON.parse(markdown.exports.inspectMarkdown(`![HTML](<${attachment}>)`)).images, [attachment]);
 assert.ok(!markdown.exports.renderMarkdown('<script>BAD</script>').includes('<script>'));
-console.log('10 HTML embed groups passed (graph, styles, imports, images, cycles, media, escapes, safety, inline position, attachment discovery)');
+
+// ---- 预览 DOM：相同 HTML 内容块复用 iframe，避免每次刷新重新加载导致闪白 ----
+class FakeNode {
+  constructor(tag) { this.tagName = tag; this.attrs = Object.create(null); this.childNodes = []; this.parentNode = null; }
+  get firstChild() { return this.childNodes.length > 0 ? this.childNodes[0] : null; }
+  appendChild(node) {
+    if (node.parentNode) { node.parentNode.removeChild(node); }
+    node.parentNode = this; this.childNodes.push(node); return node;
+  }
+  removeChild(node) {
+    const index = this.childNodes.indexOf(node);
+    if (index >= 0) { this.childNodes.splice(index, 1); node.parentNode = null; }
+    return node;
+  }
+  replaceWith(node) {
+    const parent = this.parentNode; if (!parent) { return; }
+    const index = parent.childNodes.indexOf(this); if (index < 0) { return; }
+    if (node.parentNode) { node.parentNode.removeChild(node); }
+    parent.childNodes[index] = node; node.parentNode = parent; this.parentNode = null;
+  }
+  setAttribute(name, value) { this.attrs[name] = String(value); }
+  getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attrs, name) ? this.attrs[name] : null; }
+  set innerHTML(html) {
+    this.childNodes = [];
+    const iframe = /<iframe\b([^>]*)>/gi;
+    let match;
+    while ((match = iframe.exec(html))) {
+      const node = new FakeNode('iframe');
+      const attr = /([\w-]+)="([^"]*)"/g;
+      let found;
+      while ((found = attr.exec(match[1]))) { node.setAttribute(found[1], found[2]); }
+      this.appendChild(node);
+    }
+  }
+  get innerHTML() { return ''; }
+  querySelectorAll(selector) {
+    const found = [];
+    const visit = node => {
+      const sandboxed = node.tagName === 'iframe' && node.getAttribute('sandbox') !== null;
+      const htmlEmbed = sandboxed && (node.getAttribute('src') || '').startsWith('data:text/html;base64,');
+      if (selector === 'iframe[sandbox]' && htmlEmbed) { found.push(node); }
+      for (const child of node.childNodes) { visit(child); }
+    };
+    for (const child of this.childNodes) { visit(child); }
+    return found;
+  }
+}
+const out = new FakeNode('out');
+global.window = {};
+global.document = { createElement: tag => new FakeNode(tag), getElementById: () => out };
+const previewCode = buildSync({ entryPoints: [path.join(__dirname, '../web-tools/src/preview.js')], bundle: true,
+  platform: 'browser', format: 'cjs', write: false }).outputFiles[0].text;
+const preview = { exports: {} };
+new Function('module', 'exports', 'require', previewCode)(preview, preview.exports, require);
+const api = global.window.__previewApi;
+assert.ok(api);
+const embed = { [attachment]: data('text/html', bundled) };
+api.render('before\n\n![HTML](<attachments/block.html>)\n\nafter', embed);
+const first = out.querySelectorAll('iframe[sandbox]')[0];
+assert.ok(first);
+api.render('before 2\n\n![HTML](<attachments/block.html>)\n\nafter 2', embed);
+assert.equal(out.querySelectorAll('iframe[sandbox]')[0], first);
+api.render('before 3\n\n![HTML](<attachments/block.html>)\n\nafter 3', { [attachment]: data('text/html', '<p>changed</p>') });
+assert.notEqual(out.querySelectorAll('iframe[sandbox]')[0], first);
+console.log('11 HTML embed groups passed (graph, styles, imports, images, cycles, media, escapes, safety, inline position, attachment discovery, iframe reuse)');

@@ -2,19 +2,54 @@
  * M3-01 尖峰：预览渲染运行时（Web 侧）。
  * markdown-it（15，含表格）+ 任务列表 + 删除线，本地打包。
  * 安全：html:false（禁用 HTML 标签）→ 防 <script> 注入；
- * 链接 javascript: 协议过滤；危险 iframe 由禁用 HTML 一并杜绝。
- * 正式版（M3-01 验收）将以领域 HtmlSafety 检测 + DOMPurify 白名单强化（依赖合规审查后）。
+ * 链接 javascript: 协议过滤；HTML 内容块用 sandbox iframe 隔离。
  */
 import { renderMarkdown } from './markdown';
 
 let lastHtml = '';
+
+/**
+ * 用新渲染结果替换预览 DOM。
+ * HTML 内容块的 iframe src 是数 MB 的 data URI，整树重建会让每个 iframe 重新加载并闪白；
+ * src 未变的 iframe 直接搬移旧节点，保留已加载内容（markdown 已禁用原始 HTML，sandbox iframe 仅来自内容块）。
+ */
+function htmlEmbedFrames(root) {
+  const frames = root.querySelectorAll('iframe[sandbox]');
+  const found = [];
+  for (let i = 0; i < frames.length; i++) {
+    const src = frames[i].getAttribute('src') || '';
+    if (src.startsWith('data:text/html;base64,')) { found.push(frames[i]); }
+  }
+  return found;
+}
+
+function mountPreview(out, safe) {
+  const staging = document.createElement('div');
+  staging.innerHTML = safe;
+  const previous = new Map();
+  const oldFrames = htmlEmbedFrames(out);
+  for (let i = 0; i < oldFrames.length; i++) {
+    const key = oldFrames[i].getAttribute('src');
+    const list = previous.get(key);
+    if (list) { list.push(oldFrames[i]); } else { previous.set(key, [oldFrames[i]]); }
+  }
+  const nextFrames = htmlEmbedFrames(staging);
+  for (let i = 0; i < nextFrames.length; i++) {
+    const key = nextFrames[i].getAttribute('src');
+    const list = previous.get(key);
+    const old = list && list.shift();
+    if (old) { nextFrames[i].replaceWith(old); }
+  }
+  while (out.firstChild) { out.removeChild(out.firstChild); }
+  while (staging.firstChild) { out.appendChild(staging.firstChild); }
+}
 
 window.__previewApi = {
   version: 1,
   render(mdText, resources = {}) {
     const safe = renderMarkdown(mdText || '', resources);
     lastHtml = safe;
-    document.getElementById('out').innerHTML = safe;
+    mountPreview(document.getElementById('out'), safe);
     return { length: safe.length, html: safe };
   },
   /**
