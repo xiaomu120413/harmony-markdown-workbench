@@ -204,7 +204,8 @@ export class EditorDocuments {
     this.host.env.activeSession = `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const session = this.host.env.activeSession;
     const js = `window.__editorApi.loadDocument(${JSON.stringify(md)}, ${JSON.stringify(session)});`;
-    this.host.runJsValue(js).then(() => {
+    // loadDocument 正常返回 undefined；载入失败必须呈现错误态，不能把空白编辑器当已打开文档。
+    this.host.runJsChecked(this.host.env.controller, js, true).then(() => {
       if (session !== this.host.env.activeSession || !this.host.isActive()) { return; }
       this.host.env.coordinator = this.host.createSaveCoordinator();
       this.host.state.saveState = SaveState.CLEAN;
@@ -218,6 +219,11 @@ export class EditorDocuments {
         c0.onDocumentLoaded(session);
       }
       this.host.syncDocNow();
+    }).catch((e: ESObject) => {
+      if (session !== this.host.env.activeSession || !this.host.isActive()) { return; }
+      this.host.state.loadFailure = '编辑器未能载入文件内容，请返回后重新打开';
+      this.host.state.loadState = 'loadFailed';
+      MuLogger.warn(`[打开] 编辑器载入失败：${JSON.stringify(e)}`);
     });
   }
 }
