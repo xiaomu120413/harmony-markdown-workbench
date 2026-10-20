@@ -161,6 +161,10 @@ export class EditorLifecycle {
   }
 
   applyEditorStyle(): void {
+    // 编辑器 Web 未就绪时调用会写入 undefined 的 __editorApi（控制台 TypeError）；就绪后 onPageEnd 会再应用。
+    if (!this.host.env.webReady) {
+      return;
+    }
     const s = this.host.env.appSettings;
     const dark = s.theme === ThemeMode.DARK;
     this.host.runJsValue(`window.__editorApi.setTheme(${dark});`);
