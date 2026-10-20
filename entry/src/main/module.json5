@@ -12,8 +12,24 @@
     "deliveryWithInstall": false,
     "installationFree": false,
     "pages": "$profile:main_pages",
+    "metadata": [
+      {
+        "name": "avoid_cutout",
+        "value": "true"
+      },
+      {
+        "name": "appgallery_privacy_hosted",
+        "value": "1"
+      },
+      {
+        "name": "appgallery_privacy_link_privacy_statement",
+        "value": "https://agreement-drcn.hispace.dbankcloud.cn/index.html?lang=zh&agreementId=2065243598437244608"
+      }
+    ],
     "requestPermissions": [
-      { "name": "ohos.permission.FILE_ACCESS_PERSIST" }
+      { 
+        "name": "ohos.permission.FILE_ACCESS_PERSIST"
+      }
     ],
     "abilities": [
       {
