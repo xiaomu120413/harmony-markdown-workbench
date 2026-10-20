@@ -7,8 +7,8 @@ ArkWeb 编辑运行时的**手写源码**在这里；`entry/src/main/ets/web/` �
 - `src/preview.js`：预览宿主 `window.__previewApi`。
 - `src/markdown.js`：markdown-it（表格/任务列表/脚注/高亮）+ 沙箱 HTML 内容块。
 - `src/html-embed.js`：HTML 内容块提取、资源打包与离线化。
-- `build-web.js`：esbuild 打包为 `rawfile/web/editor.bundle.js`、`preview.bundle.js` 与 `editor.html`。
-  `preview.html` 目前仍为手工维护并入库，构建脚本只生成其引用的 `preview.bundle.js`。
+- `preview.html`：预览宿主页源文件，构建时复制到 `rawfile/web/preview.html`。
+- `build-web.js`：esbuild 打包为 `rawfile/web/editor.bundle.js`、`preview.bundle.js`，并生成 `editor.html`、复制 `preview.html`。
 
 构建：
 

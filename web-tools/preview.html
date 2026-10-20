@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HMWB Preview</title>
+<style>
+  :root { --pre-bg: #f4f4f4; --border: #ccc; --inline-code-bg: #f0f0f0; }
+  html, body { margin: 0; padding: 12px 14px; }
+  body {
+    font-family: -apple-system, 'HarmonyOS Sans', 'Microsoft YaHei', sans-serif;
+    font-size: 15px; line-height: 1.7;
+    color: #182431; background: #ffffff;
+  }
+  #out { max-width: 860px; margin: 0 auto; }
+  #out h1, #out h2 { border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  #out h1 { font-size: 1.7em; } #out h2 { font-size: 1.4em; } #out h3 { font-size: 1.2em; }
+  #out h4 { font-size: 1.1em; } #out h5 { font-size: 1em; } #out h6 { font-size: 1em; color: var(--border); }
+  #out pre { background: var(--pre-bg); padding: 10px; border-radius: 8px; overflow: auto; }
+  #out code { background: var(--inline-code-bg); border-radius: 4px; padding: 1px 5px; }
+  #out pre code { background: none; padding: 0; }
+  #out table { border-collapse: collapse; }
+  #out td, #out th { border: 1px solid var(--border); padding: 4px 10px; }
+  #out blockquote { margin: 0; padding: 4px 14px; border-left: 3px solid var(--border); color: #8a8f99; }
+  #out img { max-width: 100%; }
+  #out .task-list-item { list-style: none; }
+  #out a { color: #007dff; }
+  #out hr { border: none; border-top: 1px solid var(--border); }
+  /* 高亮 ==text== 与脚注（V0.4.2） */
+  #out mark { background: #fff3b0; padding: 0 2px; border-radius: 3px; }
+  body.dark #out mark { background: #665c1e; color: #f5e79a; }
+  #out .footnotes { font-size: 0.9em; color: #8a8f99; border-top: 1px solid var(--border); margin-top: 1.5em; padding-top: 0.5em; }
+  #out .footnotes ol { padding-left: 1.2em; }
+  #out .footnotes li { margin: 0.2em 0; }
+  /* D2：代码高亮（github 浅色基调 + 深色配套） */
+  #out .hljs-keyword, #out .hljs-selector-tag, #out .hljs-meta { color: #d73a49; }
+  #out .hljs-string, #out .hljs-attr { color: #032f62; }
+  #out .hljs-comment { color: #6a737d; font-style: italic; }
+  #out .hljs-number, #out .hljs-literal { color: #005cc5; }
+  #out .hljs-title, #out .hljs-name { color: #6f42c1; }
+  #out .hljs-built_in, #out .hljs-type { color: #e36209; }
+  body.dark #out .hljs-keyword, body.dark #out .hljs-selector-tag, body.dark #out .hljs-meta { color: #f97583; }
+  body.dark #out .hljs-string, body.dark #out .hljs-attr { color: #9ecbff; }
+  body.dark #out .hljs-comment { color: #8b949e; }
+  body.dark #out .hljs-number, body.dark #out .hljs-literal { color: #79b8ff; }
+  body.dark #out .hljs-title, body.dark #out .hljs-name { color: #d2a8ff; }
+  body.dark #out .hljs-built_in, body.dark #out .hljs-type { color: #ffa657; }
+  /* 深色主题（跟随编辑器设置，body.dark 切换） */
+  body.dark { color: #d4d4d4; background: #1e1e1e; }
+  body.dark { --pre-bg: #2a2a2a; --border: #484848; --inline-code-bg: #333333; }
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script src="./preview.bundle.js"></script>
+</body>
+</html>

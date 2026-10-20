@@ -47,4 +47,6 @@ const html = `<!DOCTYPE html>
 </html>`;
 
 fs.writeFileSync(path.join(outDir, 'editor.html'), html, 'utf-8');
-console.log('[build-web] done ->', path.join(outDir, 'editor.html'), '+ editor.bundle.js');
+// preview.html 的源文件在 web-tools/，每次构建同步到产物目录，避免手工维护产物。
+fs.copyFileSync(path.join(__dirname, 'preview.html'), path.join(outDir, 'preview.html'));
+console.log('[build-web] done ->', path.join(outDir, 'editor.html'), '+ editor.bundle.js + preview.html');
