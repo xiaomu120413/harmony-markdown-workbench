@@ -3,6 +3,14 @@ import { util } from '@kit.ArkTS';
 
 /** 所有短读/短写都必须显式处理；失败不提交临时文件。 */
 export class SafeFileIO {
+  static exists(path: string): boolean {
+    try { return fs.accessSync(path); }
+    catch (e) {
+      if ((e as ESObject).code === 13900002) { return false; }
+      throw e as Error;
+    }
+  }
+
   static readBytes(path: string, limit: number = 32 * 1024 * 1024): Uint8Array {
     const file = fs.openSync(path, fs.OpenMode.READ_ONLY);
     try {
@@ -88,7 +96,7 @@ export class SafeFileIO {
       SafeFileIO.writeBytes(temporary, bytes);
       fs.renameSync(temporary, path);
     } finally {
-      if (fs.accessSync(temporary)) {
+      if (SafeFileIO.exists(temporary)) {
         fs.unlinkSync(temporary);
       }
     }

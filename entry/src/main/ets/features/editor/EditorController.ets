@@ -64,6 +64,7 @@ export class EditorController {
   onExternalOpen(): Promise<void> { return this.documents.onExternalOpen(); }
   openReceivedDocument(id: string): void { return this.documents.openReceivedDocument(id); }
   receiveDrop(event: DragEvent): Promise<void> { return this.documents.receiveDrop(event); }
+  insertDroppedImage(path: string): Promise<boolean> { return this.delivery.insertAttachment(path, '图片', this.env.activeSession); }
   insertHtml(id?: string): Promise<void> { return this.delivery.insertHtml(id); }
   switchToDocument(docId: string): Promise<void> { return this.documents.switchToDocument(docId); }
   resolveRouteParams(): void { return this.documents.resolveRouteParams(); }

@@ -75,7 +75,7 @@ export class InternalFileSource implements DocumentFileAdapter {
     }
     // 无法读取既有文件时不猜测为“文件不存在”。
     try {
-      if (fs.accessSync(path)) {
+      if (SafeFileIO.exists(path)) {
         const current = await this.read(source);
         if (!current.validUtf8 || current.revision.contentHash !== expectedRevision.contentHash) {
           return { ok: false, reason: 'conflict', message: 'revision mismatch' };
@@ -189,7 +189,7 @@ export class InternalFileSource implements DocumentFileAdapter {
       }
       target = target.replace(/[\\/<>:"|?*\x00-\x1f]/g, '_').trim();
       if (target === '' || target === '.' || target === '..') { return ''; }
-      if (fs.accessSync(`${attDir}/${target}`)) { target = `${Date.now()}-${target}`; }
+      if (SafeFileIO.exists(`${attDir}/${target}`)) { target = `${Date.now()}-${target}`; }
       const bytes = SafeFileIO.readBytes(sourceUri, 20 * 1024 * 1024);
       SafeFileIO.atomicBytes(`${attDir}/${target}`, bytes);
       return `attachments/${target}`;

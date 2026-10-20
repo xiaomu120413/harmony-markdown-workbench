@@ -135,10 +135,20 @@ export class EditorDocuments {
     this.host.state.fileHover = false;
     if (this.host.state.dropBusy || this.host.state.deliveryBusy) { promptAction.showToast({ message: '文件操作进行中，请稍后再拖入' }); return; }
     this.host.state.dropBusy = true;
+    const session = this.host.env.activeSession;
     MuLogger.info('[拖入] 开始异步取数');
     try {
       const uri = await new DocumentImportService(this.host.env.ctx,
-        (key: string) => this.host.uiContext.getDragController().cancelDataLoading(key)).receive(event);
+        (key: string) => this.host.uiContext.getDragController().cancelDataLoading(key)).receive(event, false);
+      if (uri.startsWith('attachments/')) {
+        let inserted = false;
+        try {
+          if (this.host.isActive() && this.host.env.activeSession === session) { inserted = await this.host.insertDroppedImage(uri); }
+        }
+        finally { if (!inserted) { this.host.env.internal.remove({ kind: 'internal', relativePath: uri }); } }
+        if (inserted) { promptAction.showToast({ message: '已插入图片' }); }
+        return;
+      }
       if (!this.host.isActive()) { return; }
       MuLogger.info('[拖入] 已取得单文档授权');
       if (DocumentIntake.isHtml(uri)) { await this.host.insertHtml(uri); return; }

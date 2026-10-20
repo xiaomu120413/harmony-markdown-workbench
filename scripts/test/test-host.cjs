@@ -252,6 +252,47 @@ cases.push({ name: 'import persists document, reuses identical copy and never ov
   assert.equal(fs.readFileSync(path.join(filesDir, first), 'utf8'), '# 第一份\r\n木笺🙂');
   assert.equal(fs.readFileSync(source, 'utf8'), '# 第二份');
 } });
+cases.push({ name: 'TXT import handles platforms throwing ENOENT for missing target and committed temporary file', async body() {
+  const before = io.accessSync;
+  io.accessSync = p => { if (!fs.existsSync(p)) throw Object.assign(Error('missing'), { code: 13900002 }); return true; };
+  try {
+    const source = path.join(dir, 'missing-target.txt').replaceAll('\\', '/');
+    fs.writeFileSync(source, '正文\r\nTXT🙂');
+    const id = await new DocumentImportService({ filesDir, cacheDir: dir }).importUri(source);
+    assert.equal(id, 'library/missing-target.txt');
+    assert.equal(fs.readFileSync(path.join(filesDir, id), 'utf8'), '正文\r\nTXT🙂');
+    assert.equal(fs.existsSync(path.join(filesDir, id + '.tmp')), false);
+    assert.equal(fs.readFileSync(source, 'utf8'), '正文\r\nTXT🙂');
+  } finally { io.accessSync = before; }
+} });
+cases.push({ name: 'missing-file compatibility does not conceal permissions or misreport disk space', async body() {
+  const before = io.accessSync;
+  io.accessSync = () => { throw Object.assign(Error('permission denied'), { code: 13900012 }); };
+  try {
+    assert.throws(() => SafeFileIO.exists('/private'), /permission denied/);
+    const source = path.join(dir, 'denied.txt').replaceAll('\\', '/'); fs.writeFileSync(source, 'keep');
+    await assert.rejects(new DocumentImportService({ filesDir, cacheDir: dir }).importUri(source), /permission denied/);
+    assert.equal(fs.readFileSync(source, 'utf8'), 'keep');
+  } finally { io.accessSync = before; }
+} });
+cases.push({ name: 'image drop copies binary attachment and home creates a linked document', async body() {
+  const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64');
+  const source = path.join(dir, 'drop-picture.png').replaceAll('\\', '/'); fs.writeFileSync(source, bytes);
+  assert.equal(DocumentIntake.select(['file://docs/drop-picture.png']), 'file://docs/drop-picture.png');
+  const service = new DocumentImportService({ filesDir, cacheDir: dir });
+  const attachment = await service.importUri(source, false);
+  assert.ok(attachment.startsWith('attachments/')); assert.deepEqual(fs.readFileSync(path.join(filesDir, attachment)), bytes);
+  const doc = await service.importUri(source);
+  assert.ok(doc.startsWith('library/') && doc.endsWith('.md'));
+  assert.match(fs.readFileSync(path.join(filesDir, doc), 'utf8'), /!\[图片\]\(<attachments\/drop-picture\(2\)\.png>\)/);
+  assert.deepEqual(fs.readFileSync(source), bytes);
+} });
+cases.push({ name: 'long Unicode imported names leave room for atomic temporary file and duplicate suffix', async body() {
+  const source = path.join(dir, '文'.repeat(90) + '.txt').replaceAll('\\', '/'); fs.writeFileSync(source, 'long filename');
+  const id = await new DocumentImportService({ filesDir, cacheDir: dir }).importUri(source);
+  assert.ok(Buffer.byteLength(path.basename(id) + '.tmp', 'utf8') <= 255);
+  assert.equal(fs.readFileSync(path.join(filesDir, id), 'utf8'), 'long filename');
+} });
 cases.push({ name: 'partial writes are completed, including multibyte text', body() {
   writeLimit = 2;
   const file = path.join(dir, 'partial.txt'); SafeFileIO.writeText(file, '木笺🙂');

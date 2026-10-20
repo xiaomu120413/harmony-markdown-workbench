@@ -116,7 +116,7 @@ export class EditorDelivery {
     }
   }
 
-  private async insertAttachment(path: string, label: string, session: string): Promise<boolean> {
+  async insertAttachment(path: string, label: string, session: string): Promise<boolean> {
     const raw = await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.getSelectionRange();');
     if (!this.isCurrent(session)) { return false; }
     const selection: ESObject = JSON.parse(raw);
