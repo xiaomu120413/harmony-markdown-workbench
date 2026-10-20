@@ -57,7 +57,11 @@ const themeDark = EditorView.theme({
   '.cm-gutters': { backgroundColor: '#1e1e1e', color: '#6b7078', border: 'none' },
   '.cm-activeLine': { backgroundColor: '#26262a' },
   '.cm-activeLineGutter': { backgroundColor: '#2a2a2f', color: '#d4d4d4' },
-  '.cm-selectionBackground, ::selection': { backgroundColor: '#2f4368' },
+  // 深色下选区需要明显高于正文底色；同时显式指定选中文字颜色，避免系统高亮前景不可见。
+  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+    backgroundColor: '#3b5fa8',
+  },
+  '.cm-content ::selection': { color: '#ffffff' },
   '.cm-cursor': { borderLeftColor: '#fff' },
   '.cm-selectionMatch': { backgroundColor: '#3a5a3a' },
 }, { dark: true });

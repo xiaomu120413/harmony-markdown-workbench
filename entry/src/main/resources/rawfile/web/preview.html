@@ -48,6 +48,8 @@
   /* 深色主题（跟随编辑器设置，body.dark 切换） */
   body.dark { color: #d4d4d4; background: #1e1e1e; }
   body.dark { --pre-bg: #2a2a2a; --border: #484848; --inline-code-bg: #333333; }
+  /* 深色下系统默认选区过暗，显式提高背景与前景对比 */
+  body.dark ::selection { background: #3b5fa8; color: #ffffff; }
 </style>
 </head>
 <body>

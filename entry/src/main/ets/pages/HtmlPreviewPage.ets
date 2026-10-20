@@ -44,6 +44,9 @@ struct HtmlPreviewPage {
             return url !== 'about:blank' && url !== 'https://mumark.invalid/';
           })
           .onPageEnd(() => this.actions.attach())
+          .onContextMenuShow((_event: OnContextMenuShowEvent): boolean => {
+            return false; // 只读预览也允许默认复制菜单
+          })
           .attributeModifier(new WebDragStyle())
           .width('100%').layoutWeight(1)
       }.width('100%').height('100%').padding({ top: this.captionBottom })

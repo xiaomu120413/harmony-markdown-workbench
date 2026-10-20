@@ -129,6 +129,9 @@ export struct EditorWorkspace {
               }
               MuLogger.info('编辑器就绪');
             })
+            .onContextMenuShow((_event: OnContextMenuShowEvent): boolean => {
+              return false; // 使用 ArkWeb 默认菜单（剪切/复制/粘贴/全选）
+            })
             .onErrorReceive((event) => {
               MuLogger.info(`页面错误：${JSON.stringify(event.request)}`);
             })
@@ -164,6 +167,9 @@ export struct EditorWorkspace {
               this.actions.applyPreviewStyle();
               this.actions.syncDocNow();
               MuLogger.info('预览就绪');
+            })
+            .onContextMenuShow((_event: OnContextMenuShowEvent): boolean => {
+              return false; // 预览同样允许默认复制菜单
             })
             .onErrorReceive((event) => {
               MuLogger.info(`预览页面错误：${JSON.stringify(event.request)}`);

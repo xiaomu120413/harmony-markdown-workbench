@@ -28,3 +28,5 @@ files/
 *.log
 .DS_Store
 screenshots/
+# 本地签名材料（含私钥，禁止入库）
+sign_tools/
