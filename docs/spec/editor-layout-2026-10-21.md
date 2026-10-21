@@ -9,7 +9,7 @@
 
 ## RFC
 
-引用 REQ-LAYOUT-001/002。当前 gutterShown 强制 display:block，覆盖依赖源码 @codemirror/view 的 .cm-gutters display:flex，导致行号与折叠 gutter 纵向堆叠。改为 flex，隐藏行号仍沿用现有整组隐藏行为。
+引用 REQ-LAYOUT-001/002。修复前 gutterShown 强制 display:block，覆盖依赖源码 @codemirror/view 的 .cm-gutters display:flex，导致行号与折叠 gutter 纵向堆叠。现已改为 flex，隐藏行号仍沿用现有整组隐藏行为。
 
 EditorScreen 原先把状态栏置于整个 EditorWorkspace 下方，再加页面底部 padding，侧栏因此提前结束。把 DocumentSidebar 提升到 EditorScreen 的下半区 Row，右侧 Column 包含工作区和原状态栏；底部不再增加外边距。侧栏及分隔线使用同一父容器高度。
 
@@ -46,3 +46,14 @@ ST-LAYOUT-001，无新增权限和数据迁移依赖。
 - 同一独立签名目录执行上述 Debug HAP 构建：33 个任务成功（19 executed / 14 up-to-date），日志 `build-logs/layout-notch-build.log`。保留当时最新的现有 WebDragStyle 右键菜单改动，但不纳入本次提交。
 - MateBook 显式指定设备覆盖安装成功，打开 matrix-20261021.md，浅色真机截图 `C:/Users/mu/AppData/Local/Temp/mumark-bottom-flat.png` 确认行号栏灰色条消失、侧栏右边界一直到底，无原先状态栏上方的台阶；数字、折叠箭头与当前行高亮保留。REQ-LAYOUT-003 通过。
 - `node scripts/test/test-editor-actions.cjs`：40 个场景通过；文档、UTF-8、源码行数与 `git diff --check` 通过。本次为纯样式补修，沿用上一轮其余回归证据，不重复执行完整 SDK ohosTest 或全平台验收；深色仅浏览器验证，未做深色真机切换。未改文档正文或生成正式包。
+
+## 交付索引
+
+| 提交 | 内容 | 验收结论 |
+|---|---|---|
+| `811d96a` | 恢复行号/折叠栏横向排列；文档侧栏延伸到页面底部 | REQ-LAYOUT-001/002：PC 验收通过 |
+| `ad12e88` | 统一行号栏与正文底色，消除状态栏上方的灰色台阶 | REQ-LAYOUT-003：PC 验收通过 |
+
+折叠按钮是既有功能，本轮仅修正其排列和底色，不新增折叠语义。操作说明见[使用说明](../user-guide.md#行号旁的折叠按钮)。本次整理只补齐说明与交付索引，不改变需求、设计或运行行为，因此不新增 PRD/RFC/Story。
+
+整理验证：`node scripts/check/check-docs.mjs`、`node scripts/check/check-source-encoding.mjs` 与 `git diff --check` 通过。没有代码变更，不重复构建或运行设备测试；上述未验证项继续保留。
