@@ -17,3 +17,5 @@ REQ-DROP-005：编辑器中图片、TXT、HTML 插入当前文档；Markdown（m
 - 手写文件 500 行门禁、UTF-8、文档链接和差异检查在提交前运行。本轮未重试此前通信失败的 SDK 单测运行器；手机/API 22 平板未做本轮真机回归。JPEG/GIF/WebP 使用宿主类型及资源契约覆盖，不声称本轮逐个真机解码。
 
 本机 build-profile.json5 为用户已有配置，保留且不提交。本轮不新增 PDF/Office 解析或节点能力。
+
+正式交付：代码 `9af9f5f` 在独立签名目录执行 `assembleApp --mode project -p product=default -p buildMode=release --no-daemon`，44 个任务成功。SDK verify-app 摘要及验签成功，Profile 与现有 MumarkRelease.p7b 相同。dist 中 signed APP、signed HAP、unsigned APP 已更新。signed APP SHA-256：`4c0a65a62d43fdf0b2f0f7f9235d38b11bfb3689ded05635794a312df986c513`。设备验收使用复用调试签名的覆盖包，正式交付另用既有发布签名，未新增证书。
