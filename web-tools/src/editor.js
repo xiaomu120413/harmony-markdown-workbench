@@ -76,7 +76,7 @@ const gutterHidden = EditorView.theme({
   '& .cm-gutters': { display: 'none' },
 });
 const gutterShown = EditorView.theme({
-  '& .cm-gutters': { display: 'flex' },
+  '& .cm-gutters': { display: 'flex', backgroundColor: 'transparent', border: 'none' },
 });
 const gutterC = new Compartment();
 
