@@ -15,4 +15,16 @@ REQ-SDK-001：按用户确认，将木笺最低 API 要求提升为 24，整理�
 - 用 Python zipfile/json 检查产物 module.json：minAPIVersion 与 targetAPIVersion 均为 60101024（6.1.1 API 24 的打包值），包名 com.mumark.app、版本 1.0.0 保持一致。初次以裸 API 数字 24 比较断言失败，改按实际版本编码核对后通过。
 - 文档检查 66 Markdown、严格 UTF-8 检查 245 文件、500 行检查 130 手写文件，以及 `git diff --check` 通过。
 
-本轮未执行设备安装与 SDK 设备测试套件，没有重新宣称手机、平板或右键真机回归通过；此前原生菜单实测见同目录 right-click-menu-2026-10-21.md。dist 内此前正式包仍为旧 API 22 基线，本轮未重签或替换，不应将其当作本次 API 24 构建交付。
+本轮未执行设备安装与 SDK 设备测试套件，没有重新宣称手机、平板或右键真机回归通过；此前原生菜单实测见同目录 right-click-menu-2026-10-21.md。
+
+## 正式签名交付（2026-10-21）
+
+用户要求重新签发 API 24 release 包。源码基线 c796a83；独立构建目录只复用此前正式 signingConfigs 和产品 signingConfig，不复制旧 SDK 版本字段。未新建证书或 Profile，未改根工程签名配置。
+
+- `assembleApp --mode project -p product=default -p buildMode=release --no-daemon`：44 tasks 成功，包含 SignApp；日志 build-logs/api24-formal-release.log。
+- `hap-sign-tool.jar verify-app` 分别验证正式 APP 和 HAP：均返回 Digest verify result: true 与 verify-app success。提取的两份 Profile 均与原 sign_tools/MumarkRelease.p7b 的 SHA-256 一致。HAP 验证初次使用不存在的 verify 子命令失败，依据工具帮助改为 verify-app 后通过。
+- 检查已签名 APP 内嵌 HAP 和独立签名 HAP 的 module.json：minAPIVersion/targetAPIVersion 均为 60101024；com.mumark.app、1.0.0、versionCode 1000000 保持一致。
+- 已替换 dist/mumark-1.0.0-release-signed.app，SHA-256：BF5FE3F29C1B5BF90200C9F6EF020E2EC39368826355B0E39E65964F46697C01。
+- 已替换 dist/mumark-1.0.0-latest-release-signed.hap，SHA-256：B3EAAB26FF83665ACA28D30CB8C56DE382E011FBE016D47D39AB04F9D0F3B93F。
+
+产物及签名材料不入库；本次验签和元数据检查通过，不代表正式应用市场安装验收。
