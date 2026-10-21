@@ -2,7 +2,6 @@ import { MuLogger } from '../../common/MuLogger';
 import { ControlStyle } from '../../common/ControlStyle';
 import { WebDragStyle } from '../../common/WebDragStyle';
 import { router } from '@kit.ArkUI';
-import { DocumentSidebar } from '../../components/DocumentSidebar';
 import { DefaultView } from '../../domain/settings/AppSettings';
 import { EditorState } from './EditorState';
 import { EditorController } from './EditorController';
@@ -50,22 +49,6 @@ export struct EditorWorkspace {
       // phone：单栏互斥切换；tablet/pc 分屏：双 Web 并排；隐藏侧 Visibility.None 不占位）
       Stack() {
       Row({ space: 0 }) {
-        // B1/B2：文档侧栏（编辑页内切换文档，phone 档可折叠）
-        if (this.state.sidebarVisible && this.state.bp !== 'phone') {
-          DocumentSidebar({
-            recent: this.state.sidebarRecent,
-            libraryFiles: this.state.sidebarLibrary,
-            pal: this.state.pal,
-            busy: this.state.deliveryBusy,
-            onDelete: (docId: string) => this.actions.deleteDocument(docId),
-            onPin: (docId: string) => this.actions.toggleRecentPin(docId),
-            onDocSelected: (docId: string): void => {
-              this.actions.switchToDocument(docId);
-            },
-          })
-          Divider().vertical(true).height('100%').color(this.state.pal.DIVIDER)
-        }
-
         // 大纲侧栏（FR-PREVIEW-003 总装：点击跳转标题行）
         if (this.state.outlineVisible && this.state.bp !== 'phone') {
           Column() {

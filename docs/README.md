@@ -4,6 +4,7 @@
 
 ## 规格与验收
 
+- [spec/editor-layout-2026-10-21.md](spec/editor-layout-2026-10-21.md) — 编辑页折叠箭头对齐与文档侧栏触底修复
 - [MuMark-SDD.md](MuMark-SDD.md) — 原始 SDD 规格与执行合同（第 8.1 节目录为初版建议）
 - [spec/product-spec.md](spec/product-spec.md) — 稳定产品规格
 - [spec/acceptance.md](spec/acceptance.md) — 需求 ID 到验收用例

@@ -1,3 +1,4 @@
+import { DocumentSidebar } from '../../components/DocumentSidebar';
 import { EditorHeader } from './EditorHeader';
 import { EditorFindPanel } from './EditorFindPanel';
 import { EditorCommandBar } from './EditorCommandBar';
@@ -34,35 +35,56 @@ export struct EditorScreen {
       }
 
       EditorCommandBar({ state: this.state, actions: this.actions })
-      EditorWorkspace({ state: this.state, actions: this.actions }).layoutWeight(1)
-      // 状态栏（V0.4.2：字数 + 光标行列，备忘录式底部信息条）
-      if (!this.state.compactHeight || this.state.recoveryLabel.includes('失败')) {
-      Row() {
-        if (this.state.dropBusy) { Text('正在读取拖入文件…').fontSize(11).fontColor(this.state.pal.PRIMARY) }
-        Text(this.state.recoveryLabel).fontSize(11).fontColor(this.state.pal.TEXT_SUB).maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis }).layoutWeight(1)
-        Text(`${this.state.docLength} 字`)
-          .fontSize(11)
-          .fontColor(this.state.pal.TEXT_FAINT)
-        if (this.state.bp !== 'phone') {
-        Text(`行 ${this.state.cursorLine}，列 ${this.state.cursorCol}`)
-          .fontSize(11)
-          .fontColor(this.state.pal.TEXT_FAINT)
-          .padding({ left: 12 })
+      Row({ space: 0 }) {
+        // B1/B2：文档侧栏（编辑页内切换文档，phone 档可折叠）
+        if (this.state.sidebarVisible && this.state.bp !== 'phone' &&
+          this.state.loadState !== 'loadFailed' && this.state.loadState !== 'accessExpired') {
+          DocumentSidebar({
+            recent: this.state.sidebarRecent,
+            libraryFiles: this.state.sidebarLibrary,
+            pal: this.state.pal,
+            busy: this.state.deliveryBusy,
+            onDelete: (docId: string) => this.actions.deleteDocument(docId),
+            onPin: (docId: string) => this.actions.toggleRecentPin(docId),
+            onDocSelected: (docId: string): void => {
+              this.actions.switchToDocument(docId);
+            },
+          })
+          Divider().vertical(true).height('100%').color(this.state.pal.DIVIDER)
         }
-        Blank()
-        if (this.state.bp !== 'phone' && this.state.outlineEntries.length > 0) {
-          Text(`${this.state.outlineEntries.length} 个标题`)
-            .fontSize(11)
-            .fontColor(this.state.pal.TEXT_FAINT)
-        }
-      }
-      .width('100%')
-      .height(26)
-      .padding({ left: 4, right: 4 })
-      }
+
+        Column({ space: 8 }) {
+          EditorWorkspace({ state: this.state, actions: this.actions }).layoutWeight(1)
+          // 状态栏（V0.4.2：字数 + 光标行列，备忘录式底部信息条）
+          if (!this.state.compactHeight || this.state.recoveryLabel.includes('失败')) {
+          Row() {
+            if (this.state.dropBusy) { Text('正在读取拖入文件…').fontSize(11).fontColor(this.state.pal.PRIMARY) }
+            Text(this.state.recoveryLabel).fontSize(11).fontColor(this.state.pal.TEXT_SUB).maxLines(1)
+              .textOverflow({ overflow: TextOverflow.Ellipsis }).layoutWeight(1)
+            Text(`${this.state.docLength} 字`)
+              .fontSize(11)
+              .fontColor(this.state.pal.TEXT_FAINT)
+            if (this.state.bp !== 'phone') {
+            Text(`行 ${this.state.cursorLine}，列 ${this.state.cursorCol}`)
+              .fontSize(11)
+              .fontColor(this.state.pal.TEXT_FAINT)
+              .padding({ left: 12 })
+            }
+            Blank()
+            if (this.state.bp !== 'phone' && this.state.outlineEntries.length > 0) {
+              Text(`${this.state.outlineEntries.length} 个标题`)
+                .fontSize(11)
+                .fontColor(this.state.pal.TEXT_FAINT)
+            }
+          }
+          .width('100%')
+          .height(26)
+          .padding({ left: 4, right: 4 })
+          }
+        }.layoutWeight(1).height('100%').alignItems(HorizontalAlign.Start)
+      }.layoutWeight(1).width('100%').alignItems(VerticalAlign.Top)
     }
-    .padding(12)
+    .padding({ top: 12, left: 12, right: 12, bottom: 0 })
     .width('100%')
     .height('100%')
     .backgroundColor(this.state.pal.CONTENT)
