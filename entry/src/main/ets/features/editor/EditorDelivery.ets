@@ -229,6 +229,40 @@ export class EditorDelivery {
     }
   }
 
+  async pasteImage(payload: ESObject): Promise<void> {
+    const session = payload?.s as string;
+    if (!this.isCurrent(session) || this.host.state.loadState !== 'ready') { MuLogger.warn('stale image paste ignored'); return; }
+    if (this.host.state.deliveryBusy || this.host.state.dropBusy) {
+      promptAction.showToast({ message: '文件操作进行中，请稍后粘贴' }); return;
+    }
+    const error = payload.error as string;
+    if (error !== undefined) {
+      MuLogger.warn(`system image paste rejected: ${error}`);
+      promptAction.showToast({ message: error === 'multiple' ? '请一次粘贴一张图片' : error === 'size' ? '图片为空或超过 20 MB' :
+        error === 'format' ? '支持 PNG/JPEG/GIF/WebP/BMP 图片' : '系统图片读取失败，请重试或拖入图片' }); return;
+    }
+    const data = payload.data as string;
+    const version = payload.v as number;
+    const from = payload.from as number;
+    const to = payload.to as number;
+    if (typeof data !== 'string' || !Number.isInteger(version) || version < 0 || !Number.isInteger(from) ||
+      !Number.isInteger(to) || from < 0 || to < from) { MuLogger.warn('invalid image paste payload'); return; }
+    this.host.state.deliveryBusy = true;
+    let path = '';
+    try {
+      path = this.host.env.internal.savePastedImage(data);
+      const result = await this.host.runJsChecked(this.host.env.controller,
+        `window.__editorApi.insertPastedImage(${JSON.stringify(path)}, ${JSON.stringify(session)}, ${version}, ${from}, ${to});`);
+      if (result !== 'true') { throw new Error('文档已改变，请重新粘贴图片'); }
+      path = '';
+      if (this.isCurrent(session)) { this.host.markEdited(); promptAction.showToast({ message: '已粘贴图片' }); }
+    } catch (e) {
+      this.removeAttachment(path);
+      MuLogger.warn('image paste incomplete');
+      if (this.isCurrent(session)) { promptAction.showToast({ message: String(e).replace(/^Error: /, '') }); }
+    } finally { if (this.host.isActive()) { this.host.state.deliveryBusy = false; } }
+  }
+
   async insertLocalImage(): Promise<void> {
     if (!this.host.isActive() || this.host.state.deliveryBusy) { return; }
     const session = this.host.env.activeSession;

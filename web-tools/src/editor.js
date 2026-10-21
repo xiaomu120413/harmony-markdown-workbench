@@ -17,6 +17,7 @@ window.addEventListener('error', function (e) {
  */
 import { inspectMarkdown, renderMarkdown } from './markdown';
 import { inspectHtml, bundleHtml } from './html-embed';
+import { handleImagePaste } from './clipboard-image';
 import { basicSetup } from 'codemirror';
 import { EditorView, placeholder, keymap } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
@@ -144,6 +145,12 @@ function createEditorState(text) {
 }
 
 let view = null;
+document.addEventListener('paste', event => {
+  if (!view || !view.contentDOM.contains(event.target)) return;
+  const selection = view.state.selection.main;
+  handleImagePaste(event, { s: sessionId, v: editVersion, from: selection.from, to: selection.to,
+    editable: view.state.facet(EditorView.editable) }, notify);
+}, true);
 try {
   view = new EditorView({ parent: document.body, state: createEditorState('') });
   document.title = 'CM-OK';
@@ -153,6 +160,13 @@ try {
 
 // ---- 原生 → Web 命令入口（经 runJavaScript 调用，返回值同步回传）----
 window.__editorApi = {
+  insertPastedImage(path, session, version, from, to) {
+    if (session !== sessionId || version !== editVersion || !view.state.facet(EditorView.editable) ||
+      !Number.isInteger(from) || !Number.isInteger(to) || from < 0 || from > to || to > view.state.doc.length) return false;
+    view.dispatch({ changes: { from, to, insert: `![图片](<${path}>)` } });
+    view.focus();
+    return true;
+  },
   loadDocument(text, nativeSession) {
     suppressEdit = true;
     // New state isolates undo history: undo must never restore the previous file.

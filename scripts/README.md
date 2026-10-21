@@ -26,6 +26,7 @@
 | `test-host.cjs` | 领域/服务/基础设施与编辑器写回、预览缓存 |
 | `test-editor-actions.cjs` | 编辑器/首页控制器场景 |
 | `test-file-transactions.cjs` | 另存、导出、交付与文件事务 |
+| `test-clipboard-image.cjs` | 系统图片粘贴事件、图片校验与失败附件清理 |
 | `test-external-access.cjs` | 外部 URI 授权与访问 |
 | `test-page-viewmodels.cjs` | 设置/恢复 ViewModel |
 | `test-window-viewport.cjs` | 窗口与安全区域 |

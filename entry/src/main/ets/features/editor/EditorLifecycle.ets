@@ -31,6 +31,7 @@ export class EditorLifecycle {
       if (env === undefined) {
         return;
       }
+      if (env.type === 'pasteImage') { this.host.pasteImage(env.payload); return; }
       if (env.type === 'edit') {
         if (env.payload.s !== this.host.env.activeSession) { return; }
         // 用户输入（打字/粘贴/IME/撤销重做）：进入 DIRTY 并调度防抖保存与预览同步

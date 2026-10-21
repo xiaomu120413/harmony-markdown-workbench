@@ -197,6 +197,27 @@ export class InternalFileSource implements DocumentFileAdapter {
     }
   }
 
+  /** 保存系统粘贴事件交付的图片数据，不主动读取剪贴板。 */
+  savePastedImage(data: string): string {
+    if (data.length > 28 * 1024 * 1024) { throw new Error('图片超过 20 MB'); }
+    const match = /^data:image\/(png|jpeg|gif|webp|bmp);base64,([A-Za-z0-9+/]*={0,2})$/.exec(data);
+    if (match === null) { throw new Error('剪贴板图片格式不受支持'); }
+    const bytes = new util.Base64Helper().decodeSync(match[2]);
+    if (bytes.byteLength === 0 || bytes.byteLength > 20 * 1024 * 1024) { throw new Error('图片为空或超过 20 MB'); }
+    const type = match[1];
+    const head = Array.from(bytes.subarray(0, 12)).map((n: number) => n.toString(16).padStart(2, '0')).join('');
+    const valid = type === 'png' ? head.startsWith('89504e470d0a1a0a') : type === 'jpeg' ? head.startsWith('ffd8ff') :
+      type === 'gif' ? /^(474946383761|474946383961)/.test(head) : type === 'bmp' ? head.startsWith('424d') :
+        head.startsWith('52494646') && head.substring(16, 24) === '57454250';
+    if (!valid) { throw new Error('图片内容与格式不符'); }
+    const folder = `${this.baseDir}/attachments`;
+    if (!SafeFileIO.exists(folder)) { fs.mkdirSync(folder); }
+    const name = `paste-${Date.now()}-${Math.floor(Math.random() * 0xffffff)}.${type === 'jpeg' ? 'jpg' : type}`;
+    if (SafeFileIO.exists(`${folder}/${name}`)) { throw new Error('附件重名，请重新粘贴'); }
+    SafeFileIO.atomicBytes(`${folder}/${name}`, bytes);
+    return `attachments/${name}`;
+  }
+
   /** 枚举附件目录 */
   listAttachments(): string[] {
     const names: string[] = [];

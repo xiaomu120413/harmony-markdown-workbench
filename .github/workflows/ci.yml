@@ -47,6 +47,7 @@ jobs:
           node scripts/test/test-host.cjs
           node scripts/test/test-editor-actions.cjs
           node scripts/test/test-file-transactions.cjs
+          node scripts/test/test-clipboard-image.cjs
           node scripts/test/test-external-access.cjs
           node scripts/test/test-page-viewmodels.cjs
           node scripts/test/test-window-viewport.cjs
