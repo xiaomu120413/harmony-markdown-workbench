@@ -7,6 +7,7 @@
 **产品原则：打开的是原文件，保存后仍是原文件。**
 
 本轮名称统一为 **木笺 MuMark**，与木枢、MuTransfer 同系列。
+最低系统 **HarmonyOS 6.1.1（API 24）**，目标 API 24；[版本基线与验证](docs/spec/api24-baseline-2026-10-21.md)。
 正式包名 **`com.mumark.app`**，版本 **1.0.0**（versionCode 1000000）；证书和 Profile 按此包名申请。[应用身份变更与数据边界](docs/spec/mumark-package-2026-10-20.md)。
 [使用说明](docs/user-guide.md) · [本轮规格](docs/spec/productization-2026-10.md) · [验证与限制](docs/spec/productization-verification.md) · [图标母版](docs/brand/README.md)。
 本轮交付以验证记录为准，下表旧版本“完成”不替代当前设备与异常路径的验收。

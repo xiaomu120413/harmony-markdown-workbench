@@ -143,22 +143,17 @@ cases.push({ name: 'breakpoints cover fractional widths and resize in both direc
 } });
 kits['@kit.BasicServicesKit'].deviceInfo = {};
 const { WebDragStyle } = load(path.join(root, 'entry/src/main/ets/common/WebDragStyle.ets'));
-cases.push({ name: 'Web gates native context menu at API24 and drag control at API26', body() {
+cases.push({ name: 'Web enables native menu on API24 baseline and gates drag at API26', body() {
   const modifier = new WebDragStyle();
-  modifier.applyNormalAttribute({}); // A legacy system has neither new API.
-  kits['@kit.BasicServicesKit'].deviceInfo.apiAvailable = () => false;
-  modifier.applyNormalAttribute({});
-  kits['@kit.BasicServicesKit'].deviceInfo.apiAvailable = version => { assert.equal(version, '26.0.0'); return true; };
-  let value;
-  modifier.applyNormalAttribute({ enableDrag(v) { value = v; } });
-  assert.equal(value, false);
-  delete kits['@kit.BasicServicesKit'].deviceInfo.apiAvailable;
-  for (const api of [22, 23, 24, 25, 26]) {
-    kits['@kit.BasicServicesKit'].deviceInfo.sdkApiVersion = api; let shown = false;
-    modifier.applyNormalAttribute(api < 24 ? {} : { enableDefaultContextMenu(v) { shown = v; } });
-    assert.equal(shown, api >= 24);
+  for (const api of [24, 25, 26]) {
+    const info = kits['@kit.BasicServicesKit'].deviceInfo;
+    if (api === 24) delete info.apiAvailable;
+    else info.apiAvailable = version => { assert.equal(version, '26.0.0'); return api >= 26; };
+    let shown = false, drag;
+    modifier.applyNormalAttribute({ enableDefaultContextMenu(v) { shown = v; }, enableDrag(v) { drag = v; } });
+    assert.equal(shown, true); assert.equal(drag, api === 26 ? false : undefined);
   }
-  delete kits['@kit.BasicServicesKit'].deviceInfo.sdkApiVersion;
+  delete kits['@kit.BasicServicesKit'].deviceInfo.apiAvailable;
 } });
 const { DraftStore } = load(path.join(root, 'entry/src/main/ets/infrastructure/metadata/DraftStore.ets'));
 cases.push({ name: 'draft load and recovery listing survive UTF8 short reads', body() {

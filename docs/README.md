@@ -4,6 +4,8 @@
 
 ## 规格与验收
 
+- [spec/api24-baseline-2026-10-21.md](spec/api24-baseline-2026-10-21.md) — 最低与目标 API 24、原生菜单简化及构建验证
+
 - [spec/editor-layout-2026-10-21.md](spec/editor-layout-2026-10-21.md) — 编辑页折叠箭头对齐与文档侧栏触底修复
 - [MuMark-SDD.md](MuMark-SDD.md) — 原始 SDD 规格与执行合同（第 8.1 节目录为初版建议）
 - [spec/product-spec.md](spec/product-spec.md) — 稳定产品规格

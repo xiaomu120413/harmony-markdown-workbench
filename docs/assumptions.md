@@ -4,11 +4,10 @@
 
 ## A-01 目标 SDK 与最低版本
 
-- **默认值**：targetSdkVersion = `6.0.2(22)`，compatibleSdkVersion = `6.0.2(22)`（HarmonyOS 6.0.2 / API 22），runtimeOS = HarmonyOS。
+- **当前确认值**：targetSdkVersion = compatibleSdkVersion = `6.1.1(24)`（HarmonyOS 6.1.1 / API 24，2026-10-21 用户确认），runtimeOS = HarmonyOS。
 - 本机构建环境 SDK：`ets` API 26（HarmonyOS 6.6.0 Beta1，`oh-uni-package.json` 26.0.0.23）。
-- 依据：同目录可构建工程 `PythonExecDemo` 使用完全相同的版本组合并成功产出 unsigned HAP。
-- 风险：API 22 目标 + API 26 SDK 的组合已在 M0-01 构建验证通过；后续若需覆盖 HarmonyOS 5.x 设备，下调 compatibleSdkVersion 并回归（ADR-006）。
-- 待澄清：正式发布目标设备系统版本范围。
+- 依据：当前 SDK 的 sdkApiVersionMap.json 将 API 24 映射为 `6.1.1(24)`；用户确认以原生右键菜单要求提升最低版本（ADR-006）。
+- API 22、23 不再属于支持范围；历史验收记录保留当时版本事实。
 
 ## A-02 bundleName 与 vendor
 
