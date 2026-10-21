@@ -18,3 +18,5 @@ REQ-PASTE-001：用户通过系统粘贴交付图片时，在当前文档插入�
 - 本轮真机验收为 Ctrl+V 路径；手机/平板、系统右键/长按粘贴菜单、JPEG/GIF/WebP 逐格式真机粘贴未验收。不以伪造 ClipboardEvent 替代上述真机结果。此前 SDK 单测运行器本机通信异常，本轮未重试，宿主 mock 与设备结果分别列出。
 
 用户已有 build-profile.json5 本机签名改动保留且不提交。无 READ_PASTEBOARD 新增声明或主动读取接口。
+
+交付：代码 `44c2b86` 已推送。最终构建再覆盖安装后，测试文档中的 BMP/PNG 引用及“已保存”状态保留。独立签名目录执行 `assembleApp --mode project -p product=default -p buildMode=release --no-daemon`，44 个任务通过；SDK verify-app 验签和摘要成功，提取 Profile 与既有 MumarkRelease.p7b 一致。dist 的正式 signed APP、signed HAP、unsigned APP 已更新；signed APP SHA-256 为 `7e9002a65c559785fb27f8e180f47caeb733d1c389ee0ba7e08ac567d9feb5ad`。真机覆盖包使用既有调试签名，发布产物使用既有正式签名，未混称或新增证书。
