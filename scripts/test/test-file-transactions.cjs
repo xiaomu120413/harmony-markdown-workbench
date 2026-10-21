@@ -124,6 +124,21 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
   assert.ok(f.scripts.at(-1).includes('setEditable(true)'));
   assert.ok(!f.scripts.some(s => s.includes('replaceRange')));
 
+  const importUri = DocumentImportService.prototype.importUri;
+  for (const mode of ['read-failure', 'session-change']) {
+    f = fixture(); const removed = []; select = async () => ['file://docs/picked.html'];
+    f.actions.env.internal.remove = source => removed.push(source.relativePath);
+    f.actions.env.internal.read = async () => { throw Error('read failed'); };
+    DocumentImportService.prototype.importUri = async (_, standalone) => {
+      assert.equal(standalone, false);
+      if (mode === 'session-change') f.actions.env.activeSession = 'other';
+      return 'attachments/picked.html';
+    };
+    await f.actions.insertHtml();
+    assert.deepEqual(removed, ['attachments/picked.html']); assert.equal(f.state.deliveryBusy, false);
+    assert.ok(!f.scripts.some(s => s.includes('replaceRange')));
+  }
+  DocumentImportService.prototype.importUri = importUri;
   f = fixture(); gate = deferred(); select = () => gate.promise;
   const lateHtml = f.actions.insertHtml(); await Promise.resolve();
   f.actions.env.activeSession = 'new-document'; gate.resolve(['file://docs/late.html']); await lateHtml;
@@ -148,6 +163,23 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
   await f.actions.receiveDrop({});
   assert.equal(inserted, 'library/drop.html'); assert.equal(f.actions.env.pendingOpenUri, '');
   assert.equal(f.state.dropBusy, false); assert.equal(f.state.docTitle, 'source.md');
+  for (const mode of ['insert', 'failure', 'session-change']) {
+    f = fixture(); const removed = []; let called = false;
+    f.actions.env.internal.remove = source => removed.push(source.relativePath);
+    DocumentImportService.prototype.receive = async () => {
+      if (mode === 'session-change') f.actions.env.activeSession = 'other';
+      return 'attachments/raw.html';
+    };
+    f.actions.insertHtml = async id => { called = true; assert.equal(id, 'attachments/raw.html');
+      if (mode === 'failure') throw Error('HTML insertion failed'); };
+    await f.actions.receiveDrop({});
+    assert.equal(called, mode !== 'session-change'); assert.deepEqual(removed, ['attachments/raw.html']);
+    assert.equal(f.actions.env.pendingOpenUri, ''); assert.equal(f.state.docTitle, 'source.md');
+    assert.equal(f.state.dropBusy, false);
+  }
+  f = fixture(); DocumentImportService.prototype.receive = async () => 'library/separate.md';
+  await f.actions.receiveDrop({}); assert.equal(f.actions.env.pendingOpenUri, 'library/separate.md');
+  assert.equal(f.state.docTitle, 'source.md');
   f = fixture(); let imageMode, imagePath;
   DocumentImportService.prototype.receive = async (_, asDocument) => { imageMode = asDocument; return 'attachments/drop.png'; };
   f.actions.insertDroppedAttachment = async id => { imagePath = id; return true; };
@@ -200,5 +232,5 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
     assert.equal(options.maxSelectNumber, supported ? 1 : 128);
     if (!supported) assert.ok(options.fileSuffixFilters.includes('.css'));
   }
-  console.log('29 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
+  console.log('35 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
 })().catch(e => { console.error(e); process.exitCode = 1; });

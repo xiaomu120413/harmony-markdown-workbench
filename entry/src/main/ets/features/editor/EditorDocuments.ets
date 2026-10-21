@@ -140,6 +140,14 @@ export class EditorDocuments {
     try {
       const uri = await new DocumentImportService(this.host.env.ctx,
         (key: string) => this.host.uiContext.getDragController().cancelDataLoading(key)).receive(event, false);
+      if (DocumentIntake.isHtml(uri)) {
+        try {
+          if (this.host.isActive() && this.host.env.activeSession === session) { await this.host.insertHtml(uri); }
+        } finally {
+          if (uri.startsWith('attachments/')) { this.host.env.internal.remove({ kind: 'internal', relativePath: uri }); }
+        }
+        return;
+      }
       if (uri.startsWith('attachments/')) {
         let inserted = false;
         try {
@@ -151,7 +159,6 @@ export class EditorDocuments {
       }
       if (!this.host.isActive()) { return; }
       MuLogger.info('[拖入] 已取得单文档授权');
-      if (DocumentIntake.isHtml(uri)) { await this.host.insertHtml(uri); return; }
       promptAction.showToast({ message: '已导入“我的文档”，编辑的是副本' });
       this.host.env.pendingOpenUri = uri;
     } catch (e) {

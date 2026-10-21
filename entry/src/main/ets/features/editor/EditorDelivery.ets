@@ -71,12 +71,14 @@ export class EditorDelivery {
     const session = this.host.env.activeSession;
     this.host.state.deliveryBusy = true;
     let attachmentPath = '';
+    let importedPath = '';
     try {
       await this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(false);', true);
       if (id === undefined) {
         const uris = await new picker.DocumentViewPicker(this.host.env.ctx).select({ maxSelectNumber: 1, fileSuffixFilters: ['.html', '.htm'] });
         if (!this.isCurrent(session) || uris.length === 0) { return; }
-        id = await new DocumentImportService(this.host.env.ctx).importUri(uris[0]);
+        id = await new DocumentImportService(this.host.env.ctx).importUri(uris[0], false);
+        importedPath = id;
       }
       if (!this.isCurrent(session)) { return; }
       const read = await this.host.env.internal.read({ kind: 'internal', relativePath: id });
@@ -88,7 +90,7 @@ export class EditorDelivery {
       const bytes = SafeFileIO.utf8Bytes(html);
       if (bytes.byteLength > 12 * 1024 * 1024) { throw new Error('内嵌 HTML 超过 12 MiB，请缩小图片后插入'); }
       const folder = `${this.host.env.ctx.filesDir}/attachments`;
-      if (!fs.accessSync(folder)) { fs.mkdirSync(folder); }
+      if (!SafeFileIO.exists(folder)) { fs.mkdirSync(folder); }
       const name = `html-${Date.now()}-${Math.floor(Math.random() * 0xffffff)}.html`;
       attachmentPath = `attachments/${name}`;
       SafeFileIO.atomicBytes(`${folder}/${name}`, bytes);
@@ -106,6 +108,7 @@ export class EditorDelivery {
         promptAction.showToast({ message: String(e).replace(/^Error: /, '') });
       }
     } finally {
+      this.removeAttachment(importedPath);
       if (this.host.isActive()) { this.host.state.deliveryBusy = false; }
       if (this.isCurrent(session)) {
         this.host.runJsChecked(this.host.env.controller, 'window.__editorApi.setEditable(true);', true).catch(() => {

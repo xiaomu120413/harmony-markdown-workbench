@@ -239,6 +239,28 @@ cases.push({ name: 'TXT node import preserves raw bytes and never creates a libr
   await assert.rejects(service.importUri(invalid.replaceAll('\\', '/'), false), /UTF-8/);
   assert.equal(fs.existsSync(path.join(filesDir, 'attachments', 'invalid.txt')), false);
 } });
+cases.push({ name: 'drop types keep Markdown standalone and HTML temporary with matching image MIME', async body() {
+  const service = new DocumentImportService({ filesDir, cacheDir: dir });
+  const library = new InternalFileSource({ filesDir }).listLibrary();
+  for (const ext of ['html', 'htm']) {
+    const file = path.join(dir, `node.${ext}`); fs.writeFileSync(file, '<h1>HTML</h1>');
+    const id = await service.importUri(file.replaceAll('\\', '/'), false);
+    assert.match(id, /^attachments\//); assert.equal(fs.readFileSync(path.join(filesDir, id), 'utf8'), '<h1>HTML</h1>');
+  }
+  assert.deepEqual(new InternalFileSource({ filesDir }).listLibrary(), library);
+  for (const ext of ['md', 'markdown']) {
+    const file = path.join(dir, `standalone.${ext}`); fs.writeFileSync(file, '# Markdown');
+    assert.match(await service.importUri(file.replaceAll('\\', '/'), false), /^library\//);
+  }
+  for (const ext of ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp']) {
+    const file = path.join(dir, `matrix.${ext}`); fs.writeFileSync(file, Buffer.from([1, 2, 3]));
+    assert.equal(DocumentIntake.select([`file://docs/matrix.${ext}`]), `file://docs/matrix.${ext}`);
+    const id = await service.importUri(file.replaceAll('\\', '/'), false);
+    const resource = new DocumentDeliveryService({ filesDir }).resources([id])[id];
+    assert.ok(resource.startsWith(`data:image/${ext === 'jpg' ? 'jpeg' : ext};base64,`));
+  }
+  for (const ext of ['pdf', 'doc', 'docx', 'xls', 'xlsx']) assert.throws(() => DocumentIntake.select([`file://docs/a.${ext}`]));
+} });
 cases.push({ name: 'empty text writes and overwrite delivery remain zero bytes', body() {
   const file = path.join(dir, 'empty-output.txt');
   SafeFileIO.writeText(file, ''); assert.equal(fs.statSync(file).size, 0);

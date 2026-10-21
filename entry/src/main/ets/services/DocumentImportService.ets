@@ -54,9 +54,9 @@ export class DocumentImportService {
     // Drag/drop imports a private copy; do not retain access to its external source.
     const read = await external.read({ kind: 'external', uri: uri, displayName: '' }, false);
     if (!read.validUtf8) { throw new Error('仅支持 UTF-8 文本文档，原文件未改动'); }
-    if (!standalone && /\.txt$/i.test(originalName)) {
+    if (!standalone && /\.(txt|html|htm)$/i.test(originalName)) {
       const attachment = internal.copyToAttachments(uri, originalName);
-      if (!attachment) { throw new Error('TXT 内容块导入失败，请检查文件访问或是否超过 20 MB'); }
+      if (!attachment) { throw new Error('内容块复制失败，请检查文件访问或是否超过 20 MB'); }
       return attachment;
     }
     return this.saveCopy(originalName, read);
