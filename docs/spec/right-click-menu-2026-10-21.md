@@ -26,3 +26,5 @@ ST-MENU-001 仅修改 WebDragStyle 与对应宿主机测试。回退时删除菜
 最终源码验收：基于 ad12e88 与本次 modifier 补丁创建独立构建目录，assembleHap --mode module -p product=default -p buildMode=release --no-daemon 成功（34 tasks）；使用既有调试签名覆盖安装至 MateBook，未卸载应用，原最近文档仍在，打开 matrix 测试文档后再次确认系统竖排菜单。日志为本地忽略目录 build-logs/right-menu-final-debug-build.log。根工程现有签名配置未改动，也未申请新证书。
 
 静态门禁：node scripts/check/check-docs.mjs（65 Markdown）、check-source-encoding.mjs（244 文件）、check-source-size.mjs（130 手写文件）及 git diff --check 通过，手写文件均不超过 500 行。SDK 设备测试套件未执行，本次以宿主机测试与上述 API 26 实机检查为证据。
+
+正式交付：源码 f459380 用既有 release 配置执行 assembleApp --mode project -p product=default -p buildMode=release --no-daemon，44 tasks 成功。hap-sign-tool.jar verify-app 返回 Digest verify result: true 与 verify-app success；提取的 Profile 与原 MumarkRelease.p7b 的 SHA-256 一致。正式包输出至 dist/mumark-1.0.0-release-signed.app（SHA-256：3BA81555AFAABC8BC0282EC4E80993A1B5D2A0C11368349678B66ABC07677381）及 dist/mumark-1.0.0-latest-release-signed.hap。正式 app_gallery 包未替代设备上的既有调试签名包；没有卸载或清空文档。
