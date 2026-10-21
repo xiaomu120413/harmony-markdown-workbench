@@ -143,7 +143,7 @@ cases.push({ name: 'breakpoints cover fractional widths and resize in both direc
 } });
 kits['@kit.BasicServicesKit'].deviceInfo = {};
 const { WebDragStyle } = load(path.join(root, 'entry/src/main/ets/common/WebDragStyle.ets'));
-cases.push({ name: 'Web drag compatibility skips absent/unsupported API and applies only on API26', body() {
+cases.push({ name: 'Web gates native context menu at API24 and drag control at API26', body() {
   const modifier = new WebDragStyle();
   modifier.applyNormalAttribute({}); // A legacy system has neither new API.
   kits['@kit.BasicServicesKit'].deviceInfo.apiAvailable = () => false;
@@ -152,6 +152,13 @@ cases.push({ name: 'Web drag compatibility skips absent/unsupported API and appl
   let value;
   modifier.applyNormalAttribute({ enableDrag(v) { value = v; } });
   assert.equal(value, false);
+  delete kits['@kit.BasicServicesKit'].deviceInfo.apiAvailable;
+  for (const api of [22, 23, 24, 25, 26]) {
+    kits['@kit.BasicServicesKit'].deviceInfo.sdkApiVersion = api; let shown = false;
+    modifier.applyNormalAttribute(api < 24 ? {} : { enableDefaultContextMenu(v) { shown = v; } });
+    assert.equal(shown, api >= 24);
+  }
+  delete kits['@kit.BasicServicesKit'].deviceInfo.sdkApiVersion;
 } });
 const { DraftStore } = load(path.join(root, 'entry/src/main/ets/infrastructure/metadata/DraftStore.ets'));
 cases.push({ name: 'draft load and recovery listing survive UTF8 short reads', body() {
