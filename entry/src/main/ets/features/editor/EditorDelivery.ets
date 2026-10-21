@@ -85,7 +85,7 @@ export class EditorDelivery {
       const html = await this.host.runJsChecked(this.host.env.controller,
         `window.__editorApi.bundleHtml(${JSON.stringify(read.content)}, ${JSON.stringify(resources)});`);
       if (!this.isCurrent(session)) { return; }
-      const bytes = util.TextEncoder.create('utf-8').encodeInto(html);
+      const bytes = SafeFileIO.utf8Bytes(html);
       if (bytes.byteLength > 12 * 1024 * 1024) { throw new Error('内嵌 HTML 超过 12 MiB，请缩小图片后插入'); }
       const folder = `${this.host.env.ctx.filesDir}/attachments`;
       if (!fs.accessSync(folder)) { fs.mkdirSync(folder); }
@@ -194,7 +194,7 @@ export class EditorDelivery {
         const source: ExternalSource = { kind: 'external', uri: result.uri, displayName: result.fileName };
         this.host.state.docTarget = source;
         this.host.state.docTitle = result.fileName;
-        this.host.env.expectedRevision = { size: util.TextEncoder.create('utf-8').encodeInto(snap.content).byteLength,
+        this.host.env.expectedRevision = { size: SafeFileIO.utf8Bytes(snap.content).byteLength,
           contentHash: HashUtil.of(snap.content) };
         this.host.env.docFormat = { encoding: 'utf-8', lineEnding: 'lf' };
         this.host.env.docValidUtf8 = true;

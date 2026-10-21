@@ -3,6 +3,11 @@ import { util } from '@kit.ArkTS';
 
 /** 所有短读/短写都必须显式处理；失败不提交临时文件。 */
 export class SafeFileIO {
+  /** 部分设备的编码器对空字符串返回 undefined；空文档始终编码为零字节。 */
+  static utf8Bytes(content: string): Uint8Array {
+    return content.length === 0 ? new Uint8Array(0) : util.TextEncoder.create('utf-8').encodeInto(content);
+  }
+
   static exists(path: string): boolean {
     try { return fs.accessSync(path); }
     catch (e) {
@@ -61,7 +66,7 @@ export class SafeFileIO {
   }
 
   static writeText(path: string, content: string): void {
-    SafeFileIO.writeBytes(path, util.TextEncoder.create('utf-8').encodeInto(content));
+    SafeFileIO.writeBytes(path, SafeFileIO.utf8Bytes(content));
   }
 
   /** Picker 目标可能是已有文件。先读备份，写失败尽力恢复；不盲删已有用户文件。 */
@@ -82,12 +87,12 @@ export class SafeFileIO {
   }
 
   static replaceTextTarget(path: string, content: string): void {
-    const bytes = util.TextEncoder.create('utf-8').encodeInto(content);
+    const bytes = SafeFileIO.utf8Bytes(content);
     SafeFileIO.replaceTarget(path, (fd: number) => SafeFileIO.writeAll(fd, bytes));
   }
 
   static atomicText(path: string, content: string): void {
-    SafeFileIO.atomicBytes(path, util.TextEncoder.create('utf-8').encodeInto(content));
+    SafeFileIO.atomicBytes(path, SafeFileIO.utf8Bytes(content));
   }
 
   static atomicBytes(path: string, bytes: Uint8Array): void {

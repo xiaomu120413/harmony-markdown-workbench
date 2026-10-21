@@ -86,8 +86,7 @@ export class InternalFileSource implements DocumentFileAdapter {
       const fmt: DocumentWriteFormat = format ?? { encoding: 'utf-8', lineEnding: 'lf' };
       const out = TextRoundtrip.applyFormat(content, fmt);
       SafeFileIO.atomicText(path, out);
-      const encoder = util.TextEncoder.create('utf-8');
-      const byteLen = encoder.encodeInto(out).byteLength;
+      const byteLen = SafeFileIO.utf8Bytes(out).byteLength;
       const ok: WriteOkResult = {
         ok: true,
         revision: { size: byteLen, contentHash: HashUtil.of(content) },

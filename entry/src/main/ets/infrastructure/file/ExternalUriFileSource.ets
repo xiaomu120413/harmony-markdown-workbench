@@ -70,12 +70,11 @@ export class ExternalUriFileSource implements DocumentFileAdapter {
       const fmt: DocumentWriteFormat = format ?? { encoding: 'utf-8', lineEnding: 'lf' };
       const out = TextRoundtrip.applyFormat(content, fmt);
       w = fs.openSync(uri, fs.OpenMode.WRITE_ONLY | fs.OpenMode.TRUNC);
-      SafeFileIO.writeAll(w.fd, util.TextEncoder.create('utf-8').encodeInto(out));
+      SafeFileIO.writeAll(w.fd, SafeFileIO.utf8Bytes(out));
       fs.fsyncSync(w.fd);
       fs.closeSync(w.fd);
       w = undefined;
-      const encoder = util.TextEncoder.create('utf-8');
-      const byteLen = encoder.encodeInto(out).byteLength;
+      const byteLen = SafeFileIO.utf8Bytes(out).byteLength;
       const ok: WriteOkResult = {
         ok: true,
         revision: { size: byteLen, contentHash: HashUtil.of(content) },

@@ -46,7 +46,7 @@ const kits = {
     PhotoViewMIMETypes: { IMAGE_TYPE: 'image/*' }, DocumentSelectMode: { FOLDER: 0 },
   } },
   '@kit.ArkTS': { util: {
-    TextEncoder: { create: () => ({ encodeInto: s => new TextEncoder().encode(s) }) },
+    TextEncoder: { create: () => ({ encodeInto: s => s.length === 0 ? undefined : new TextEncoder().encode(s) }) },
     TextDecoder: { create: () => ({ decodeToString: b => new TextDecoder().decode(b) }) },
     Base64Helper: class { encodeToStringSync(b) { return Buffer.from(b).toString('base64'); } },
   } },
@@ -213,6 +213,42 @@ cases.push({ name: 'failed system transfer rejects once and the next drop can su
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mumark-tests-'));
 const filesDir = path.join(dir, 'files'); fs.mkdirSync(filesDir); fs.mkdirSync(path.join(filesDir, 'attachments'));
 const { InternalFileSource } = load(path.join(root, 'entry/src/main/ets/infrastructure/file/InternalFileSource.ets'));
+cases.push({ name: 'empty TXT drop imports a zero-byte copy with device-like empty encoder', async body() {
+  const file = path.join(dir, 'empty-drop.txt'); fs.writeFileSync(file, '');
+  const service = new DocumentImportService({ filesDir, cacheDir: dir });
+  const name = await service.importUri(file.replaceAll('\\', '/'));
+  assert.equal(fs.statSync(path.join(filesDir, name)).size, 0);
+  assert.equal(await service.importUri(file.replaceAll('\\', '/')), name);
+  assert.equal(fs.statSync(file).size, 0);
+  assert.equal(fs.existsSync(path.join(filesDir, `${name}.tmp`)), false);
+} });
+cases.push({ name: 'empty text writes and overwrite delivery remain zero bytes', body() {
+  const file = path.join(dir, 'empty-output.txt');
+  SafeFileIO.writeText(file, ''); assert.equal(fs.statSync(file).size, 0);
+  fs.writeFileSync(file, 'previous');
+  SafeFileIO.replaceTextTarget(file, ''); assert.equal(fs.statSync(file).size, 0);
+  SafeFileIO.atomicText(file, ''); assert.equal(fs.statSync(file).size, 0);
+  assert.deepEqual([...SafeFileIO.utf8Bytes('')], []);
+  assert.deepEqual([...SafeFileIO.utf8Bytes('\uFEFF')], [239, 187, 191]);
+} });
+cases.push({ name: 'internal and external clearing saves zero-byte revisions', async body() {
+  const internal = new InternalFileSource({ filesDir });
+  const target = { kind: 'internal', relativePath: 'library/clear-empty.txt' };
+  assert.equal((await internal.write(target, 'previous', { size: 0, contentHash: '' })).ok, true);
+  const before = await internal.read(target);
+  const cleared = await internal.write(target, '', before.revision);
+  assert.equal(cleared.ok, true); assert.equal(cleared.revision.size, 0);
+  const { ExternalUriFileSource } = load(path.join(root, 'entry/src/main/ets/infrastructure/file/ExternalUriFileSource.ets'));
+  const file = path.join(dir, 'clear-external.txt'); fs.writeFileSync(file, 'previous');
+  const external = new ExternalUriFileSource(), source = { kind: 'external', uri: file, displayName: '' };
+  const { ExternalFileAccess } = load(path.join(root, 'entry/src/main/ets/infrastructure/file/ExternalFileAccess.ets'));
+  const prepare = ExternalFileAccess.prepare; ExternalFileAccess.prepare = async () => false;
+  try {
+    const saved = await external.write(source, '', { size: 8, contentHash: '' });
+    assert.equal(saved.ok, true); assert.equal(saved.revision.size, 0);
+    assert.equal(fs.statSync(file).size, 0);
+  } finally { ExternalFileAccess.prepare = prepare; }
+} });
 cases.push({ name: 'confirmed library deletion unlinks only the selected file and creates no recycle copy', body() {
   const lib = path.join(filesDir, 'library'); fs.mkdirSync(lib, { recursive: true });
   fs.writeFileSync(path.join(lib, 'delete-me.md'), 'delete fixture');
