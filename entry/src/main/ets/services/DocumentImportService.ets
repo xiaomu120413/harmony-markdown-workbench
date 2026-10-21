@@ -18,12 +18,12 @@ export class DocumentImportService {
     this.cancel = cancel;
   }
 
-  async receive(event: DragEvent, imageAsDocument: boolean = true): Promise<string> {
+  async receive(event: DragEvent, standalone: boolean = true): Promise<string> {
     const stage = `${this.ctx.cacheDir}/incoming-${Date.now()}-${Math.floor(Math.random() * 0xffffff)}`;
     fs.mkdirSync(stage);
     try {
       const uri = await DroppedDocumentReader.receive(event, 15000, fileUri.getUriFromPath(stage), this.cancel);
-      return await this.importUri(uri, imageAsDocument);
+      return await this.importUri(uri, standalone);
     } finally {
       // 仅清理由本次操作新建的平面暂存目录，不递归碰用户目录。
       try {
@@ -36,13 +36,13 @@ export class DocumentImportService {
     }
   }
 
-  async importUri(uri: string, imageAsDocument: boolean = true): Promise<string> {
+  async importUri(uri: string, standalone: boolean = true): Promise<string> {
     const originalName = RecentFileList.displayName(uri).replace(/[\\/:*?"<>|\x00-\x1f]/g, '_');
     const internal = new InternalFileSource(this.ctx);
     if (DocumentIntake.isImage(uri)) {
       const attachment = internal.copyToAttachments(uri, originalName);
       if (attachment.length === 0) { throw new Error('图片导入失败，请检查文件是否可读取或超过 20 MB'); }
-      if (!imageAsDocument) { return attachment; }
+      if (!standalone) { return attachment; }
       try {
         return await this.saveCopy(originalName.replace(/\.[^.]+$/, '.md'), {
           content: `![图片](<${attachment}>)`, validUtf8: true, encoding: 'utf-8', lineEnding: 'lf',
@@ -54,6 +54,11 @@ export class DocumentImportService {
     // Drag/drop imports a private copy; do not retain access to its external source.
     const read = await external.read({ kind: 'external', uri: uri, displayName: '' }, false);
     if (!read.validUtf8) { throw new Error('仅支持 UTF-8 文本文档，原文件未改动'); }
+    if (!standalone && /\.txt$/i.test(originalName)) {
+      const attachment = internal.copyToAttachments(uri, originalName);
+      if (!attachment) { throw new Error('TXT 内容块导入失败，请检查文件访问或是否超过 20 MB'); }
+      return attachment;
+    }
     return this.saveCopy(originalName, read);
   }
 

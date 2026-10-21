@@ -150,7 +150,7 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
   assert.equal(f.state.dropBusy, false); assert.equal(f.state.docTitle, 'source.md');
   f = fixture(); let imageMode, imagePath;
   DocumentImportService.prototype.receive = async (_, asDocument) => { imageMode = asDocument; return 'attachments/drop.png'; };
-  f.actions.insertDroppedImage = async id => { imagePath = id; return true; };
+  f.actions.insertDroppedAttachment = async id => { imagePath = id; return true; };
   await f.actions.receiveDrop({});
   assert.equal(imageMode, false); assert.equal(imagePath, 'attachments/drop.png');
   assert.equal(f.actions.env.pendingOpenUri, ''); assert.equal(f.state.docTitle, 'source.md');
@@ -163,12 +163,24 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
       if (mode === 'session-change') f.actions.env.activeSession = 'other';
       return 'attachments/temporary.png';
     };
-    f.actions.insertDroppedImage = async () => { inserts++; throw Error('bridge failure'); };
+    f.actions.insertDroppedAttachment = async () => { inserts++; throw Error('bridge failure'); };
     await f.actions.receiveDrop({});
     assert.equal(inserts, mode === 'session-change' ? 0 : 1);
     assert.deepEqual(removed, ['attachments/temporary.png']); assert.equal(f.state.dropBusy, false);
     assert.equal(f.state.docTitle, 'source.md');
   }
+  f = fixture(); let txtPath;
+  DocumentImportService.prototype.receive = async () => 'attachments/drop.txt';
+  f.actions.insertDroppedAttachment = async path => { txtPath = path; return true; };
+  await f.actions.receiveDrop({});
+  assert.equal(txtPath, 'attachments/drop.txt'); assert.equal(f.actions.env.pendingOpenUri, '');
+  assert.equal(f.state.docTitle, 'source.md'); assert.equal(f.state.dropBusy, false);
+  f = fixture(); f.actions.runJsChecked = async (_, script) => {
+    f.scripts.push(script); return script.includes('getSelectionRange') ? '{"from":4,"to":4}' : '';
+  };
+  await f.actions.insertDroppedAttachment('attachments/drop.txt');
+  assert.ok(f.scripts.some(s => s.includes('replaceRange(4, 4,') && s.includes('![TXT]')));
+  assert.equal(f.state.docTitle, 'source.md');
   kits['@kit.CoreFileKit'].fileUri = { getUriFromPath: p => `file://${p}` };
   kits['@kit.CoreFileKit'].picker.DocumentSelectMode = { FOLDER: 1 };
   HtmlResourceStore.prototype.read = () => { throw Error('resource unavailable'); };
@@ -188,5 +200,5 @@ const result = { uri: 'file://docs/new-target', fileName: 'new-target', remoteIm
     assert.equal(options.maxSelectNumber, supported ? 1 : 128);
     if (!supported) assert.ok(options.fileSuffixFilters.includes('.css'));
   }
-  console.log('27 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
+  console.log('29 file transaction scenarios passed (real controllers/coordinator, platform pickers mocked)');
 })().catch(e => { console.error(e); process.exitCode = 1; });

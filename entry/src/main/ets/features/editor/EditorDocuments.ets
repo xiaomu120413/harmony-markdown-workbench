@@ -143,10 +143,10 @@ export class EditorDocuments {
       if (uri.startsWith('attachments/')) {
         let inserted = false;
         try {
-          if (this.host.isActive() && this.host.env.activeSession === session) { inserted = await this.host.insertDroppedImage(uri); }
+          if (this.host.isActive() && this.host.env.activeSession === session) { inserted = await this.host.insertDroppedAttachment(uri); }
         }
         finally { if (!inserted) { this.host.env.internal.remove({ kind: 'internal', relativePath: uri }); } }
-        if (inserted) { promptAction.showToast({ message: '已插入图片' }); }
+        if (inserted) { promptAction.showToast({ message: /\.txt$/i.test(uri) ? '已插入 TXT 内容块' : '已插入图片' }); }
         return;
       }
       if (!this.host.isActive()) { return; }

@@ -15,6 +15,7 @@
 - [spec/pin-icon-2026-10-20.md](spec/pin-icon-2026-10-20.md) — 置顶图钉方向及即时更新修复
 - [spec/drop-files-2026-10-20.md](spec/drop-files-2026-10-20.md) — TXT 副本保存与图片拖入修复
 - [spec/empty-txt-2026-10-21.md](spec/empty-txt-2026-10-21.md) — 空 TXT 拖入及清空保存修复
+- [spec/txt-node-2026-10-21.md](spec/txt-node-2026-10-21.md) — TXT 作为当前文档内容节点插入
 - [spec/store-materials-2026-10-20.md](spec/store-materials-2026-10-20.md) — 应用市场素材说明
 - [spec/](spec/) — 全部规格与日期化验收记录（含权限、存储、兼容性记录）
 - [spec/repository-cleanup-2026-10-20.md](spec/repository-cleanup-2026-10-20.md) — 仓库清理与未使用文件审计

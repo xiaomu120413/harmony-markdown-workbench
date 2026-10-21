@@ -17,6 +17,16 @@ const md = new MarkdownIt({
 const defaultImage = md.renderer.rules.image;
 md.renderer.rules.image = (tokens, index, options, env, renderer) => {
   const source = tokens[index].attrGet('src');
+  if (/^attachments\/[^/]+\.txt$/i.test(source) && env.resources?.[source]?.startsWith('data:text/plain;base64,')) {
+    try {
+      const data = env.resources[source].substring(env.resources[source].indexOf(',') + 1);
+      const text = new TextDecoder('utf-8', { fatal: true }).decode(Uint8Array.from(atob(data), c => c.charCodeAt(0)));
+      return `<span class="txt-embed" style="display:block"><span style="font-size:12px">TXT 内容${text ? '' : '（空文本）'}</span>` +
+        `<pre style="white-space:pre-wrap;overflow:auto;max-height:420px;min-height:2em"><code>${md.utils.escapeHtml(text)}</code></pre></span>`;
+    } catch (_) {
+      return '<span role="alert">TXT 内容读取失败，请重新插入 UTF-8 文件</span>';
+    }
+  }
   if (/^attachments\/[^/]+\.html?$/i.test(source) && env.resources?.[source]?.startsWith('data:text/html;base64,')) {
     return `<span class="html-embed" style="display:block"><span style="font-size:12px">HTML 内容</span>` +
       `<iframe sandbox="" referrerpolicy="no-referrer" title="HTML 内容" src="${md.utils.escapeHtml(env.resources[source])}" ` +

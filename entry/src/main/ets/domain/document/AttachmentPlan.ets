@@ -26,8 +26,8 @@ export class AttachmentPlan {
       if (name.length === 0 || name === '.' || name === '..' || /[\\/\x00-\x1f?#]/.test(name)) {
         throw new Error('图片附件路径无效');
       }
-      if (!/\.(png|jpe?g|gif|webp|html|htm)$/i.test(name)) {
-        throw new Error('交付仅支持图片及 HTML 内容块附件');
+      if (!/\.(png|jpe?g|gif|webp|html|htm|txt)$/i.test(name)) {
+        throw new Error('交付仅支持图片、HTML 及 TXT 内容块附件');
       }
       if (!seen.has(source)) { local.push({ source: source, name: name }); seen.add(source); }
     }
@@ -37,6 +37,7 @@ export class AttachmentPlan {
   static mime(name: string): string {
     const ext = name.substring(name.lastIndexOf('.') + 1).toLowerCase();
     if (ext === 'html' || ext === 'htm') { return 'text/html'; }
+    if (ext === 'txt') { return 'text/plain'; }
     if (ext === 'jpg' || ext === 'jpeg') { return 'image/jpeg'; }
     if (ext === 'gif') { return 'image/gif'; }
     if (ext === 'webp') { return 'image/webp'; }

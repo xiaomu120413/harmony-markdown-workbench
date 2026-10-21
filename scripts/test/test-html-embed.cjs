@@ -50,6 +50,16 @@ assert.match(body, /sandbox=""/); assert.match(body, /src="data:text\/html;base6
 assert.ok(!body.includes('allow-scripts')); assert.ok(!body.includes('allow-same-origin'));
 assert.deepEqual(JSON.parse(markdown.exports.inspectMarkdown(`![HTML](<${attachment}>)`)).images, [attachment]);
 assert.ok(!markdown.exports.renderMarkdown('<script>BAD</script>').includes('<script>'));
+const txt = 'attachments/note.txt';
+const plain = '中文🙂\n<script>BAD</script>\n![图片](https://evil.invalid/a.png)';
+const txtBody = markdown.exports.renderMarkdown(`BEFORE\n\n![TXT](<${txt}>)\n\nAFTER`, { [txt]: data('text/plain', plain) });
+assert.ok(txtBody.indexOf('BEFORE') < txtBody.indexOf('txt-embed'));
+assert.ok(txtBody.indexOf('txt-embed') < txtBody.indexOf('AFTER'));
+assert.ok(txtBody.includes('中文🙂')); assert.ok(txtBody.includes('&lt;script&gt;BAD&lt;/script&gt;'));
+assert.ok(!txtBody.includes('<script>')); assert.ok(!txtBody.includes('<img')); assert.ok(!txtBody.includes('<iframe'));
+assert.deepEqual(JSON.parse(markdown.exports.inspectMarkdown(`![TXT](<${txt}>)`)).images, [txt]);
+assert.ok(markdown.exports.renderMarkdown(`![TXT](<${txt}>)`, { [txt]: data('text/plain', '') }).includes('空文本'));
+assert.ok(markdown.exports.renderMarkdown(`![TXT](<${txt}>)`, { [txt]: data('text/plain', [255]) }).includes('读取失败'));
 
 // ---- 预览 DOM：相同 iframe/图片复用原节点，避免每次刷新重新加载导致闪白 ----
 class FakeNode {

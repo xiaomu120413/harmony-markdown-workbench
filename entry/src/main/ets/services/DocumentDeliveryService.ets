@@ -57,7 +57,8 @@ export class DocumentDeliveryService {
       const bytes = SafeFileIO.readBytes(`${this.ctx.filesDir}/attachments/${ref.name}`, 20 * 1024 * 1024);
       total += bytes.byteLength;
       if (total > 20 * 1024 * 1024) { throw new Error('HTML 图片总量超过 20 MiB，请改用图文 ZIP'); }
-      resources[ref.source] = `data:${AttachmentPlan.mime(ref.name)};base64,${new util.Base64Helper().encodeToStringSync(bytes)}`;
+      const encoded = bytes.byteLength === 0 ? '' : new util.Base64Helper().encodeToStringSync(bytes);
+      resources[ref.source] = `data:${AttachmentPlan.mime(ref.name)};base64,${encoded}`;
     }
     return resources;
   }

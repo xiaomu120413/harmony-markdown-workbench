@@ -222,6 +222,23 @@ cases.push({ name: 'empty TXT drop imports a zero-byte copy with device-like emp
   assert.equal(fs.statSync(file).size, 0);
   assert.equal(fs.existsSync(path.join(filesDir, `${name}.tmp`)), false);
 } });
+cases.push({ name: 'TXT node import preserves raw bytes and never creates a library document', async body() {
+  const service = new DocumentImportService({ filesDir, cacheDir: dir });
+  const library = new InternalFileSource({ filesDir }).listLibrary();
+  for (const text of ['', '\uFEFF<script>alert(1)</script>\r\n木笺🙂']) {
+    const file = path.join(dir, 'node.txt'); fs.writeFileSync(file, text);
+    const attachment = await service.importUri(file.replaceAll('\\', '/'), false);
+    assert.match(attachment, /^attachments\/node(?:\(\d+\))?\.txt$/);
+    assert.deepEqual(fs.readFileSync(path.join(filesDir, attachment)), fs.readFileSync(file));
+    const resources = new DocumentDeliveryService({ filesDir }).resources([attachment]);
+    assert.match(resources[attachment], /^data:text\/plain;base64,/);
+    assert.deepEqual(Buffer.from(resources[attachment].split(',')[1], 'base64'), fs.readFileSync(file));
+  }
+  assert.deepEqual(new InternalFileSource({ filesDir }).listLibrary(), library);
+  const invalid = path.join(dir, 'invalid.txt'); fs.writeFileSync(invalid, Buffer.from([255, 254, 65, 0]));
+  await assert.rejects(service.importUri(invalid.replaceAll('\\', '/'), false), /UTF-8/);
+  assert.equal(fs.existsSync(path.join(filesDir, 'attachments', 'invalid.txt')), false);
+} });
 cases.push({ name: 'empty text writes and overwrite delivery remain zero bytes', body() {
   const file = path.join(dir, 'empty-output.txt');
   SafeFileIO.writeText(file, ''); assert.equal(fs.statSync(file).size, 0);
@@ -402,6 +419,18 @@ const markdownBundle = buildSync({ entryPoints: [path.join(root, 'web-tools/src/
   format: 'cjs', platform: 'node', write: false }).outputFiles[0].text;
 const markdownModule = { exports: {} };
 vm.runInThisContext(`(function(module,exports){${markdownBundle}\n})`)(markdownModule, markdownModule.exports);
+cases.push({ name: 'HTML export carries TXT node content as escaped standalone text', async body() {
+  const attachment = 'attachments/export-text.txt';
+  fs.writeFileSync(path.join(filesDir, attachment), '木笺\n<script>ATTACK</script>');
+  const output = path.join(dir, 'txt-node-export.html'); fs.writeFileSync(output, ''); selection = [output];
+  await new DocumentDeliveryService({ filesDir }).html('node', `BEFORE\n\n![TXT](<${attachment}>)\n\nAFTER`, [attachment],
+    async (text, resources) => markdownModule.exports.renderMarkdown(text, resources));
+  const html = fs.readFileSync(output, 'utf8');
+  assert.ok(html.includes('木笺')); assert.ok(html.includes('&lt;script&gt;ATTACK&lt;/script&gt;'));
+  assert.ok(!html.includes('<script>ATTACK')); assert.ok(!html.includes('data:text/plain'));
+  assert.ok(html.indexOf('BEFORE') < html.indexOf('txt-embed'));
+  assert.ok(html.indexOf('txt-embed') < html.indexOf('AFTER'));
+} });
 cases.push({ name: 'real Markdown parser finds reference images and ignores code fences', body() {
   const md = '![图][photo]\n\n[photo]: attachments/a%20b.png\n\n```md\n![ignore](private.png)\n```';
   assert.deepEqual(JSON.parse(markdownModule.exports.inspectMarkdown(md)).images, ['attachments/a%20b.png']);

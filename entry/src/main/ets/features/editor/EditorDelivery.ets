@@ -122,7 +122,7 @@ export class EditorDelivery {
     const selection: ESObject = JSON.parse(raw);
     const at = selection.from as number;
     if (typeof at !== 'number' || !Number.isInteger(at) || at < 0) { throw new Error('无法获取插入位置，请重新定位光标'); }
-    const snippet = label === 'HTML' ? `\n\n![HTML](<${path}>)\n\n` : `![图片](<${path}>)`;
+    const snippet = label === '图片' ? `![图片](<${path}>)` : `\n\n![${label}](<${path}>)\n\n`;
     await this.host.runJsChecked(this.host.env.controller,
       `window.__editorApi.replaceRange(${at}, ${at}, ${JSON.stringify(snippet)});`, true);
     if (!this.isCurrent(session)) { return false; }
