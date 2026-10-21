@@ -363,7 +363,8 @@ cases.push({ name: 'image drop copies binary attachment and home creates a linke
   assert.deepEqual(fs.readFileSync(source), bytes);
 } });
 cases.push({ name: 'long Unicode imported names leave room for atomic temporary file and duplicate suffix', async body() {
-  const source = path.join(dir, '文'.repeat(90) + '.txt').replaceAll('\\', '/'); fs.writeFileSync(source, 'long filename');
+  // 源文件必须先在宿主文件系统创建成功；60 个中文 = 180 字节，低于 Linux NAME_MAX 255。
+  const source = path.join(dir, '文'.repeat(60) + '.txt').replaceAll('\\', '/'); fs.writeFileSync(source, 'long filename');
   const id = await new DocumentImportService({ filesDir, cacheDir: dir }).importUri(source);
   assert.ok(Buffer.byteLength(path.basename(id) + '.tmp', 'utf8') <= 255);
   assert.equal(fs.readFileSync(path.join(filesDir, id), 'utf8'), 'long filename');
