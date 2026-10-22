@@ -33,9 +33,9 @@ export struct HomeNavigation {
         this.state.pickingFile = false; this.state.searchQuery = ''; this.state.searchResults = [];
       })
       this.navRow('打开文档', $r('sys.symbol.folder'), () => this.actions.openExternalFile())
-      this.navRow('我的文档', $r('sys.symbol.line_3_horizontal'), () => this.actions.openLibraryFile())
+      this.navRow('我的文档', $r('sys.symbol.doc_plaintext_and_folder'), () => this.actions.openLibraryFile())
       if (this.state.draftCount > 0) {
-        this.navRow(`恢复草稿 · ${this.state.draftCount}`, $r('sys.symbol.clock'), () => this.actions.goRecovery())
+        this.navRow(`恢复草稿 · ${this.state.draftCount}`, $r('sys.symbol.doc_text_badge_clock'), () => this.actions.goRecovery())
       }
       Blank().layoutWeight(1)
       Divider().color(this.state.pal.DIVIDER).margin({ top: 12, bottom: 8 })

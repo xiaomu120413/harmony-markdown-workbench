@@ -4,6 +4,7 @@
 
 ## 规格与验收
 
+- [spec/sidebar-filename-tips-2026-10-22.md](spec/sidebar-filename-tips-2026-10-22.md) — 编辑侧栏完整文件名悬停提示及文档/草稿导航图标
 - [spec/full-width-pages-2026-10-22.md](spec/full-width-pages-2026-10-22.md) — 设置页铺宽、我的文档剩余高度及首页完整应用图标
 - [spec/editor-image-review-2026-10-22.md](spec/editor-image-review-2026-10-22.md) — 移除文档内设置入口、PC 图片预览核验及微小测试图片说明
 - [spec/ui-redesign-2026-10-22.md](spec/ui-redesign-2026-10-22.md) — 首页、编辑器及设置重设计，手机横屏与 PC 视觉验证和未测项

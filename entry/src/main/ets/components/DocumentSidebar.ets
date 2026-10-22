@@ -68,6 +68,7 @@ export struct DocumentSidebar {
       .padding({ top: 10, bottom: 10, left: 8 })
       .borderRadius(0).backgroundColor(Color.Transparent).hoverEffect(HoverEffect.Highlight)
       .accessibilityText(`打开 ${name}`)
+      .bindTips(name)
       .onClick(() => this.onDocSelected(docId))
       if (this.filter !== 'library') {
         Button({ type: ButtonType.Normal }) {
