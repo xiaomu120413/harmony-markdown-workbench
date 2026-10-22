@@ -22,3 +22,16 @@ REQ-BRAND-002：正式 bundleName 改为 com.mumark.app，versionName 为 1.0.0�
 REQ-BRAND-003：用户要求版本更新到 1.0.1。同步 AppScope versionName 与 DraftStore 的草稿版本标记，versionCode 从 1000000 递增到 1000001，README 当前版本同步。包名、最低 API 24、签名与数据目录不变；历史验收资料保留当时版本。本次不安装设备、不重新签正式包；回滚可回退本提交。
 
 验证：`node scripts/test/test-host.cjs` 268/268 通过（平台 IO mocked，含草稿版本一致性）；文档、UTF-8、500 行检查及 `git diff --check` 通过。`hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release --no-daemon` BUILD SUCCESSFUL，33 项任务，日志 `build-logs/version101-release.log`。读取实际 unsigned HAP 的 module.json 确认 com.mumark.app / 1.0.1 / 1000001，最低与目标 API 均为 60101024。仓库未配置签名，构建明确跳过签名，本次产物不作为可安装的正式签名包交付。
+
+### 正式 Release 重新打包 ST-BRAND-004
+
+用户随后要求重新打包 Release。从 c965093 建立仓库外独立源码副本 `C:/Users/mu/Desktop/code/local-sign/mumark-release-c965093-standard`，复用既有 release signingConfig、Mumark.cer 和 MumarkRelease.p7b，不创建证书，不修改主仓库签名配置。AppScope 与 entry/src/main 已跟踪文件按换行归一化逐一核对，与当前源码一致。
+
+`hvigorw.bat assembleApp --mode project -p product=default -p buildMode=release --no-daemon`：44 项任务，BUILD SUCCESSFUL，日志 `build-logs/version101-standard-release.log`。官方标准构建生成的 signed APP 与独立 signed HAP 分别经 `hap-sign-tool.jar verify-app` 验证成功；提取的签名证书指纹与 Mumark.cer 一致，提取的 Profile SHA-256 与原正式 MumarkRelease.p7b 一致。APP 内嵌 entry-default.hap 是构建工具生成的无独立 HAP 签名块载荷，不将它当作独立安装包；签名验证结论针对 APP 本体及另行交付的 signed HAP。
+
+独立 HAP 与 APP 内嵌模块均核对：com.mumark.app、1.0.1、versionCode 1000001、最低/目标 API 60101024，唯一申请权限为 FILE_ACCESS_PERSIST。产物仅保留忽略目录 dist，不入库，不安装或改动设备文档。本次不重复运行源码未变化的业务测试；沿用上述 268 项测试，提交前文档检查与 `git diff --check` 通过。
+
+| 本地产物 | SHA-256 |
+|---|---|
+| `dist/mumark-1.0.1-release-signed.app`（上架包） | `6E3BB94E1BF741F359A3C0C747FF74C9054F0905386BCB89188A466A7B95E623` |
+| `dist/mumark-1.0.1-release-signed.hap`（独立签名包） | `73E9104211C449D8687929E4E6625B98914DC3E43D4493895B7091492AA0AF02` |
