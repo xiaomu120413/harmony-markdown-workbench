@@ -6,7 +6,6 @@ import { HomeController } from './HomeController';
 
 @Component
 export struct HomeRecentList {
-  @StorageProp('titleControlsWidth') captionWidth: number = 0;
   @ObjectLink state: HomeState;
   @Require actions: HomeController;
   @Builder
@@ -15,15 +14,15 @@ export struct HomeRecentList {
       Button({ type: ButtonType.Normal }) {
       Column({ space: 3 }) {
         Text(RecentFileList.displayName(item.documentId))
-          .fontSize(14).fontWeight(FontWeight.Medium).fontColor(this.state.pal.TEXT)
+          .fontSize(15).fontWeight(FontWeight.Medium).fontColor(this.state.pal.TEXT)
           .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
         Text(RecentFileList.location(item.documentId))
-          .fontSize(11).fontColor(this.state.pal.TEXT_FAINT)
+          .fontSize(12).fontColor(this.state.pal.TEXT_FAINT)
           .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
       }.alignItems(HorizontalAlign.Start).width('100%')
       }.layoutWeight(1).borderRadius(0).backgroundColor(Color.Transparent).hoverEffect(HoverEffect.Highlight)
         .accessibilityText(`打开 ${RecentFileList.displayName(item.documentId)}`)
-        .padding({ top: 10, bottom: 10 }).onClick(() => this.actions.openRecent(item))
+        .padding({ top: 16, bottom: 16 }).onClick(() => this.actions.openRecent(item))
       Button({ type: ButtonType.Normal }) {
         SymbolGlyph($r('sys.symbol.pin')).fontSize(16)
           .rotate({ angle: item.pinned ? -45 : 0 })
@@ -37,7 +36,8 @@ export struct HomeRecentList {
       }.attributeModifier(new ControlStyle(this.state.pal, 'quiet', true))
         .accessibilityText(`删除 ${RecentFileList.displayName(item.documentId)}`)
         .onClick(() => this.actions.deleteRecent(item.documentId))
-    }.width('100%').padding({ left: 12, right: 4 })
+    }.width('100%').padding({ left: 16, right: 8 })
+      .backgroundColor(this.state.pal.CONTENT).borderRadius(8).margin({ bottom: 6 })
   }
   @Builder
   recentColumn() {
@@ -60,15 +60,16 @@ export struct HomeRecentList {
       }
       .width('100%')
       .height(52)
-      .padding({ left: 20, right: 16 + (this.state.bp === 'tablet' ? this.captionWidth : 0) })
+      .padding({ left: 0, right: 0 })
 
       // 资料库全文搜索框（V0.4.3）
       Row({ space: 8 }) {
         TextInput({ placeholder: '搜索文档内容', text: this.state.searchQuery })
           .fontSize(13)
           .height(ControlMetrics.HEIGHT)
-          .padding({ left: 0, right: 8 })
-          .backgroundColor(Color.Transparent)
+          .padding({ left: 12, right: 12 })
+          .backgroundColor(this.state.pal.CONTENT).borderRadius(6)
+          .border({ width: 1, color: this.state.pal.DIVIDER })
           .layoutWeight(1)
           .onChange((v: string) => {
             this.state.searchQuery = v;
@@ -86,7 +87,7 @@ export struct HomeRecentList {
         }
       }
       .width('100%')
-      .padding({ left: 20, right: 16, bottom: 6 })
+      .padding({ bottom: 14 })
 
       if (this.state.searchQuery.length > 0) {
         // 搜索结果列表
@@ -150,8 +151,7 @@ export struct HomeRecentList {
         .scrollBar(BarState.Off)
       }
     }
-    .width(this.state.bp === 'pc' ? 300 : '100%')
-    .layoutWeight(this.state.bp === 'tablet' ? 1 : 0)
+    .width('100%')
     .height('100%')
     .backgroundColor(this.state.pal.BG)
     .alignItems(HorizontalAlign.Start)

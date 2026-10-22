@@ -28,19 +28,25 @@ export struct EditorHeader {
         Text(this.state.saveLabel).fontSize(12).fontColor(this.actions.saveStatusColor())
       }.layoutWeight(1).alignItems(HorizontalAlign.Start)
       Button('保存', { type: ButtonType.Normal })
-        .attributeModifier(new ControlStyle(this.state.pal, 'primary')).onClick(() => this.actions.save())
+        .attributeModifier(new ControlStyle(this.state.pal, 'secondary')).onClick(() => this.actions.save())
       EditorFileActions({ state: this.state, actions: this.actions })
     }.width('100%')
     if (!this.state.compactHeight || !this.keyboardVisible) {
     Row({ space: 6 }) {
+      Row({ space: 2 }) {
       SegBtn({ label: '编辑', active: this.state.viewMode === DefaultView.EDIT, pal: this.state.pal, action: () => this.actions.setViewMode(DefaultView.EDIT) })
       SegBtn({ label: '预览', active: this.state.viewMode === DefaultView.PREVIEW, pal: this.state.pal, action: () => this.actions.setViewMode(DefaultView.PREVIEW) })
+      }.padding(3).backgroundColor(this.state.pal.CARD).borderRadius(8)
       Blank()
-      Button('大纲', { type: ButtonType.Normal })
-        .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
+      Button({ type: ButtonType.Normal }) {
+        SymbolGlyph($r('sys.symbol.line_3_horizontal')).fontSize(18).fontColor([this.state.pal.TEXT_SUB])
+      }
+        .attributeModifier(new ControlStyle(this.state.pal, 'quiet', true)).accessibilityText('大纲')
         .onClick(() => { this.actions.toggleOutline(); })
-      Button('查找', { type: ButtonType.Normal })
-        .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
+      Button({ type: ButtonType.Normal }) {
+        SymbolGlyph($r('sys.symbol.magnifyingglass')).fontSize(18).fontColor([this.state.pal.TEXT_SUB])
+      }
+        .attributeModifier(new ControlStyle(this.state.pal, 'quiet', true)).accessibilityText('查找')
         .onClick(() => { this.actions.openFind(); })
     }.width('100%')
     }
@@ -64,7 +70,7 @@ export struct EditorHeader {
         .onTouch((e: TouchEvent) => { if (e.type === TouchType.Down) { beginWindowMove(this.actions.env.ctx); } })
       EditorFileActions({ state: this.state, actions: this.actions })
       Button('保存', { type: ButtonType.Normal })
-        .attributeModifier(new ControlStyle(this.state.pal, 'primary')).onClick(() => this.actions.save())
+        .attributeModifier(new ControlStyle(this.state.pal, 'secondary')).onClick(() => this.actions.save())
     }.width('100%').height(ControlMetrics.HEIGHT)
       .padding({ right: this.state.titleControlsWidth > 0 ? this.state.titleControlsWidth + 8 : 0 })
   }

@@ -1,10 +1,4 @@
-/**
- * 应用统一视觉基调（V0.4：对齐系统原生「色调分层」设计）。
- * 参考提取自系统备忘录（真机像素采样）：
- *   侧栏 #EEEFF1 → 列表区 #F2F3F5 → 内容区 #FFFFFF，面板间无边框无圆角，
- *   列表项以细分隔线区隔——平台风格是色调分层而非描边卡片。
- * 明/暗双实例，随设置（M5-03 主题）切换；页面持有 @State pal。
- */
+/** 木笺纸墨配色：纸色背景、墨色文字、低饱和强调，原生页面与 Web 内容共同使用。 */
 import { ConfigurationConstant } from '@kit.AbilityKit';
 import { ThemeMode } from '../domain/settings/AppSettings';
 
@@ -69,18 +63,18 @@ export class AppTheme {
 
   static light(): AppTheme {
     return new AppTheme(
-      '#F2F3F5', '#EEEFF1', '#FFFFFF', '#F4F5F7',
-      '#0069D9', '#E8EEF6', '#FFFFFF',
-      '#20252B', '#626A73', '#626A73', '#E5E6E8',
+      '#F6F5F2', '#EEEFEA', '#FCFCFA', '#EDEFEA',
+      '#335E68', '#E0EBE9', '#FFFFFF',
+      '#263532', '#596A63', '#5D6A63', '#DCDFD8',
       '#2E9E5B', '#C77A18', '#D93A3A', '#E7F6ED', '#FCF1E3', '#FDEBEB',
     );
   }
 
   static dark(): AppTheme {
     return new AppTheme(
-      '#131316', '#17171B', '#1E1E22', '#2A2A2F',
-      '#0069D9', '#27313D', '#FFFFFF',
-      '#E8E9EB', '#A4ABB4', '#A4ABB4', '#323236',
+      '#171D1D', '#1C2323', '#202827', '#293332',
+      '#A9CCC4', '#2B403D', '#152829',
+      '#E5ECE8', '#B0BDB5', '#A2B1AA', '#3A4742',
       '#4BC98A', '#E0A64E', '#F06A6A', '#1C3227', '#39301E', '#3D2424',
     );
   }

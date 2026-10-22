@@ -21,7 +21,25 @@ const { SettingsStore } = load(`${root}/infrastructure/metadata/SettingsStore`);
 const { SettingsState } = load(`${root}/features/settings/SettingsState`);
 const { SettingsViewModel } = load(`${root}/features/settings/SettingsViewModel`);
 const { EditorLifecycle } = load(`${root}/features/editor/EditorLifecycle`);
+function contrast(fg, bg) {
+  const luminance = hex => {
+    const c = hex.slice(1).match(/../g).map(x => parseInt(x, 16) / 255)
+      .map(x => x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+    return c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722;
+  };
+  const values = [luminance(fg), luminance(bg)].sort((a, b) => b - a);
+  return (values[0] + 0.05) / (values[1] + 0.05);
+}
 (async () => {
+  for (const palette of [AppTheme.light(), AppTheme.dark()]) {
+    for (const bg of [palette.BG, palette.CONTENT, palette.SIDEBAR, palette.CARD]) {
+      for (const fg of [palette.TEXT, palette.TEXT_SUB, palette.TEXT_FAINT]) {
+        assert.ok(contrast(fg, bg) >= 4.5, `native text contrast ${fg}/${bg}`);
+      }
+    }
+    assert.ok(contrast(palette.ON_PRIMARY, palette.PRIMARY) >= 4.5, 'primary button contrast');
+    assert.ok(contrast(palette.PRIMARY, palette.PRIMARY_SOFT) >= 4.5, 'selected option contrast');
+  }
   assert.equal(SettingsValidator.defaults().theme, ThemeMode.SYSTEM);
   for (const theme of ['light', 'dark', 'system']) {
     assert.equal(SettingsValidator.parse(JSON.stringify({ theme })).theme, theme);

@@ -83,11 +83,12 @@ export struct EditorScreen {
           }
         }.layoutWeight(1).height('100%').alignItems(HorizontalAlign.Start)
       }.layoutWeight(1).width('100%').alignItems(VerticalAlign.Top)
+        .border({ width: 1, color: this.state.pal.DIVIDER }).borderRadius(8).clip(true)
     }
-    .padding({ top: 12, left: 12, right: 12, bottom: 0 })
+    .padding({ top: 8, left: 12, right: 12, bottom: 0 })
     .width('100%')
     .height('100%')
-    .backgroundColor(this.state.pal.CONTENT)
+    .backgroundColor(this.state.pal.BG)
     .onDragEnter(() => { this.state.fileHover = true; })
     .onDragLeave(() => { this.state.fileHover = false; })
     .onDrop((event: DragEvent) => { this.actions.receiveDrop(event); }, { disableDataPrefetch: true })

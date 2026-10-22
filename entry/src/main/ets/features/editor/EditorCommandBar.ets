@@ -71,9 +71,16 @@ export struct EditorCommandBar {
   }
   @Builder
   toolGroup(label: string) {
-    Button(label, { type: ButtonType.Normal })
+    Button({ type: ButtonType.Normal }) {
+      Row({ space: 6 }) {
+        Text(label).fontSize(14).fontColor(this.state.pal.TEXT)
+        SymbolGlyph($r('sys.symbol.chevron_down')).fontSize(9).fontColor([this.state.pal.TEXT_SUB])
+      }
+    }.accessibilityText(label)
       .enabled(!this.state.deliveryBusy)
       .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
+      .constraintSize({ minWidth: this.state.bp === 'phone' ? 56 : ControlMetrics.MIN_WIDTH })
+      .width(this.state.bp === 'phone' ? Math.max(56, (this.state.contentWidthVp - 84) / 4) : undefined)
       .onClick(() => { this.menu = label; })
       .bindMenu(this.menu === label, this.commandMenu(label), {
         showInSubWindow: false,
@@ -95,7 +102,8 @@ export struct EditorCommandBar {
         Scroll() {
           Row({ space: 4 }) {
             if (this.state.bp !== 'phone') {
-              this.viewControls()
+              Row({ space: 2 }) { this.viewControls() }
+                .padding(3).backgroundColor(this.state.pal.CONTENT).borderRadius(6)
               this.toolSep()
             }
             if (this.state.viewMode !== DefaultView.PREVIEW) {
@@ -104,8 +112,10 @@ export struct EditorCommandBar {
             this.toolGroup('段落')
             this.toolGroup('插入')
             this.toolSep()
-            Button('撤销', { type: ButtonType.Normal })
-              .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
+            Button({ type: ButtonType.Normal }) {
+              SymbolGlyph($r('sys.symbol.undo')).fontSize(18).fontColor([this.state.pal.TEXT_SUB])
+            }.accessibilityText('撤销')
+              .attributeModifier(new ControlStyle(this.state.pal, 'quiet', true))
               .onClick(() => this.actions.applyHistory('undo'))
             }
             if (this.state.bp !== 'phone') {
@@ -118,7 +128,8 @@ export struct EditorCommandBar {
         .align(Alignment.Start)
         .scrollBar(BarState.Auto)
         .width('100%')
-        .height(ControlMetrics.HEIGHT)
+        .height(ControlMetrics.HEIGHT + 8).padding({ left: 4, right: 4 })
+        .backgroundColor(this.state.pal.CARD).borderRadius(6)
       }
 
   }

@@ -52,15 +52,24 @@ function notify(type, payload) {
   }
 }
 
+const themeLight = EditorView.theme({
+  '&': { backgroundColor: '#FCFCFA', color: '#263532' },
+  '.cm-gutters': { color: '#5D6A63', border: 'none' },
+  '.cm-activeLine, .cm-activeLineGutter': { backgroundColor: '#EDF2ED' },
+  '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
+    backgroundColor: '#D8E7E3',
+  },
+  '.cm-cursor': { borderLeftColor: '#335E68' },
+});
 const themeDark = EditorView.theme({
-  '&': { backgroundColor: '#1e1e1e', color: '#d4d4d4' },
+  '&': { backgroundColor: '#202827', color: '#E5ECE8' },
   '.cm-content': { caretColor: '#fff' },
-  '.cm-gutters': { backgroundColor: '#1e1e1e', color: '#6b7078', border: 'none' },
-  '.cm-activeLine': { backgroundColor: '#26262a' },
-  '.cm-activeLineGutter': { backgroundColor: '#2a2a2f', color: '#d4d4d4' },
+  '.cm-gutters': { backgroundColor: '#202827', color: '#A2B1AA', border: 'none' },
+  '.cm-activeLine': { backgroundColor: '#2B3934' },
+  '.cm-activeLineGutter': { backgroundColor: '#2B3934', color: '#E5ECE8' },
   // 深色下选区需要明显高于正文底色；同时显式指定选中文字颜色，避免系统高亮前景不可见。
   '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-    backgroundColor: '#3b5fa8',
+    backgroundColor: '#41645D',
   },
   '.cm-content ::selection': { color: '#ffffff' },
   '.cm-cursor': { borderLeftColor: '#fff' },
@@ -82,7 +91,8 @@ const gutterC = new Compartment();
 
 const myTheme = EditorView.baseTheme({
   '&': { height: '100%' },
-  '.cm-scroller': { fontFamily: 'monospace', overflow: 'auto' },
+  '.cm-scroller': { fontFamily: 'monospace', overflow: 'auto', lineHeight: '1.8' },
+  '.cm-content': { padding: '18px 12px' },
 });
 
 // 桌面/平板上编辑内容限宽居中（手机上视口 < 860px 时自然全宽）
@@ -136,7 +146,7 @@ function createEditorState(text) {
   return EditorState.create({ doc: text, extensions: [
     appKeymap, basicSetup, myTheme, markdown(), editExt, placeholder('开始输入…'),
     editableC.of(EditorView.editable.of(true)),
-    themeC.of(editorOptions.dark ? themeDark : []),
+    themeC.of(editorOptions.dark ? themeDark : themeLight),
     fontC.of(EditorView.theme({ '&': { fontSize: editorOptions.fontSize + 'px' } })),
     contentWide,
     wrapC.of(editorOptions.wrap ? EditorView.lineWrapping : []),
@@ -226,7 +236,7 @@ window.__editorApi = {
   },
   setTheme(dark) {
     editorOptions.dark = dark;
-    view.dispatch({ effects: themeC.reconfigure(dark ? themeDark : []) });
+    view.dispatch({ effects: themeC.reconfigure(dark ? themeDark : themeLight) });
   },
   setFontSize(px) {
     editorOptions.fontSize = px;

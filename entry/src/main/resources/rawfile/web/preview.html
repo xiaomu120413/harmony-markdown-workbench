@@ -5,15 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>MuMark Preview</title>
 <style>
-  :root { --pre-bg: #f4f4f4; --border: #ccc; --inline-code-bg: #f0f0f0; }
-  html, body { margin: 0; padding: 12px 14px; }
+  :root { --pre-bg: #EDEFEA; --border: #DCDFD8; --inline-code-bg: #EDEFEA; --link: #335E68; }
+  html { margin: 0; padding: 0; }
+  body { margin: 0; padding: 20px 24px; }
+  @media (max-width: 480px) { body { padding: 16px; } }
   body {
     font-family: -apple-system, 'HarmonyOS Sans', 'Microsoft YaHei', sans-serif;
-    font-size: 15px; line-height: 1.7;
-    color: #182431; background: #ffffff;
+    font-size: 15px; line-height: 1.85;
+    color: #263532; background: #FCFCFA;
   }
   #out { max-width: 860px; margin: 0 auto; }
-  #out h1, #out h2 { border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+  #out h1, #out h2 { font-weight: 600; letter-spacing: -0.02em; }
+  #out h2 { border-bottom: 1px solid var(--border); padding-bottom: 8px; }
   #out h1 { font-size: 1.7em; } #out h2 { font-size: 1.4em; } #out h3 { font-size: 1.2em; }
   #out h4 { font-size: 1.1em; } #out h5 { font-size: 1em; } #out h6 { font-size: 1em; color: var(--border); }
   #out pre { background: var(--pre-bg); padding: 10px; border-radius: 8px; overflow: auto; }
@@ -24,7 +27,7 @@
   #out blockquote { margin: 0; padding: 4px 14px; border-left: 3px solid var(--border); color: #8a8f99; }
   #out img { max-width: 100%; }
   #out .task-list-item { list-style: none; }
-  #out a { color: #007dff; }
+  #out a { color: var(--link); text-underline-offset: 3px; }
   #out hr { border: none; border-top: 1px solid var(--border); }
   /* 高亮 ==text== 与脚注（V0.4.2） */
   #out mark { background: #fff3b0; padding: 0 2px; border-radius: 3px; }
@@ -46,10 +49,10 @@
   body.dark #out .hljs-title, body.dark #out .hljs-name { color: #d2a8ff; }
   body.dark #out .hljs-built_in, body.dark #out .hljs-type { color: #ffa657; }
   /* 深色主题（跟随编辑器设置，body.dark 切换） */
-  body.dark { color: #d4d4d4; background: #1e1e1e; }
-  body.dark { --pre-bg: #2a2a2a; --border: #484848; --inline-code-bg: #333333; }
+  body.dark { color: #E5ECE8; background: #202827; }
+  body.dark { --pre-bg: #293332; --border: #3A4742; --inline-code-bg: #293332; --link: #A9CCC4; }
   /* 深色下系统默认选区过暗，显式提高背景与前景对比 */
-  body.dark ::selection { background: #3b5fa8; color: #ffffff; }
+  body.dark ::selection { background: #41645D; color: #ffffff; }
 </style>
 </head>
 <body>

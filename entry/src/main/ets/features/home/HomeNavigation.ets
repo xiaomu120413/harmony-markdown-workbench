@@ -1,4 +1,4 @@
-import { ControlStyle, ControlMetrics } from '../../common/ControlStyle';
+import { ControlStyle } from '../../common/ControlStyle';
 import { beginWindowMove } from '../../common/WindowDrag';
 import { HomeState } from './HomeState';
 import { HomeController } from './HomeController';
@@ -8,77 +8,40 @@ export struct HomeNavigation {
   @ObjectLink state: HomeState;
   @Require actions: HomeController;
   @Builder
-  navRow(label: string, action: () => void) {
+  navRow(label: string, icon: Resource, action: () => void) {
     Button({ type: ButtonType.Normal }) {
-      Row({ space: 8 }) {
-        Text(label)
-          .fontSize(ControlMetrics.FONT)
-          .fontColor(this.state.pal.TEXT)
-          .layoutWeight(1)
+      Row({ space: 12 }) {
+        SymbolGlyph(icon).fontSize(18).fontColor([this.state.pal.TEXT_SUB])
+        Text(label).fontSize(14).fontColor(this.state.pal.TEXT).layoutWeight(1).textAlign(TextAlign.Start)
       }.width('100%')
-    }
-      .attributeModifier(new ControlStyle(this.state.pal)).width('100%')
-      .onClick(() => action())
+    }.attributeModifier(new ControlStyle(this.state.pal,
+      label === '最近文档' && !this.state.pickingFile ? 'selected' : 'quiet')).width('100%')
+      .onClick(action)
   }
-  @Builder
-  primaryBtn(label: string, action: () => void) {
-    Button(label, { type: ButtonType.Normal })
-      .width('100%')
-      .attributeModifier(new ControlStyle(this.state.pal, 'primary'))
-      .onClick(() => action())
-  }
-  @Builder
-  sideBar() {
-    Column({ space: 2 }) {
-      Text('木笺')
-        .fontSize(18)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.state.pal.TEXT)
-        .maxLines(1)
-        .padding({ top: 6, bottom: 2 })
-        .onTouch((e: TouchEvent) => {
-          if (e.type === TouchType.Down) {
-            beginWindowMove(this.actions.env.ctx);
-          }
-        })
-      Text('本机 Markdown 文档')
-        .fontSize(11)
-        .fontColor(this.state.pal.TEXT_FAINT)
-        .padding({ bottom: 10 })
-
-      this.primaryBtn('新建文档', () => this.actions.goEditor())
-
-      Column({ space: 0 }) {
-        this.navRow('打开文档', () => this.actions.openExternalFile())
-        this.navRow('我的文档', () => this.actions.openLibraryFile())
-        if (this.state.draftCount > 0) {
-          this.navRow(`找回未保存内容（${this.state.draftCount}）`, () => this.actions.goRecovery())
-        }
-        this.navRow('设置', () => this.actions.goSettings())
+  build() {
+    Column({ space: 6 }) {
+      Row({ space: 10 }) {
+        Image($r('app.media.foreground')).width(32).height(32).borderRadius(8)
+        Column({ space: 2 }) {
+          Text('木笺').fontSize(20).fontWeight(FontWeight.Medium).fontColor(this.state.pal.TEXT)
+          Text('MuMark').fontSize(11).fontColor(this.state.pal.TEXT_SUB).letterSpacing(1)
+        }.alignItems(HorizontalAlign.Start)
+      }.width('100%').padding({ left: 10, top: 8, bottom: 30 })
+        .onTouch((event: TouchEvent) => { if (event.type === TouchType.Down) { beginWindowMove(this.actions.env.ctx); } })
+      this.navRow('最近文档', $r('sys.symbol.clock'), () => {
+        this.state.pickingFile = false; this.state.searchQuery = ''; this.state.searchResults = [];
+      })
+      this.navRow('打开文档', $r('sys.symbol.folder'), () => this.actions.openExternalFile())
+      this.navRow('我的文档', $r('sys.symbol.line_3_horizontal'), () => this.actions.openLibraryFile())
+      if (this.state.draftCount > 0) {
+        this.navRow(`恢复草稿 · ${this.state.draftCount}`, $r('sys.symbol.clock'), () => this.actions.goRecovery())
       }
-      .width('100%')
-      .margin({ top: 6 })
-
-      // 最近列表收起/展开（收起后欢迎区占满）
-      Row() {
-        Text('最近列表')
-          .fontSize(12)
-          .fontColor(this.state.pal.TEXT_SUB)
-        Blank()
-        Button(this.state.recentCollapsed ? '展开' : '收起', { type: ButtonType.Normal })
-          .attributeModifier(new ControlStyle(this.state.pal, 'quiet'))
-          .onClick(() => {
-            this.state.recentCollapsed = !this.state.recentCollapsed;
-          })
-      }
-      .width('100%')
-      .padding({ top: 14, bottom: 4, left: 14, right: 12 })
-    }
-    .width(250)
-    .height('100%')
-    .padding({ left: 8, right: 8, top: 10, bottom: 10 })
-    .backgroundColor(this.state.pal.SIDEBAR)
-    .alignItems(HorizontalAlign.Start)
+      Blank().layoutWeight(1)
+      Divider().color(this.state.pal.DIVIDER).margin({ top: 12, bottom: 8 })
+      this.navRow('设置', $r('sys.symbol.gearshape'), () => this.actions.goSettings())
+      Text('本机文档 · 离线编辑').fontSize(11).fontColor(this.state.pal.TEXT_SUB)
+        .padding({ left: 12, top: 8, bottom: 8 }).width('100%')
+    }.width(200).height('100%').padding(12).backgroundColor(this.state.pal.SIDEBAR)
+      .alignItems(HorizontalAlign.Start)
   }
-  build() { this.sideBar() }
 }

@@ -14,7 +14,6 @@ export class HomeState {
   renamingFrom: string = '';
   renameText: string = '';
   searchQuery: string = '';
-  recentCollapsed: boolean = false;
   searchResults: DocSearchResult[] = [];
   searchBusy: boolean = false;
   bp: Breakpoint = 'phone';

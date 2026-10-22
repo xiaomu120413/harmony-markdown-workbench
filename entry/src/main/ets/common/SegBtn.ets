@@ -11,12 +11,14 @@ import { ControlStyle } from './ControlStyle';
 export struct SegBtn {
   @Prop label: string = '';
   @Prop active: boolean = false;
+  @Prop stretch: boolean = false;
   @Prop pal: AppTheme = AppTheme.light();
   action: () => void = () => {};
 
   build() {
     Button(this.label, { type: ButtonType.Normal })
       .attributeModifier(new ControlStyle(this.pal, this.active ? 'selected' : 'quiet', this.label === '−' || this.label === '+'))
+      .width(this.stretch ? '100%' : undefined)
       .accessibilitySelected(this.active)
       .onClick(() => this.action())
   }

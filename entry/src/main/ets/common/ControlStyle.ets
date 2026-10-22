@@ -4,7 +4,7 @@ import { AppTheme } from './AppTheme';
 export class ControlMetrics {
   static readonly HEIGHT: number = 44;
   static readonly MIN_WIDTH: number = 72;
-  static readonly RADIUS: number = 8;
+  static readonly RADIUS: number = 6;
   static readonly FONT: number = 14;
 }
 
@@ -27,10 +27,11 @@ export class ControlStyle implements AttributeModifier<ButtonAttribute> {
     const selected = this.role === 'selected';
     button.height(ControlMetrics.HEIGHT)
       .constraintSize({ minWidth: this.icon ? ControlMetrics.HEIGHT : ControlMetrics.MIN_WIDTH })
-      .fontSize(ControlMetrics.FONT).fontWeight(FontWeight.Normal)
-      .fontColor(primary ? this.pal.ON_PRIMARY : this.role === 'danger' ? this.pal.DANGER : this.pal.TEXT)
+      .fontSize(ControlMetrics.FONT).fontWeight(primary || selected ? FontWeight.Medium : FontWeight.Normal)
+      .fontColor(primary ? this.pal.ON_PRIMARY : this.role === 'danger' ? this.pal.DANGER : selected ? this.pal.PRIMARY : this.pal.TEXT)
       .backgroundColor(primary ? this.pal.PRIMARY : selected ? this.pal.PRIMARY_SOFT
-        : this.role === 'secondary' ? this.pal.CARD : Color.Transparent)
+        : this.role === 'secondary' ? this.pal.CONTENT : Color.Transparent)
+      .border({ width: this.role === 'secondary' ? 1 : 0, color: this.pal.DIVIDER })
       .borderRadius(ControlMetrics.RADIUS).padding({ left: 12, right: 12 })
       .hoverEffect(HoverEffect.Highlight);
     if (this.icon) { button.width(ControlMetrics.HEIGHT).padding(10); }

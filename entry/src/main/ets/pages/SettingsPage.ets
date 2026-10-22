@@ -41,10 +41,10 @@ struct SettingsPage {
   /** 标签列（主 + 说明） */
   @Builder
   rowLabel(label: string, sub: string, fullWidth: boolean = false) {
-    Column({ space: 2 }) {
+    Column({ space: 5 }) {
       Text(label).fontSize(15).fontColor(this.state.pal.TEXT)
       if (sub.length > 0) {
-        Text(sub).fontSize(13).fontColor(this.state.pal.TEXT_SUB).lineHeight(19)
+        Text(sub).fontSize(12).fontColor(this.state.pal.TEXT_SUB).lineHeight(18)
       }
     }
     .alignItems(HorizontalAlign.Start)
@@ -110,8 +110,8 @@ struct SettingsPage {
             .attributeModifier(new ControlStyle(this.state.pal, 'quiet', true)).accessibilityText('返回')
             .onClick(() => router.back())
           Text('设置')
-            .fontSize(18)
-            .fontWeight(FontWeight.Bold)
+            .fontSize(22)
+            .fontWeight(FontWeight.Medium)
             .fontColor(this.state.pal.TEXT)
             .padding({ top: 6, bottom: 6 })
             .onTouch((e: TouchEvent) => {
@@ -130,18 +130,19 @@ struct SettingsPage {
             this.sectionTitle('外观')
             Column() {
               Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
-                this.rowLabel('主题', '为编辑区与预览选择外观', true)
+                this.rowLabel('主题', '浅色、深色，或跟随系统外观', true)
                 Row({ space: 4 }) {
-                SegBtn({ label: '跟随系统', active: this.state.themeMode === ThemeMode.SYSTEM, pal: this.state.pal, action: () => {
+                SegBtn({ label: '跟随系统', stretch: true, active: this.state.themeMode === ThemeMode.SYSTEM, pal: this.state.pal, action: () => {
                   this.actions.setTheme(ThemeMode.SYSTEM);
-                } })
-                SegBtn({ label: '浅色', active: this.state.themeMode === ThemeMode.LIGHT, pal: this.state.pal, action: () => {
+                } }).layoutWeight(1)
+                SegBtn({ label: '浅色', stretch: true, active: this.state.themeMode === ThemeMode.LIGHT, pal: this.state.pal, action: () => {
                   this.actions.setTheme(ThemeMode.LIGHT);
-                } })
-                SegBtn({ label: '深色', active: this.state.themeMode === ThemeMode.DARK, pal: this.state.pal, action: () => {
+                } }).layoutWeight(1)
+                SegBtn({ label: '深色', stretch: true, active: this.state.themeMode === ThemeMode.DARK, pal: this.state.pal, action: () => {
                   this.actions.setTheme(ThemeMode.DARK);
-                } })
-                }.padding(4).backgroundColor(this.state.pal.CARD).borderRadius(10)
+                } }).layoutWeight(1)
+                }.width('100%').padding(3).borderRadius(6)
+                  .border({ width: 1, color: this.state.pal.DIVIDER })
               }
               .width('100%')
               .constraintSize({ minHeight: 68 })
@@ -150,6 +151,7 @@ struct SettingsPage {
 
               Row({ space: 10 }) {
                 this.rowLabel('字号', '编辑器与预览文字大小')
+                Row({ space: 2 }) {
                 SegBtn({ label: '−', active: false, pal: this.state.pal, action: () => {
                   this.actions.adjustFont(-1);
                 } })
@@ -161,9 +163,7 @@ struct SettingsPage {
                 SegBtn({ label: '+', active: false, pal: this.state.pal, action: () => {
                   this.actions.adjustFont(1);
                 } })
-                Text('px')
-                  .fontSize(12)
-                  .fontColor(this.state.pal.TEXT_FAINT)
+                }.border({ width: 1, color: this.state.pal.DIVIDER }).borderRadius(6)
               }
               .width('100%')
               .constraintSize({ minHeight: 68 })
@@ -171,7 +171,7 @@ struct SettingsPage {
             }
             .width('100%')
             .backgroundColor(this.state.pal.CONTENT)
-            .borderRadius(12)
+            .border({ width: 1, color: this.state.pal.DIVIDER }).borderRadius(8)
             .alignItems(HorizontalAlign.Start)
 
             // ---- 编辑器 ----
@@ -211,18 +211,19 @@ struct SettingsPage {
               this.rowDiv(true)
 
               Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
-                this.rowLabel('打开文档时的视图', '修改后返回文档即生效；分屏需要足够宽度', true)
+                this.rowLabel('默认视图', '返回文档即生效；分屏需要足够宽度', true)
                 Row({ space: 6 }) {
-                SegBtn({ label: '编辑', active: this.state.defaultView === DefaultView.EDIT, pal: this.state.pal, action: () => {
+                SegBtn({ label: '编辑', stretch: true, active: this.state.defaultView === DefaultView.EDIT, pal: this.state.pal, action: () => {
                   this.actions.setDefaultView(DefaultView.EDIT);
-                } })
-                SegBtn({ label: '预览', active: this.state.defaultView === DefaultView.PREVIEW, pal: this.state.pal, action: () => {
+                } }).layoutWeight(1)
+                SegBtn({ label: '预览', stretch: true, active: this.state.defaultView === DefaultView.PREVIEW, pal: this.state.pal, action: () => {
                   this.actions.setDefaultView(DefaultView.PREVIEW);
-                } })
-                SegBtn({ label: '分屏', active: this.state.defaultView === DefaultView.SPLIT, pal: this.state.pal, action: () => {
+                } }).layoutWeight(1)
+                SegBtn({ label: '分屏', stretch: true, active: this.state.defaultView === DefaultView.SPLIT, pal: this.state.pal, action: () => {
                   this.actions.setDefaultView(DefaultView.SPLIT);
-                } })
-                }.padding(4).backgroundColor(this.state.pal.CARD).borderRadius(10)
+                } }).layoutWeight(1)
+                }.width('100%').padding(3).borderRadius(6)
+                  .border({ width: 1, color: this.state.pal.DIVIDER })
               }
               .width('100%')
               .constraintSize({ minHeight: 56 })
@@ -230,7 +231,7 @@ struct SettingsPage {
             }
             .width('100%')
             .backgroundColor(this.state.pal.CONTENT)
-            .borderRadius(12)
+            .border({ width: 1, color: this.state.pal.DIVIDER }).borderRadius(8)
             .alignItems(HorizontalAlign.Start)
 
             // ---- 数据 ----
@@ -260,7 +261,7 @@ struct SettingsPage {
             }
             .width('100%')
             .backgroundColor(this.state.pal.CONTENT)
-            .borderRadius(12)
+            .border({ width: 1, color: this.state.pal.DIVIDER }).borderRadius(8)
             .alignItems(HorizontalAlign.Start)
             if (this.helpExpanded) { this.helpContent() }
           }
@@ -273,7 +274,7 @@ struct SettingsPage {
         .scrollBar(BarState.Off)
       }
       .width('100%')
-      .constraintSize({ maxWidth: 760 })
+      .constraintSize({ maxWidth: 680 })
       .height('100%')
     }
     .width('100%')

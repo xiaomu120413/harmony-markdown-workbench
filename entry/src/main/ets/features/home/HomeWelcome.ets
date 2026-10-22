@@ -1,64 +1,33 @@
 import { HomeLibraryPanel } from './HomeLibraryPanel';
+import { HomeRecentList } from './HomeRecentList';
 import { ControlStyle } from '../../common/ControlStyle';
-import { RecentFileList } from '../../domain/document/RecentFileList';
 import { HomeState } from './HomeState';
 import { HomeController } from './HomeController';
 
+/** 宽窗口的文档工作区，首页只有一处新建入口。 */
 @Component
 export struct HomeWelcome {
+  @StorageProp('titleControlsWidth') captionWidth: number = 0;
   @ObjectLink state: HomeState;
   @Require actions: HomeController;
-  @Builder
-  primaryBtn(label: string, action: () => void) {
-    Button(label, { type: ButtonType.Normal })
-      .width('100%')
-      .attributeModifier(new ControlStyle(this.state.pal, 'primary'))
-      .onClick(() => action())
-  }
-  @Builder
-  welcomePanel() {
-    Column({ space: 0 }) {
-      Blank().height(120)
-
-      Text('开始写作')
-        .fontSize(24)
-        .fontWeight(FontWeight.Bold)
-        .fontColor(this.state.pal.TEXT)
-      Text('打开已有文档，或新建一份 Markdown。')
-        .fontSize(13)
-        .fontColor(this.state.pal.TEXT_FAINT)
-        .padding({ top: 6, bottom: 36 })
-
-      Button('新建文档', { type: ButtonType.Normal })
-        .width(180)
-        .attributeModifier(new ControlStyle(this.state.pal, 'secondary'))
-        .onClick(() => this.actions.goEditor())
-
-      Text('或从左侧打开最近的文档')
-        .fontSize(12)
-        .fontColor(this.state.pal.TEXT_FAINT)
-        .padding({ top: 12 })
-
-      if (this.state.recent.length > 0) {
-        Text(`上次编辑 · ${RecentFileList.displayName(this.state.recent[0].documentId)} · ${this.actions.fmtTime(this.state.recent[0].lastOpenedAt)}`)
-          .fontSize(12)
-          .fontColor(this.state.pal.TEXT_SUB)
-          .padding({ top: 4 })
-          .onClick(() => this.actions.openRecent(this.state.recent[0]))
-      }
-
+  build() {
+    Column({ space: 24 }) {
+      Row({ space: 16 }) {
+        Column({ space: 6 }) {
+          Text(this.state.pickingFile ? '我的文档' : '文档').fontSize(28).fontWeight(FontWeight.Medium)
+            .fontColor(this.state.pal.TEXT)
+          Text('打开、编辑与整理本机文档').fontSize(13).fontColor(this.state.pal.TEXT_SUB)
+        }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+        Button('新建文档', { type: ButtonType.Normal })
+          .attributeModifier(new ControlStyle(this.state.pal, 'primary')).onClick(() => this.actions.goEditor())
+      }.width('100%').padding({ right: this.captionWidth > 0 ? this.captionWidth + 8 : 0 })
       if (this.state.pickingFile) {
-        Blank().height(24)
-        HomeLibraryPanel({ state: this.state, actions: this.actions })
+        Scroll() { HomeLibraryPanel({ state: this.state, actions: this.actions }) }
+          .width('100%').layoutWeight(1).align(Alignment.TopStart)
+      } else {
+        HomeRecentList({ state: this.state, actions: this.actions }).layoutWeight(1)
       }
-
-      Blank().layoutWeight(1)
-    }
-    .layoutWeight(1)
-    .height('100%')
-    .padding(28)
-    .backgroundColor(this.state.pal.CONTENT)
-    .alignItems(HorizontalAlign.Start)
+    }.layoutWeight(1).height('100%').padding(this.state.bp === 'pc' ? 32 : 20)
+      .backgroundColor(this.state.pal.BG).alignItems(HorizontalAlign.Start)
   }
-  build() { this.welcomePanel() }
 }

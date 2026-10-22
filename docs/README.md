@@ -4,6 +4,7 @@
 
 ## 规格与验收
 
+- [spec/ui-redesign-2026-10-22.md](spec/ui-redesign-2026-10-22.md) — 首页、编辑器及设置重设计，手机横屏与 PC 视觉验证和未测项
 - [spec/experience-selftest-2026-10-21.md](spec/experience-selftest-2026-10-21.md) — PC 真机与手机模拟器体验自测、L1/L2 送测边界与审核备注
 - [spec/system-theme-keyboard-2026-10-22.md](spec/system-theme-keyboard-2026-10-22.md) — 系统主题、PC 键盘导航和分屏比例补验及原签名交付记录
 - [spec/editor-settings-2026-10-22.md](spec/editor-settings-2026-10-22.md) — 当前文档删除、置顶列表和设置视图修正
