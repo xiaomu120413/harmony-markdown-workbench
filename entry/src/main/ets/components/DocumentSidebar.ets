@@ -15,6 +15,7 @@ export struct DocumentSidebar {
   @Prop busy: boolean = false;
   @State filter: 'recent' | 'library' = 'recent';
   @State searchQuery: string = '';
+  @State hoveredDocId: string = '';
   onDocSelected: (docId: string) => void = () => {};
   onDelete: (docId: string) => void = () => {};
   onPin: (docId: string) => void = () => {};
@@ -65,8 +66,8 @@ export struct DocumentSidebar {
       .width('100%')
       }
       .layoutWeight(1)
-      .padding({ top: 10, bottom: 10, left: 8 })
-      .borderRadius(0).backgroundColor(Color.Transparent).hoverEffect(HoverEffect.Highlight)
+      .padding({ top: 10, bottom: 10, left: 14 })
+      .borderRadius(0).backgroundColor(Color.Transparent).hoverEffect(HoverEffect.None)
       .accessibilityText(`打开 ${name}`)
       .bindTips(name)
       .onClick(() => this.onDocSelected(docId))
@@ -85,6 +86,8 @@ export struct DocumentSidebar {
       }.attributeModifier(new ControlStyle(this.pal, 'quiet', true)).enabled(!this.busy)
         .accessibilityText(`删除 ${name}`).onClick(() => this.onDelete(docId))
     }.width('100%')
+      .backgroundColor(this.hoveredDocId === docId ? this.pal.DIVIDER : Color.Transparent)
+      .onHover((inside: boolean) => { this.hoveredDocId = inside ? docId : ''; })
   }
 
   build() {
@@ -95,7 +98,7 @@ export struct DocumentSidebar {
         this.filterTab('资料库', 'library', this.libraryFiles.length)
       }
       .width('100%')
-      .padding({ left: 8, right: 8, top: 6, bottom: 4 })
+      .padding({ left: 14, right: 14, top: 6, bottom: 4 })
 
       // 搜索框
       TextInput({ placeholder: '搜索文档', text: this.searchQuery })
@@ -105,7 +108,7 @@ export struct DocumentSidebar {
         .backgroundColor(this.pal.CONTENT)
         .borderRadius(6).border({ width: 1, color: this.pal.DIVIDER })
         .width('100%')
-        .margin({ left: 8, right: 8 })
+        .margin({ left: 14, right: 14 })
         .constraintSize({ maxWidth: '92%' })
         .onChange((v: string) => {
           this.searchQuery = v;
@@ -143,7 +146,7 @@ export struct DocumentSidebar {
     }
     .width(240)
     .height('100%')
-    .padding({ left: 6, right: 6, top: 4, bottom: 6 })
+    .padding({ top: 4, bottom: 6 })
     .backgroundColor(this.pal.SIDEBAR)
     .alignItems(HorizontalAlign.Start)
   }
