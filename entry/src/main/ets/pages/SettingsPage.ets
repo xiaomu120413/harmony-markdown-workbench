@@ -274,7 +274,6 @@ struct SettingsPage {
         .scrollBar(BarState.Off)
       }
       .width('100%')
-      .constraintSize({ maxWidth: 680 })
       .height('100%')
     }
     .width('100%')

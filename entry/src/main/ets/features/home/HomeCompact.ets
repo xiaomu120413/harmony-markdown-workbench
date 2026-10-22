@@ -101,8 +101,7 @@ export struct HomeCompact {
       .width('100%')
 
       if (this.state.pickingFile) {
-        Scroll() { HomeLibraryPanel({ state: this.state, actions: this.actions }) }
-          .width('100%').layoutWeight(1).align(Alignment.TopStart).scrollBar(BarState.Auto)
+        HomeLibraryPanel({ state: this.state, actions: this.actions }).width('100%').layoutWeight(1)
       } else if (this.state.searchQuery.length > 0) {
         if (this.state.searchResults.length === 0 && !this.state.searchBusy) {
           Text('没有匹配的文档')

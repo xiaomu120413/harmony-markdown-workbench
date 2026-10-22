@@ -21,7 +21,8 @@ export struct HomeNavigation {
   build() {
     Column({ space: 6 }) {
       Row({ space: 10 }) {
-        Image($r('app.media.foreground')).width(32).height(32).borderRadius(8)
+        Image(this.actions.env.ctx.resourceManager.getDrawableDescriptor($r('app.media.layered_image').id))
+          .width(32).height(32)
         Column({ space: 2 }) {
           Text('木笺').fontSize(20).fontWeight(FontWeight.Medium).fontColor(this.state.pal.TEXT)
           Text('MuMark').fontSize(11).fontColor(this.state.pal.TEXT_SUB).letterSpacing(1)

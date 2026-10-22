@@ -22,8 +22,7 @@ export struct HomeWelcome {
           .attributeModifier(new ControlStyle(this.state.pal, 'primary')).onClick(() => this.actions.goEditor())
       }.width('100%').padding({ right: this.captionWidth > 0 ? this.captionWidth + 8 : 0 })
       if (this.state.pickingFile) {
-        Scroll() { HomeLibraryPanel({ state: this.state, actions: this.actions }) }
-          .width('100%').layoutWeight(1).align(Alignment.TopStart)
+        HomeLibraryPanel({ state: this.state, actions: this.actions }).width('100%').layoutWeight(1)
       } else {
         HomeRecentList({ state: this.state, actions: this.actions }).layoutWeight(1)
       }

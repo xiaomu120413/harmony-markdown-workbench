@@ -4,6 +4,7 @@
 
 ## 规格与验收
 
+- [spec/full-width-pages-2026-10-22.md](spec/full-width-pages-2026-10-22.md) — 设置页铺宽、我的文档剩余高度及首页完整应用图标
 - [spec/editor-image-review-2026-10-22.md](spec/editor-image-review-2026-10-22.md) — 移除文档内设置入口、PC 图片预览核验及微小测试图片说明
 - [spec/ui-redesign-2026-10-22.md](spec/ui-redesign-2026-10-22.md) — 首页、编辑器及设置重设计，手机横屏与 PC 视觉验证和未测项
 - [spec/experience-selftest-2026-10-21.md](spec/experience-selftest-2026-10-21.md) — PC 真机与手机模拟器体验自测、L1/L2 送测边界与审核备注

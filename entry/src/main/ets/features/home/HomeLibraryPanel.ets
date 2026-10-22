@@ -29,9 +29,9 @@ export struct HomeLibraryPanel {
           .fontColor(this.state.pal.TEXT_FAINT)
           .padding(8)
       }
-      Scroll() {
-        Column({ space: 0 }) {
-          ForEach(this.state.libraryFiles, (name: string) => {
+      List({ space: 0 }) {
+        ForEach(this.state.libraryFiles, (name: string) => {
+          ListItem() {
             if (this.state.renamingFrom === name) {
               Row({ space: 8 }) {
                 TextInput({ text: this.state.renameText })
@@ -66,7 +66,8 @@ export struct HomeLibraryPanel {
                 Text(name)
                   .fontSize(14)
                   .fontColor(this.state.pal.TEXT)
-                  .maxLines(1)
+                  .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
+                  .width('100%').textAlign(TextAlign.Start)
                 }
                   .layoutWeight(1)
                   .attributeModifier(new ControlStyle(this.state.pal))
@@ -82,14 +83,12 @@ export struct HomeLibraryPanel {
               .height(ControlMetrics.HEIGHT)
               .padding({ left: 12, right: 12 })
             }
-          }, (name: string) => name + (this.state.renamingFrom === name ? ':edit' : ''))
-        }
-        .width('100%')
+          }
+        }, (name: string) => name + (this.state.renamingFrom === name ? ':edit' : ''))
       }
-      .constraintSize({ maxHeight: 200 })
-      .width('100%')
+      .width('100%').layoutWeight(1).scrollBar(BarState.Auto)
     }
-    .width('100%')
+    .width('100%').height('100%')
     .padding(14)
     .backgroundColor(this.state.pal.CONTENT)
     .borderRadius(12)
