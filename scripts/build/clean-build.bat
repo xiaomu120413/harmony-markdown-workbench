@@ -1,7 +1,7 @@
 @echo off
 rem TASK-M0-01 clean-build：模拟无缓存环境从零构建并执行测试门禁。
 rem 删除项目内缓存（oh_modules/.hvigor/build/.test）后：ohpm install → assembleHap → test。
-rem 门禁：测试日志中出现 hypium 断言错误（hvigor 对用例失败仍返回成功）即判定失败。
+rem 门禁：检查本次逐例断言与覆盖率，防止任务成功但测试失败或复用旧结果。
 setlocal enabledelayedexpansion
 cd /d %~dp0..\..
 
@@ -30,7 +30,7 @@ if exist entry\.test rmdir /s /q entry\.test
 if not exist build-logs mkdir build-logs
 
 echo [clean-build] ohpm install
-call "%OHPM%" install > "%LOG%" 2>&1
+call "%OHPM%" install --all --no-experimental-concurrently-safe > "%LOG%" 2>&1
 if errorlevel 1 ( echo ohpm install failed, see %LOG% & exit /b 1 )
 
 echo [clean-build] assembleHap ^(debug^)
@@ -38,16 +38,14 @@ call hvigorw.bat assembleHap --mode module -p product=default >> "%LOG%" 2>&1
 if errorlevel 1 ( echo assembleHap failed, see %LOG% & exit /b 1 )
 
 echo [clean-build] test
+node -e "require('fs').writeFileSync('build-logs/test-start.txt',String(Date.now()))"
+if errorlevel 1 exit /b 1
 call hvigorw.bat test --mode module -p product=default >> "%LOG%" 2>&1
 if errorlevel 1 ( echo test failed, see %LOG% & exit /b 1 )
 
-rem Gate: hypium assertion failures appear as ERROR lines while hvigor still returns success.
-findstr /C:"ERROR" "%LOG%" > NUL
-if not errorlevel 1 (
-  echo TEST GATE: test log contains ERROR lines ^(possible assertion failure^), treat as failed. see %LOG%
-  findstr /C:"ERROR" "%LOG%" | findstr /n "." | findstr /b "[1-9]" | head -10 2> NUL
-  exit /b 1
-)
+rem Gate: validate fresh per-case results and coverage; task success alone is insufficient.
+node scripts/check/check-sdk-results.mjs "%LOG%" build-logs/test-start.txt
+if errorlevel 1 exit /b 1
 
 echo [clean-build] BUILD OK. log: %LOG%
 dir /b entry\build\default\outputs\default\*.hap 2>NUL

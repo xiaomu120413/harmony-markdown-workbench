@@ -8,6 +8,7 @@ import { EditorController } from './EditorController';
 
 @Component
 export struct EditorHeader {
+  @StorageProp('keyboardVisible') keyboardVisible: boolean = false;
   @ObjectLink state: EditorState;
   @Require actions: EditorController;
   @Builder
@@ -30,7 +31,7 @@ export struct EditorHeader {
         .attributeModifier(new ControlStyle(this.state.pal, 'primary')).onClick(() => this.actions.save())
       EditorFileActions({ state: this.state, actions: this.actions })
     }.width('100%')
-    if (!this.state.compactHeight) {
+    if (!this.state.compactHeight || !this.keyboardVisible) {
     Row({ space: 6 }) {
       SegBtn({ label: '编辑', active: this.state.viewMode === DefaultView.EDIT, pal: this.state.pal, action: () => this.actions.setViewMode(DefaultView.EDIT) })
       SegBtn({ label: '预览', active: this.state.viewMode === DefaultView.PREVIEW, pal: this.state.pal, action: () => this.actions.setViewMode(DefaultView.PREVIEW) })

@@ -105,19 +105,18 @@ jobs:
           DEVECO_HOME: ${{ vars.DEVECO_HOME }}
         run: |
           echo "DEVECO_HOME=$DEVECO_HOME"
+          echo "DEVECO_HOME=$DEVECO_HOME" >> "$GITHUB_ENV"
           test -d "$DEVECO_HOME" || { echo "::error::DEVECO_HOME not a directory on runner"; exit 1; }
           echo "NODE_HOME=$DEVECO_HOME/tools/node" >> "$GITHUB_ENV"
+          echo "OHPM_HOME=$DEVECO_HOME/tools/ohpm/bin" >> "$GITHUB_ENV"
       - name: Unit tests + gate
         run: |
           export NODE_HOME="$DEVECO_HOME/tools/node"
+          "$OHPM_HOME/ohpm" install --all
           mkdir -p build-logs
-          ./hvigorw test --mode module -p product=default > build-logs/test.log 2>&1 || true
-          if grep -qE "Error in |BUILD FAILED" build-logs/test.log; then
-            echo "::error::unit test failures or build failure (see build-logs/test.log)"
-            grep -E "Error in |BUILD FAILED" build-logs/test.log | head -20
-            exit 1
-          fi
-          grep -qE "BUILD SUCCESSFUL" build-logs/test.log || { echo "::error::test task did not succeed"; exit 1; }
+          node -e "require('fs').writeFileSync('build-logs/test-start.txt', String(Date.now()))"
+          ./hvigorw test --mode module -p product=default > build-logs/test.log 2>&1
+          node scripts/check/check-sdk-results.mjs build-logs/test.log build-logs/test-start.txt
       - name: Assemble debug HAP (unsigned artifact)
         run: |
           export NODE_HOME="$DEVECO_HOME/tools/node"

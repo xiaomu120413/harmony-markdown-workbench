@@ -6,7 +6,7 @@
 
 | 脚本 | 用途 |
 |---|---|
-| `clean-build.sh` / `clean-build.bat` | 删除缓存后执行 ohpm install → assembleHap → test，并检查 hypium 断言 ERROR |
+| `clean-build.sh` / `clean-build.bat` | 清缓存、安装依赖、构建和 SDK 测试，核对本次逐例断言与覆盖率，拒绝旧结果 |
 | `sign-local.sh` | 用本地 CA 材料签名 Debug HAP |
 | `gen-icons.py` | 从 `docs/brand` 母版重建应用图标 |
 | `generate-store-assets.py` | 生成应用市场截图、文案与尺寸清单 |
@@ -16,6 +16,7 @@
 | 脚本 | 用途 |
 |---|---|
 | `check-docs.mjs` | Markdown UTF-8 与本地链接检查 |
+| `check-sdk-results.mjs` | SDK 编译成功、结果新鲜度、逐例断言和覆盖率检查；保留 Previewer 原始诊断 |
 | `check-source-encoding.mjs` | 源码/配置/文档严格 UTF-8 检查 |
 | `check-source-size.mjs` | 手写文件 500 行上限 |
 

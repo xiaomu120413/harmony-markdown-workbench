@@ -85,7 +85,7 @@ export struct EditorFindPanel {
         .backgroundColor(this.state.pal.CARD)
         .borderRadius(8)
         .border({ width: 1, color: this.state.pal.DIVIDER })
-        }.width('100%').constraintSize({ maxHeight: this.state.compactHeight ? 116 : 240 })
+        }.width('100%').constraintSize({ maxHeight: this.state.compactHeight ? 60 : 240 })
           .align(Alignment.TopStart).scrollBar(BarState.Auto)
           .onKeyEvent((event: KeyEvent) => { if (this.handleEscape(event)) { event.stopPropagation(); } })
       }

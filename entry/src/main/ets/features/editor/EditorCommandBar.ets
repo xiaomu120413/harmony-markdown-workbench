@@ -7,6 +7,7 @@ import { EditorController } from './EditorController';
 
 @Component
 export struct EditorCommandBar {
+  @StorageProp('keyboardVisible') keyboardVisible: boolean = false;
   @ObjectLink state: EditorState;
   @Require actions: EditorController;
   @State menu: string = '';
@@ -89,7 +90,8 @@ export struct EditorCommandBar {
   }
   build() {
       // 预览只保留视图与导航；窄窗命令单行滚动。
-      if (!this.state.compactHeight && (this.state.viewMode !== DefaultView.PREVIEW || this.state.bp !== 'phone')) {
+      if ((!this.state.compactHeight || !this.keyboardVisible) &&
+        (this.state.viewMode !== DefaultView.PREVIEW || this.state.bp !== 'phone')) {
         Scroll() {
           Row({ space: 4 }) {
             if (this.state.bp !== 'phone') {

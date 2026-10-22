@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # TASK-M0-01 clean-build：模拟无缓存环境从零构建并执行测试门禁。
 # 删除项目内缓存（oh_modules/.hvigor/build/.test）后：ohpm install → assembleHap → test。
-# 门禁：测试日志中出现 hypium 断言错误（hvigor 对用例失败仍返回成功）即判定失败。
+# 门禁：检查本次逐例断言与覆盖率，防止任务成功但测试失败或复用旧结果。
 set -u
 
 cd "$(dirname "$0")/../.."
@@ -34,15 +34,12 @@ echo "[clean-build] assembleHap (debug)"
   || { echo "assembleHap 失败，见 ${LOG}"; exit 1; }
 
 echo "[clean-build] test"
+node -e "require('fs').writeFileSync('build-logs/test-start.txt',String(Date.now()))" || exit 1
 ./hvigorw test --mode module -p product=default >> "${LOG}" 2>&1 \
   || { echo "test 失败，见 ${LOG}"; exit 1; }
 
-# 门禁：hypium 用例失败表现为日志中的断言 ERROR（hvigor 任务仍可能返回成功）。
-if grep -qE "ERROR( |:)" "${LOG}"; then
-  echo "TEST GATE: 测试日志包含 ERROR（可能为断言失败），视为未通过。见 ${LOG}"
-  grep -E "ERROR( |:)" "${LOG}" | head -10
-  exit 1
-fi
+# 门禁检查本次逐例结果与覆盖率；hvigor 任务成功不等于断言通过。
+node scripts/check/check-sdk-results.mjs "${LOG}" build-logs/test-start.txt || exit 1
 
 echo "[clean-build] BUILD OK. 日志：${LOG}"
 echo "[clean-build] 关键产物："
