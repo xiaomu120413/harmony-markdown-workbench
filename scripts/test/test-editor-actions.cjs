@@ -60,9 +60,6 @@ function fixture() {
   cramped.actions.toggleOutline(); assert.equal(cramped.state.outlineVisible, true); assert.equal(cramped.state.viewMode, 'split');
   cramped.state.contentWidthVp = 800; cramped.actions.enforceWorkspaceBudget(); assert.equal(cramped.state.viewMode, 'edit');
 
-  wide.actions.showSettings(); await Promise.resolve();
-  assert.equal(routes.pop().url, 'pages/SettingsPage'); assert.equal(dialogs.length, 0);
-
   wide.actions.sendBridge('first'); narrow.actions.sendBridge('second');
   assert.deepEqual(wide.actions.env.bridgeMessages, ['first']); assert.deepEqual(narrow.actions.env.bridgeMessages, ['second']);
   wide.actions.env.pendingOpenUri = 'file://received.md'; assert.equal(storage.get('pendingOpenUri'), 'file://received.md');

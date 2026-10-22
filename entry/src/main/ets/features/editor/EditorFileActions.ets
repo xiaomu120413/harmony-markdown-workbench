@@ -81,7 +81,6 @@ export struct EditorFileActions {
             this.fileActionRow('导出副本', '选择格式，保留当前保存位置', true, () => { this.state.fileSheetSection = 'export'; })
             this.fileActionRow('复制内容', '', true, () => { this.state.fileSheetSection = 'copy'; })
             this.fileActionRow('保存位置', this.actions.documentLocation(), false, () => this.actions.dismissFileSheet(() => this.actions.showLocation()))
-            this.fileActionRow('设置与使用帮助', '', false, () => this.actions.dismissFileSheet(() => this.actions.showSettings()))
             if (this.state.docTarget?.kind === 'internal') {
               Divider().color(this.state.pal.DIVIDER).margin({ top: 4, bottom: 4 })
               this.fileActionRow('删除文档', '直接删除，无法恢复', false,

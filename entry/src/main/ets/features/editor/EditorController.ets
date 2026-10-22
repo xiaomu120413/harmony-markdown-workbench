@@ -1,5 +1,4 @@
 import { MuLogger } from '../../common/MuLogger';
-import { router } from '@kit.ArkUI';
 import { RecentFileList } from '../../domain/document/RecentFileList';
 import { common } from '@kit.AbilityKit';
 import { EditorEnvironment } from './EditorEnvironment';
@@ -230,7 +229,4 @@ export class EditorController {
       confirm: { value: '知道了', action: () => {} } });
   }
 
-  showSettings(): void {
-    router.pushUrl({ url: 'pages/SettingsPage' });
-  }
 }
