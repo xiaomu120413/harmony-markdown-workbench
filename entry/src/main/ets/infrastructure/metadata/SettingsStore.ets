@@ -32,8 +32,9 @@ export class SettingsStore {
   /** 自绘配色与系统菜单、三键使用相同模式，避免深色页面上的黑色控件。 */
   private applyNativeTheme(settings: AppSettings): void {
     try {
-      this.ctx.getApplicationContext().setColorMode(settings.theme === ThemeMode.DARK
-        ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK : ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
+      this.ctx.getApplicationContext().setColorMode(settings.theme === ThemeMode.SYSTEM
+        ? ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET : settings.theme === ThemeMode.DARK
+          ? ConfigurationConstant.ColorMode.COLOR_MODE_DARK : ConfigurationConstant.ColorMode.COLOR_MODE_LIGHT);
     } catch (e) {
       MuLogger.warn(`native theme unavailable: ${String(e)}`);
     }

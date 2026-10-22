@@ -62,11 +62,16 @@ export struct HomeLibraryPanel {
               .padding({ top: 3, bottom: 3 })
             } else {
               Row({ space: 10 }) {
+                Button({ type: ButtonType.Normal }) {
                 Text(name)
                   .fontSize(14)
                   .fontColor(this.state.pal.TEXT)
                   .maxLines(1)
+                }
                   .layoutWeight(1)
+                  .attributeModifier(new ControlStyle(this.state.pal))
+                  .accessibilityText(`打开 ${name}`)
+                  .onClick(() => { this.state.pickingFile = false; this.actions.goEditorWith(`library/${name}`); })
                 Button({ type: ButtonType.Normal }) {
                   SymbolGlyph($r('sys.symbol.ellipsis_circle')).fontSize(20).fontColor([this.state.pal.TEXT])
                 }
@@ -76,11 +81,6 @@ export struct HomeLibraryPanel {
               .width('100%')
               .height(ControlMetrics.HEIGHT)
               .padding({ left: 12, right: 12 })
-              .onClick(() => {
-                this.state.pickingFile = false;
-                // listLibrary 返回裸文件名，路由需要完整相对路径（修复 loadFailed 误报）
-                this.actions.goEditorWith(`library/${name}`);
-              })
             }
           }, (name: string) => name + (this.state.renamingFrom === name ? ':edit' : ''))
         }

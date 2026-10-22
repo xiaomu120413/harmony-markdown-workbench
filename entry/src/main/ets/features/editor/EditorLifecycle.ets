@@ -5,7 +5,7 @@ import { RecentFileList } from '../../domain/document/RecentFileList';
 import { AppTheme } from '../../common/AppTheme';
 import { RecentEntry } from '../../domain/document/RecentFileList';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints } from '../../common/Breakpoints';
-import { AppSettings, ThemeMode, DefaultView } from '../../domain/settings/AppSettings';
+import { AppSettings, DefaultView } from '../../domain/settings/AppSettings';
 import { EditorController } from './EditorController';
 export class EditorLifecycle {
   private host: EditorController;
@@ -153,7 +153,7 @@ export class EditorLifecycle {
         this.host.state.viewMode = ViewModePolicy.resolveInitial(this.host.state.bp, s.defaultView);
       }
       this.host.enforceWorkspaceBudget();
-      this.host.state.pal = AppTheme.of(s.theme === ThemeMode.DARK);
+      this.host.state.pal = AppTheme.of(AppTheme.isDark(s.theme, this.host.env.ctx.config?.colorMode));
       this.host.applyEditorStyle();
       this.host.applyPreviewStyle();
     }).catch((e: ESObject) => {
@@ -167,7 +167,7 @@ export class EditorLifecycle {
       return;
     }
     const s = this.host.env.appSettings;
-    const dark = s.theme === ThemeMode.DARK;
+    const dark = AppTheme.isDark(s.theme, this.host.env.ctx.config?.colorMode);
     this.host.runJsValue(`window.__editorApi.setTheme(${dark});`);
     this.host.runJsValue(`window.__editorApi.setFontSize(${s.fontSize});`);
     this.host.runJsValue(`window.__editorApi.setWrap(${s.wrap});`);
@@ -178,7 +178,7 @@ export class EditorLifecycle {
     if (!this.host.env.previewReady) {
       return;
     }
-    const dark = this.host.env.appSettings.theme === ThemeMode.DARK;
+    const dark = AppTheme.isDark(this.host.env.appSettings.theme, this.host.env.ctx.config?.colorMode);
     this.host.env.previewController.runJavaScript(`window.__previewApi.setDark(${dark});`);
     this.host.env.previewController.runJavaScript(`window.__previewApi.setFontSize(${this.host.env.appSettings.fontSize});`);
   }

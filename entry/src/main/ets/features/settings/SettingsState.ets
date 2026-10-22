@@ -4,7 +4,7 @@ import { AppTheme } from '../../common/AppTheme';
 @Observed
 export class SettingsState {
   narrow: boolean = true;
-  themeMode: ThemeMode = ThemeMode.LIGHT;
+  themeMode: ThemeMode = ThemeMode.SYSTEM;
   fontSize: number = 15;
   wrap: boolean = true;
   lineNumbers: boolean = true;

@@ -51,6 +51,7 @@ export struct DocumentSidebar {
   @Builder
   docRow(name: string, sub: string, docId: string, pinned: boolean = false) {
     Row({ space: 0 }) {
+      Button({ type: ButtonType.Normal }) {
       Column({ space: 2 }) {
         Text(name)
           .fontSize(14)
@@ -65,8 +66,12 @@ export struct DocumentSidebar {
           .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(HorizontalAlign.Start)
+      .width('100%')
+      }
       .layoutWeight(1)
       .padding({ top: 10, bottom: 10, left: 8 })
+      .borderRadius(0).backgroundColor(Color.Transparent).hoverEffect(HoverEffect.Highlight)
+      .accessibilityText(`打开 ${name}`)
       .onClick(() => this.onDocSelected(docId))
       if (this.filter !== 'library') {
         Button({ type: ButtonType.Normal }) {

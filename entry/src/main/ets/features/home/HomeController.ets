@@ -8,7 +8,6 @@ import { DocumentIntake } from '../../domain/document/DocumentIntake';
 import { RecentFileList, RecentEntry } from '../../domain/document/RecentFileList';
 import { LibrarySearch, LibraryDoc } from '../../domain/document/LibrarySearch';
 import { FindOptions } from '../../domain/editor/FindReplaceEngine';
-import { ThemeMode } from '../../domain/settings/AppSettings';
 import { AppTheme } from '../../common/AppTheme';
 import { Breakpoint, watchBreakpoints, unwatchBreakpoints, bpOf } from '../../common/Breakpoints';
 import { UIContext } from '@kit.ArkUI';
@@ -75,7 +74,7 @@ export class HomeController {
 
   applyTheme(): void {
     this.env.settings.load().then((s) => {
-      this.state.pal = AppTheme.of(s.theme === ThemeMode.DARK);
+      this.state.pal = AppTheme.of(AppTheme.isDark(s.theme, this.env.ctx.config?.colorMode));
     }).catch(() => {
     });
   }

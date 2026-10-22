@@ -29,6 +29,7 @@
 | `test-clipboard-image.cjs` | 系统图片粘贴事件、图片校验与失败附件清理 |
 | `test-external-access.cjs` | 外部 URI 授权与访问 |
 | `test-page-viewmodels.cjs` | 设置/恢复 ViewModel |
+| `test-system-theme.cjs` | 系统主题、手动偏好与原生模式同步 |
 | `test-window-viewport.cjs` | 窗口与安全区域 |
 | `test-html-preview.cjs` | HTML 只读预览 |
 | `test-html-resources.cjs` | HTML 资源解析 |

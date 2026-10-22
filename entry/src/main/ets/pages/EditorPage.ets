@@ -8,6 +8,8 @@ import { EditorScreen } from '../features/editor/EditorScreen';
 @Component
 struct EditorPage {
   @State state: EditorState = new EditorState();
+  @StorageProp('colorMode') @Watch('colorModeChanged') colorMode: number = -1;
+  private colorModeChanged(): void { this.actions?.applyAppSettings(true); }
   private actions: EditorController | undefined = undefined;
   @StorageLink('checkpointRequest') @Watch('checkpointChanged') checkpointRequest: number = 0;
   @StorageLink('pendingOpenUri') @Watch('externalOpenChanged') pendingOpenUri: string = '';

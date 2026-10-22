@@ -10,7 +10,6 @@ import { FileRevision } from '../../domain/document/FileRevision';
 import { HashUtil } from '../../domain/document/HashUtil';
 import { DocumentNamer } from '../../domain/document/DocumentNamer';
 import { SettingsStore } from '../../infrastructure/metadata/SettingsStore';
-import { ThemeMode } from '../../domain/settings/AppSettings';
 import { AppTheme } from '../../common/AppTheme';
 
 import { promptAction } from '@kit.ArkUI';
@@ -44,14 +43,18 @@ export class RecoveryViewModel {
   }
 
   async load(): Promise<void> {
+    await this.loadTheme();
+    await this.reload();
+  }
+
+  async loadTheme(): Promise<void> {
     try {
       const st = await new SettingsStore(this.ctx).load();
       if (!this.active) { return; }
-      this.state.pal = AppTheme.of(st.theme === ThemeMode.DARK);
+      this.state.pal = AppTheme.of(AppTheme.isDark(st.theme, this.ctx.config?.colorMode));
     } catch (e) {
       // 主题读取失败按浅色
     }
-    await this.reload();
   }
 
   private async reload(): Promise<void> {

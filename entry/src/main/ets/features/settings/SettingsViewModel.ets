@@ -14,7 +14,10 @@ export class SettingsViewModel {
   state: SettingsState;
   constructor(state: SettingsState, ctx: common.UIAbilityContext) { this.state = state; this.ctx = ctx; this.store = new SettingsStore(ctx); }
   dispose(): void { this.active = false; }
-  setTheme(value: ThemeMode): void { this.state.themeMode = value; this.state.pal = AppTheme.of(value === ThemeMode.DARK); this.persist(); }
+  setTheme(value: ThemeMode): void { this.state.themeMode = value; this.refreshTheme(); this.persist(); }
+  refreshTheme(): void {
+    this.state.pal = AppTheme.of(AppTheme.isDark(this.state.themeMode, this.ctx.config?.colorMode));
+  }
   adjustFont(delta: number): void { this.state.fontSize = SettingsValidator.clampFont(this.state.fontSize + delta); this.persist(); }
   setWrap(value: boolean): void { this.state.wrap = value; this.persist(); }
   setLineNumbers(value: boolean): void { this.state.lineNumbers = value; this.persist(); }
@@ -30,7 +33,7 @@ export class SettingsViewModel {
     this.state.lineNumbers = s.lineNumbers;
     this.state.autoSave = s.autoSave;
     this.state.defaultView = s.defaultView;
-    this.state.pal = AppTheme.of(s.theme === ThemeMode.DARK);
+    this.refreshTheme();
     try {
       const drafts = new DraftStore(this.ctx);
       this.state.draftCount = drafts.listAll().length;

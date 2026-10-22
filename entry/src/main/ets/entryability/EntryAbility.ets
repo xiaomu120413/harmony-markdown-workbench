@@ -1,5 +1,5 @@
 import { MuLogger } from '../common/MuLogger';
-import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
+import { AbilityConstant, Configuration, UIAbility, Want } from '@kit.AbilityKit';
 import { window } from '@kit.ArkUI';
 import { WindowViewportAdapter } from '../infrastructure/window/WindowViewportAdapter';
 
@@ -10,12 +10,18 @@ export default class EntryAbility extends UIAbility {
     AppStorage.setOrCreate('pendingOpenUri', '');
     AppStorage.setOrCreate('titleControlsBottom', 0);
     AppStorage.setOrCreate('titleControlsWidth', 0);
+    AppStorage.setOrCreate('colorMode', this.context.config.colorMode);
     this.receiveFile(want);
     MuLogger.info('EntryAbility onCreate');
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.receiveFile(want);
+  }
+
+  onConfigurationUpdate(config: Configuration): void {
+    this.context.config = config;
+    AppStorage.setOrCreate('colorMode', config.colorMode);
   }
 
   private receiveFile(want: Want): void {

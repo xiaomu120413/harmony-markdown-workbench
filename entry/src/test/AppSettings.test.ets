@@ -9,7 +9,7 @@ export default function appSettingsTest(): void {
     it('empty_raw_returns_defaults', 0, () => {
       const s = SettingsValidator.parse('');
       expect(s.fontSize).assertEqual(15);
-      expect(s.theme).assertEqual(ThemeMode.LIGHT);
+      expect(s.theme).assertEqual(ThemeMode.SYSTEM);
       expect(s.autoSave).assertTrue();
     });
 
@@ -39,7 +39,7 @@ export default function appSettingsTest(): void {
 
     it('unknown_enum_falls_back', 0, () => {
       const s = SettingsValidator.parse(JSON.stringify({ theme: 'neon', defaultView: 'tab' }));
-      expect(s.theme).assertEqual(ThemeMode.LIGHT);
+      expect(s.theme).assertEqual(ThemeMode.SYSTEM);
       expect(s.defaultView).assertEqual(DefaultView.EDIT);
     });
 

@@ -11,6 +11,8 @@ import { SettingsViewModel } from '../features/settings/SettingsViewModel';
 @Component
 struct SettingsPage {
   @State state: SettingsState = new SettingsState();
+  @StorageProp('colorMode') @Watch('colorModeChanged') colorMode: number = -1;
+  private colorModeChanged(): void { this.actions.refreshTheme(); }
   @StorageProp('titleControlsBottom') captionBottom: number = 0;
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private actions: SettingsViewModel = new SettingsViewModel(this.state, this.ctx);
@@ -86,8 +88,10 @@ struct SettingsPage {
     this.sectionTitle('外接键盘快捷键')
     Column() {
       this.shortcut('保存', 'Ctrl + S')
+      this.shortcut('焦点 / 激活', 'Tab / Shift+Tab / Enter / Space')
       this.rowDiv(true)
       this.shortcut('查找 / 大纲', 'Ctrl + F / Ctrl + Shift + F')
+      this.shortcut('关闭查找 / 系统菜单', 'Esc / Shift + F10')
       this.rowDiv(true)
       this.shortcut('加粗 / 斜体', 'Ctrl + B / Ctrl + I')
       this.rowDiv(true)
@@ -127,8 +131,11 @@ struct SettingsPage {
             // ---- 外观 ----
             this.sectionTitle('外观')
             Column() {
-              Row({ space: 12 }) {
-                this.rowLabel('主题', '')
+              Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
+                this.rowLabel('主题', '', this.state.narrow)
+                SegBtn({ label: '跟随系统', active: this.state.themeMode === ThemeMode.SYSTEM, pal: this.state.pal, action: () => {
+                  this.actions.setTheme(ThemeMode.SYSTEM);
+                } })
                 SegBtn({ label: '浅色', active: this.state.themeMode === ThemeMode.LIGHT, pal: this.state.pal, action: () => {
                   this.actions.setTheme(ThemeMode.LIGHT);
                 } })

@@ -11,6 +11,8 @@ import { RecoveryViewModel } from '../features/recovery/RecoveryViewModel';
 struct RecoveryPage {
   @StorageProp('titleControlsBottom') captionBottom: number = 0;
   @State state: RecoveryState = new RecoveryState();
+  @StorageProp('colorMode') @Watch('colorModeChanged') colorMode: number = -1;
+  private colorModeChanged(): void { this.actions.loadTheme(); }
   private ctx: common.UIAbilityContext = getContext(this) as common.UIAbilityContext;
   private actions: RecoveryViewModel = new RecoveryViewModel(this.state, this.ctx);
   aboutToAppear(): void { this.actions = new RecoveryViewModel(this.state, this.ctx); this.actions.load(); }

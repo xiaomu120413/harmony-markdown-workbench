@@ -12,6 +12,8 @@ import { HtmlPreviewState, HtmlPreviewViewModel } from '../features/preview/Html
 @Component
 struct HtmlPreviewPage {
   @State state: HtmlPreviewState = new HtmlPreviewState();
+  @StorageProp('colorMode') @Watch('colorModeChanged') colorMode: number = -1;
+  private colorModeChanged(): void { this.actions.loadTheme(); }
   @StorageProp('titleControlsBottom') captionBottom: number = 0;
   private controller: webview.WebviewController = new webview.WebviewController();
   private actions: HtmlPreviewViewModel = new HtmlPreviewViewModel(this.state,

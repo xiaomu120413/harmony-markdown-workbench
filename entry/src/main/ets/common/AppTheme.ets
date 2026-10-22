@@ -5,6 +5,9 @@
  *   列表项以细分隔线区隔——平台风格是色调分层而非描边卡片。
  * 明/暗双实例，随设置（M5-03 主题）切换；页面持有 @State pal。
  */
+import { ConfigurationConstant } from '@kit.AbilityKit';
+import { ThemeMode } from '../domain/settings/AppSettings';
+
 export class AppTheme {
   /** 页面背景（最底层/列表区） */
   readonly BG: string;
@@ -84,5 +87,10 @@ export class AppTheme {
 
   static of(dark: boolean): AppTheme {
     return dark ? AppTheme.dark() : AppTheme.light();
+  }
+
+  static isDark(mode: ThemeMode, colorMode?: number): boolean {
+    return mode === ThemeMode.DARK || (mode === ThemeMode.SYSTEM &&
+      colorMode === ConfigurationConstant.ColorMode.COLOR_MODE_DARK);
   }
 }

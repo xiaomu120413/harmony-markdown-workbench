@@ -4,6 +4,7 @@
  * 持久化：preferences（SettingsStore 基础设施层）。
  */
 export enum ThemeMode {
+  SYSTEM = 'system',
   LIGHT = 'light',
   DARK = 'dark',
 }
@@ -29,7 +30,7 @@ export class SettingsValidator {
 
   static defaults(): AppSettings {
     const d: AppSettings = {
-      theme: ThemeMode.LIGHT,
+      theme: ThemeMode.SYSTEM,
       fontSize: 15,
       wrap: true,
       lineNumbers: true,
@@ -54,7 +55,7 @@ export class SettingsValidator {
       const autoRaw = o.autoSave as boolean | undefined;
       const viewRaw = o.defaultView as string | undefined;
       const out: AppSettings = {
-        theme: themeRaw === 'dark' ? ThemeMode.DARK : ThemeMode.LIGHT,
+        theme: themeRaw === 'dark' ? ThemeMode.DARK : themeRaw === 'light' ? ThemeMode.LIGHT : ThemeMode.SYSTEM,
         fontSize: SettingsValidator.clampFont(fontRaw),
         wrap: wrapRaw === undefined ? d.wrap : wrapRaw === true,
         lineNumbers: linesRaw === undefined ? d.lineNumbers : linesRaw === true,

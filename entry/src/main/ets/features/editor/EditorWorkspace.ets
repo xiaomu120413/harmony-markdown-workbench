@@ -66,14 +66,18 @@ export struct EditorWorkspace {
             List() {
               ForEach(this.state.outlineEntries, (e: OutlineEntry) => {
                 ListItem() {
+                  Button({ type: ButtonType.Normal }) {
                   Text(e.text)
                     .fontSize(13)
                     .fontColor(e.level === 1 ? this.state.pal.TEXT : this.state.pal.TEXT_SUB)
                     .fontWeight(e.level === 1 ? FontWeight.Medium : FontWeight.Normal)
                     .maxLines(1)
                     .textOverflow({ overflow: TextOverflow.Ellipsis })
+                  }
                     .padding({ left: 8 + (e.level - 1) * 12, top: 6, bottom: 6, right: 8 })
                     .width('100%')
+                    .constraintSize({ minHeight: 44 }).borderRadius(0)
+                    .backgroundColor(Color.Transparent).hoverEffect(HoverEffect.Highlight)
                     .onClick(() => this.actions.jumpToOutlineEntry(e))
                 }
               }, (e: OutlineEntry) => `${e.from}-${e.text}`)

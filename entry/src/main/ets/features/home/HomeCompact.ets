@@ -14,6 +14,7 @@ export struct HomeCompact {
   @Builder
   recentRow(item: RecentEntry) {
     Row({ space: 0 }) {
+      Button({ type: ButtonType.Normal }) {
       Column({ space: 3 }) {
         Text(RecentFileList.displayName(item.documentId))
           .fontSize(14).fontWeight(FontWeight.Medium).fontColor(this.state.pal.TEXT)
@@ -21,7 +22,9 @@ export struct HomeCompact {
         Text(RecentFileList.location(item.documentId))
           .fontSize(11).fontColor(this.state.pal.TEXT_FAINT)
           .maxLines(1).textOverflow({ overflow: TextOverflow.Ellipsis })
-      }.alignItems(HorizontalAlign.Start).layoutWeight(1)
+      }.alignItems(HorizontalAlign.Start).width('100%')
+      }.layoutWeight(1).borderRadius(0).backgroundColor(Color.Transparent).hoverEffect(HoverEffect.Highlight)
+        .accessibilityText(`打开 ${RecentFileList.displayName(item.documentId)}`)
         .padding({ top: 10, bottom: 10 }).onClick(() => this.actions.openRecent(item))
       Button({ type: ButtonType.Normal }) {
         SymbolGlyph($r('sys.symbol.pin')).fontSize(16)
@@ -118,6 +121,7 @@ export struct HomeCompact {
         List({ space: 0 }) {
           ForEach(this.state.searchResults, (r: DocSearchResult) => {
             ListItem() {
+              Button({ type: ButtonType.Normal }) {
               Column({ space: 3 }) {
                 Text(r.name)
                   .fontSize(15)
@@ -138,6 +142,9 @@ export struct HomeCompact {
               .width('100%')
               .padding({ top: 11, bottom: 11, left: 4, right: 4 })
               .border({ width: { bottom: 1 }, color: this.state.pal.DIVIDER })
+              }
+              .width('100%').borderRadius(0).padding(0).backgroundColor(Color.Transparent)
+              .hoverEffect(HoverEffect.Highlight).accessibilityText(`打开 ${r.name}`)
               .onClick(() => this.actions.goEditorWithResult(r.name))
             }
           }, (r: DocSearchResult) => `${r.name}-${r.count}`)

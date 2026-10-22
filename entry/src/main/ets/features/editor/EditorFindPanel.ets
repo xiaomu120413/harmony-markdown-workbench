@@ -1,3 +1,4 @@
+import { KeyCode } from '@kit.InputKit';
 import { ControlStyle, ControlMetrics } from '../../common/ControlStyle';
 import { EditorState } from './EditorState';
 import { EditorController } from './EditorController';
@@ -6,6 +7,12 @@ import { EditorController } from './EditorController';
 export struct EditorFindPanel {
   @ObjectLink state: EditorState;
   @Require actions: EditorController;
+  private handleEscape(event: KeyEvent): boolean {
+    if (event.type !== KeyType.Down || event.keyCode !== KeyCode.KEYCODE_ESCAPE) { return false; }
+    this.state.findVisible = false;
+    this.actions.env.controller.requestFocus();
+    return true;
+  }
   @Builder
   panelBtn(label: string, action: () => void) {
     Button(label, { type: ButtonType.Normal })
@@ -18,6 +25,9 @@ export struct EditorFindPanel {
         Scroll() {
         Flex({ wrap: FlexWrap.Wrap, justifyContent: FlexAlign.Start, alignItems: ItemAlign.Center }) {
           TextInput({ placeholder: '查找', text: this.state.findQuery })
+            .onKeyPreIme((event: KeyEvent): boolean => this.handleEscape(event))
+            .id('editor-find-query')
+            .onAppear(() => this.getUIContext().getFocusController().requestFocus('editor-find-query'))
             .fontSize(13)
             .height(ControlMetrics.HEIGHT)
             .padding({ left: 8, right: 8 })
@@ -30,6 +40,7 @@ export struct EditorFindPanel {
             })
             .onSubmit(() => this.actions.jumpNext())
           TextInput({ placeholder: '替换为', text: this.state.replaceText })
+            .onKeyPreIme((event: KeyEvent): boolean => this.handleEscape(event))
             .fontSize(13)
             .height(ControlMetrics.HEIGHT)
             .padding({ left: 8, right: 8 })
@@ -76,6 +87,7 @@ export struct EditorFindPanel {
         .border({ width: 1, color: this.state.pal.DIVIDER })
         }.width('100%').constraintSize({ maxHeight: this.state.compactHeight ? 116 : 240 })
           .align(Alignment.TopStart).scrollBar(BarState.Auto)
+          .onKeyEvent((event: KeyEvent) => { if (this.handleEscape(event)) { event.stopPropagation(); } })
       }
 
   }

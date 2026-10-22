@@ -7,6 +7,8 @@ import { HomeScreen } from '../features/home/HomeScreen';
 @Component
 struct HomePage {
   @State state: HomeState = new HomeState();
+  @StorageProp('colorMode') @Watch('colorModeChanged') colorMode: number = -1;
+  private colorModeChanged(): void { this.actions?.applyTheme(); }
   private actions: HomeController | undefined = undefined;
   @StorageLink('pendingOpenUri') @Watch('externalOpenChanged') pendingOpenUri: string = '';
   private externalOpenChanged(): void { this.actions?.consumeExternalOpen(); }

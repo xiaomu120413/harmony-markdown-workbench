@@ -9,7 +9,6 @@ import { InternalFileSource } from '../../infrastructure/file/InternalFileSource
 import { ExternalUriFileSource } from '../../infrastructure/file/ExternalUriFileSource';
 import { MetadataStore } from '../../infrastructure/metadata/MetadataStore';
 import { SettingsStore } from '../../infrastructure/metadata/SettingsStore';
-import { ThemeMode } from '../../domain/settings/AppSettings';
 import { DocumentImportService } from '../../services/DocumentImportService';
 
 @Observed
@@ -76,7 +75,7 @@ export class HtmlPreviewViewModel {
   }
   async loadTheme(): Promise<void> {
     const settings = await new SettingsStore(this.ctx).load();
-    if (this.active) { this.state.pal = AppTheme.of(settings.theme === ThemeMode.DARK); }
+    if (this.active) { this.state.pal = AppTheme.of(AppTheme.isDark(settings.theme, this.ctx.config?.colorMode)); }
   }
   async receiveDrop(event: DragEvent, cancel: (key: string) => void): Promise<void> {
     if (this.importing || !this.active) { return; }

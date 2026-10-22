@@ -5,6 +5,7 @@
 ## 规格与验收
 
 - [spec/experience-selftest-2026-10-21.md](spec/experience-selftest-2026-10-21.md) — PC 真机与手机模拟器体验自测、L1/L2 送测边界与审核备注
+- [spec/system-theme-keyboard-2026-10-22.md](spec/system-theme-keyboard-2026-10-22.md) — 系统主题、PC 键盘导航和分屏比例补验及原签名交付记录
 - [自测 DOCX 附件](store/mumark-1.0.0/mumark-1.0.0-api24-experience-selftest.docx) — 含逐项结果与现场截图，可用于应用审核自测附件
 
 - [spec/api24-baseline-2026-10-21.md](spec/api24-baseline-2026-10-21.md) — 最低与目标 API 24、原生菜单简化及构建验证
