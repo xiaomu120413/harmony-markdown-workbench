@@ -1,5 +1,11 @@
 # 宽屏页面与品牌图标修正 ST-LAYOUT-005
 
+## 后续：首页新建入口对齐 ST-LAYOUT-008
+
+REQ-LAYOUT-008：用户要求首页“新建文档”移至右侧末端，与下方组件右缘齐平。移除 HomeWelcome 标题行额外的窗口按钮宽度占位；改用已有 titleControlsBottom 在顶部避让窗口控制区，保持按钮与文档列表共用左右留白。复用系统窗口数据，不新增业务状态或抽象，不修改文档和手机首页结构。回退该改动只恢复按钮位置。验证调试构建、PC 对齐与窗口按钮无重叠、点击入口、源码大小/编码/文档检查。
+
+2026-10-22 验证：原签名调试副本 `hvigorw.bat assembleHap --mode module -p product=default --no-daemon` 成功，33 项任务，日志 `build-logs/quality30-build.log`；MateBook Pro API 26 `hdc install -r` 成功。2090×1394 窗口截图 `build-logs/quality30-pc-home.png` 已打开，确认按钮在主区最右端并与下方文档卡片齐平，位于系统窗口按钮下方。点击“新建文档”进入空白编辑器，未输入或保存，返回后既有文档与 1 份恢复草稿保留。未重做手机、平板或各窗口尺寸回归；手机独立首页组件未修改。本次为展示位置调整，不新增业务测试；提交前检查源码 500 行、UTF-8、文档链接与 diff。
+
 REQ-LAYOUT-005：设置页横向使用窗口可用宽度；“我的文档”使用剩余高度并可滚动访问全部文件；首页品牌图标与应用图标共用完整分层资源。保留手机安全区域、文档、偏好及现有文件操作，不增加抽象或权限，手写文件不超过 500 行。
 
 代码事实：SettingsPage 将内容限制为 680vp；HomeLibraryPanel 内层 Scroll 限高 200vp，首页调用方又包裹 Scroll；HomeNavigation 只引用透明 foreground。设计：移除设置最大宽度；文档区改为单层 List，标题固定、列表占剩余高度；首页以当前 SDK 的 ResourceManager.getDrawableDescriptor 取得 app/ability 同用的 layered_image 完整图标，不另造位图。

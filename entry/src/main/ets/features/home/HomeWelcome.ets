@@ -7,7 +7,7 @@ import { HomeController } from './HomeController';
 /** 宽窗口的文档工作区，首页只有一处新建入口。 */
 @Component
 export struct HomeWelcome {
-  @StorageProp('titleControlsWidth') captionWidth: number = 0;
+  @StorageProp('titleControlsBottom') captionBottom: number = 0;
   @ObjectLink state: HomeState;
   @Require actions: HomeController;
   build() {
@@ -20,13 +20,18 @@ export struct HomeWelcome {
         }.alignItems(HorizontalAlign.Start).layoutWeight(1)
         Button('新建文档', { type: ButtonType.Normal })
           .attributeModifier(new ControlStyle(this.state.pal, 'primary')).onClick(() => this.actions.goEditor())
-      }.width('100%').padding({ right: this.captionWidth > 0 ? this.captionWidth + 8 : 0 })
+      }.width('100%')
       if (this.state.pickingFile) {
         HomeLibraryPanel({ state: this.state, actions: this.actions }).width('100%').layoutWeight(1)
       } else {
         HomeRecentList({ state: this.state, actions: this.actions }).layoutWeight(1)
       }
-    }.layoutWeight(1).height('100%').padding(this.state.bp === 'pc' ? 32 : 20)
+    }.layoutWeight(1).height('100%').padding({
+      left: this.state.bp === 'pc' ? 32 : 20,
+      right: this.state.bp === 'pc' ? 32 : 20,
+      top: Math.max(this.state.bp === 'pc' ? 32 : 20, this.captionBottom + 8),
+      bottom: this.state.bp === 'pc' ? 32 : 20,
+    })
       .backgroundColor(this.state.pal.BG).alignItems(HorizontalAlign.Start)
   }
 }
