@@ -36,3 +36,13 @@ REQ-MOBILE-UI-001：回归新版设置、我的文档与按钮对齐；手机允
 - `node scripts/test/test-page-viewmodels.cjs`：7 组通过；`node scripts/test/test-window-viewport.cjs`：8 组通过。提交前 `node scripts/check/check-source-size.mjs`（132 个手写文件）、`node scripts/check/check-source-encoding.mjs`、`node scripts/check/check-docs.mjs`、`git diff --check` 通过。
 
 平板结果仍为未测：现有真机 API 22 不满足 API 24 最低要求，用户已选择如实记录。本轮的手机横屏是手机模拟器验收，不等同于平板验收；不声称 API 22 支持、新平板通过或完整 L1/L2 认证。
+
+## 追加平板界面探索 ST-TABLET-UI-002
+
+用户随后要求“不影响，先看看”。设备当前无 com.mumark.app 或其他木笺包可供打开，因此在仓库外建立独立签名副本，使用当前 UI 源码，仅将临时包 compatibleSdkVersion 改为 6.0.2(22)，目标 API 仍为 24；正式仓库及发布包最低 API 24 保持不变。沿用已有调试证书/Profile，不创建新证书、不修改设备权限。该实验用于观察设置、我的文档、按钮对齐；不能替代 API 24 正式包平板回归，也不承诺 API 22 右键等已删除降级路径可用。构建/安装失败则记录实际阻断原因。
+
+独立目录为 `C:/Users/mu/Desktop/code/local-sign/mumark-tablet-ui22-20261022`。`assembleHap --mode module -p product=default --no-daemon` 构建成功，34 项任务；日志 `build-logs/quality32-tablet-ui22-build.log`。已有签名 `hdc install -r` 安装成功，首次启动出现系统隐私服务提示。检查签名 HAP 内 module.json：com.mumark.app / 1.0.0，minAPIVersion=60002022、targetAPIVersion=60101024；仓库配置仍为二者 6.1.1(24)。逐一比较 entry/src/main 与 AppScope 的已跟踪文件，按 CRLF/LF 归一化后与临时副本完全一致。
+
+初次启动的首页布局树可见，但后续平板被木络任务切走；当时设置页和字号操作未成功，不计为通过。首次名为 `quality32-tablet-settings-portrait.jpeg` 的截图实际为木络，不作为木笺证据。
+
+用户随后表示“平板稍微晚点，好了我跟你说”，因此停止设备操作，等待用户通知。临时包保留供后续验收；尚未完成的设置、文档列表与横竖屏检查仍为待验收，不宣称整轮平板通过。无既有木笺安装或文档被卸载、替换或删除。
