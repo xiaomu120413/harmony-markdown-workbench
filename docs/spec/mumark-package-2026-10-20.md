@@ -16,3 +16,9 @@ REQ-BRAND-002：正式 bundleName 改为 com.mumark.app，versionName 为 1.0.0�
 - Git Bash `bash -n scripts/build/sign-local.sh` 通过；源码行数、严格 UTF-8、文档链接与 `git diff --check` 通过，手写文件仍不超过 500 行。
 
 未进行新正式包装机、正式签名或旧数据迁移验收：本轮产物为 unsigned HAP，新包对应的正式证书/Profile 待用户申请；没有复用旧包身份或卸载旧应用。
+
+## 1.0.1 版本更新 ST-BRAND-003（2026-10-22）
+
+REQ-BRAND-003：用户要求版本更新到 1.0.1。同步 AppScope versionName 与 DraftStore 的草稿版本标记，versionCode 从 1000000 递增到 1000001，README 当前版本同步。包名、最低 API 24、签名与数据目录不变；历史验收资料保留当时版本。本次不安装设备、不重新签正式包；回滚可回退本提交。
+
+验证：`node scripts/test/test-host.cjs` 268/268 通过（平台 IO mocked，含草稿版本一致性）；文档、UTF-8、500 行检查及 `git diff --check` 通过。`hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release --no-daemon` BUILD SUCCESSFUL，33 项任务，日志 `build-logs/version101-release.log`。读取实际 unsigned HAP 的 module.json 确认 com.mumark.app / 1.0.1 / 1000001，最低与目标 API 均为 60101024。仓库未配置签名，构建明确跳过签名，本次产物不作为可安装的正式签名包交付。
