@@ -4,7 +4,7 @@
 
 ## 规格与验收
 
-- [spec/mobile-ui-regression-2026-10-22.md](spec/mobile-ui-regression-2026-10-22.md) — 新版手机设置/我的文档/按钮对齐回归及 API 22 平板未测边界
+- [spec/mobile-ui-regression-2026-10-22.md](spec/mobile-ui-regression-2026-10-22.md) — 新版手机 UI 回归、API 22 平板横竖屏探索及正式 API 24 验收边界
 - [spec/sidebar-hover-fill-2026-10-22.md](spec/sidebar-hover-fill-2026-10-22.md) — 侧栏文件整行悬停填充与左侧留白修正
 - [spec/sidebar-filename-tips-2026-10-22.md](spec/sidebar-filename-tips-2026-10-22.md) — 编辑侧栏完整文件名悬停提示及文档/草稿导航图标
 - [spec/full-width-pages-2026-10-22.md](spec/full-width-pages-2026-10-22.md) — 设置页铺宽、我的文档剩余高度及首页完整应用图标

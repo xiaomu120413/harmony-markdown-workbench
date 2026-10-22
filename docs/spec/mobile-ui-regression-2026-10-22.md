@@ -46,3 +46,29 @@ REQ-MOBILE-UI-001：回归新版设置、我的文档与按钮对齐；手机允
 初次启动的首页布局树可见，但后续平板被木络任务切走；当时设置页和字号操作未成功，不计为通过。首次名为 `quality32-tablet-settings-portrait.jpeg` 的截图实际为木络，不作为木笺证据。
 
 用户随后表示“平板稍微晚点，好了我跟你说”，因此停止设备操作，等待用户通知。临时包保留供后续验收；尚未完成的设置、文档列表与横竖屏检查仍为待验收，不宣称整轮平板通过。无既有木笺安装或文档被卸载、替换或删除。
+
+## 平板恢复验收结果（2026-10-22）
+
+用户通知“开始吧”，随后实体旋转并回复“转了”。在同一 MatePad Pro API 22 上继续 UI 探索，竖屏 1920×2880、横屏 2880×1920，未修改正式最低 API 24。
+
+发现临时降级包进入编辑器时退出：日志 TypeError / undefined is not callable，定位 `WebDragStyle.ets:6` 的 `web.enableDefaultContextMenu(true)`。这是临时包运行于低版本系统的接口缺失。仅在仓库外的验收副本中为该调用增加 `typeof web.enableDefaultContextMenu === 'function'` 检查；正式源码不增加已移除的低版本分支。此后的临时包与正式源码除最低版本配置外，另有这一个菜单调用检查差异，不再称运行文件完全一致。
+
+临时副本再次执行 `assembleHap --mode module -p product=default --no-daemon`：33 项任务，BUILD SUCCESSFUL，日志 `build-logs/quality33-tablet-ui22-build.log`。沿用原签名覆盖安装成功，没有卸载、清数据或创建第二个木笺。随后编辑器正常进入并跨旋转保持可用。
+
+| 场景 | 现场结论 |
+|---|---|
+| 竖屏设置 | 分组铺满可用宽度；主题三项各 573×88 像素、视图三项各 571×88 像素；字号 15→16→15 生效 |
+| 深色与帮助 | 深色主题生效，展开帮助并滚动到 Ctrl+Z/Y，末项在安全区内；之后恢复跟随系统 |
+| 横屏设置 | 分组宽 2816 像素，主题三项各 905×88、视图三项各 903×88；开关和字号按钮未溢出 |
+| 横屏我的文档 | 单层 List 为 2295×1346 像素，使用剩余高度；新建按钮右边界 2816，与主内容区一致；侧栏完整图标可见 |
+| 默认视图 | 选择预览后从我的文档打开 yy.md，实际 Web 为 preview.html；切回编辑显示 editor.html，正文仍为 yy 加换行 |
+| 横屏软键盘 | 展开查找后软键盘出现，正文 Web 仍有 592 像素高度，保存与查找操作在键盘上方；关闭查找返回后布局恢复 |
+| 文档菜单 | yy.md 的菜单显示重命名、删除、取消；选择取消后文档仍在，未执行删除或改名 |
+
+已打开核验截图：`build-logs/quality33-tablet-settings-portrait.jpeg`、`quality33-tablet-help-dark.jpeg`、`quality33-tablet-settings-landscape.jpeg`、`quality33-tablet-library-landscape.jpeg`、`quality33-tablet-ime-landscape.jpeg`。
+
+本次恢复操作时已有用户文档 yy.md，按已有文档保留，未写入正文、改名或删除；没有创建新测试文件。最终恢复跟随系统、字号 15、默认编辑，自动保存/换行/行号保持原值，设备保留用户当前横屏，应用停在我的文档。未发现这几项布局的新缺陷，因此正式仓库只更新记录与索引，不增加运行时封装。
+
+边界：平板只有一个文档，未验证平板超一屏列表滚动和长文件名；本轮不覆盖实际删除、文件拖入或系统原生右键。手机相应结果见上文。API 22 临时界面探索不能替代 API 24 正式包平板回归，API 24 平板仍缺少设备，不声称完整平板兼容或 L1/L2 认证通过。
+
+当前 SDK 的 `openharmony/ets/component/web.d.ts:8100` 对 enableDefaultContextMenu 标记 `@since 24`，与现场 API 22 缺失一致。提交前运行 `node scripts/check/check-docs.mjs`（76 个 Markdown）、`node scripts/check/check-source-size.mjs`（132 个手写文件）、`node scripts/check/check-source-encoding.mjs`（257 个文本文件）、`git diff --check` 均通过。本次正式仓库只有文档更新，不重复构建正式 HAP；临时 HAP 构建结果如上。
