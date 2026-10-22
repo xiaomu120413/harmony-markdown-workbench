@@ -12,7 +12,7 @@ export class EditorLifecycle {
   constructor(host: EditorController) { this.host = host; }
 
   onCheckpointRequest(): void {
-    if (this.host.isActive()) { this.host.protectDraft(); }
+    if (this.host.isActive() && !this.host.state.deliveryBusy) { this.host.protectDraft(); }
   }
 
   aboutToAppear(): void {
@@ -119,7 +119,7 @@ export class EditorLifecycle {
           this.host.env.bridgeSink(drained[i]);
         }
       }
-      if (drained.some((raw: string): boolean => raw.includes('"edit"'))) {
+      if (!this.host.state.deliveryBusy && drained.some((raw: string): boolean => raw.includes('"edit"'))) {
         this.host.protectDraft();
       }
     }, 500);
@@ -148,14 +148,16 @@ export class EditorLifecycle {
   applyAppSettings(preserveView: boolean = false): void {
     this.host.env.settings.load().then((s: AppSettings) => {
       if (!this.host.isActive()) { return; }
+      const viewChanged = this.host.env.appSettings.defaultView !== s.defaultView;
       this.host.env.appSettings = s;
-      if (!preserveView) {
+      if (!preserveView || viewChanged) {
         this.host.state.viewMode = ViewModePolicy.resolveInitial(this.host.state.bp, s.defaultView);
       }
       this.host.enforceWorkspaceBudget();
       this.host.state.pal = AppTheme.of(AppTheme.isDark(s.theme, this.host.env.ctx.config?.colorMode));
       this.host.applyEditorStyle();
       this.host.applyPreviewStyle();
+      if ((!preserveView || viewChanged) && this.host.state.viewMode !== DefaultView.EDIT) { this.host.syncDocNow(); }
     }).catch((e: ESObject) => {
       MuLogger.info(`[设置] 读取失败：${JSON.stringify(e)}`);
     });

@@ -8,7 +8,7 @@ const kits = {
   '@kit.ArkData': {}, '@kit.BasicServicesKit': {},
   '@kit.PerformanceAnalysisKit': { hilog: { info() {}, warn() {}, error() {} } },
   '@kit.ArkUI': { promptAction: { showToast: d => toasts.push(d) },
-    router: { getState: () => ({ name: 'HomePage' }), pushUrl: async r => routes.push(r) } },
+    router: { replaceUrl: async r => routes.push(r), getState: () => ({ name: 'HomePage' }), pushUrl: async r => routes.push(r) } },
 };
 const load = createLoader(kits, {
   canIUse: () => false, Observed: cls => cls, AlertDialog: { show: d => dialogs.push(d) },
@@ -199,13 +199,10 @@ function fixture() {
   deletion.state.docTarget = { kind: 'internal', relativePath: 'library/remove.md' };
   dialogs.length = 0;
   deletion.actions.deleteDocument('library/../outside.md'); assert.equal(dialogs.length, 0);
-  deletion.actions.deleteDocument('library/remove.md'); assert.equal(dialogs.length, 0);
-  assert.match(toasts.at(-1).message, /先切换/);
-  deletion.actions.deleteDocument('library/keep.md'); assert.equal(dialogs.length, 1);
-  deletion.state.docTarget = { kind: 'internal', relativePath: 'library/keep.md' };
-  dialogs[0].primaryButton.action(); assert.deepEqual(deleted, ['remove.md']); // Recheck after confirmation.
-  deletion.state.docTarget = { kind: 'internal', relativePath: 'library/remove.md' };
-  deletion.actions.deleteDocument('library/keep.md'); dialogs.at(-1).primaryButton.action();
+  deletion.actions.deleteDocument('library/remove.md'); assert.equal(dialogs.length, 1);
+  dialogs[0].secondaryButton.action(); assert.deepEqual(deleted, ['remove.md']);
+  deletion.actions.deleteDocument('library/keep.md'); assert.equal(dialogs.length, 2);
+  dialogs.at(-1).primaryButton.action();
   assert.equal(deletion.state.deliveryBusy, true);
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(deletion.state.deliveryBusy, false); assert.equal(sidebarRefreshes, 1);
@@ -213,17 +210,42 @@ function fixture() {
   assert.deepEqual(records.map(r => r.documentId), ['library/remove.md']);
   await deletion.actions.toggleRecentPin('library/remove.md'); assert.equal(records[0].pinned, false);
   deletion.actions.env.internal.deleteLibrary = () => false;
-  deletion.state.docTarget = undefined;
   deletion.actions.deleteDocument('library/remove.md'); dialogs.at(-1).primaryButton.action();
   await new Promise(resolve => setImmediate(resolve));
   assert.equal(records.length, 1); assert.equal(deletion.state.deliveryBusy, false);
+  assert.equal(deletion.actions.isActive(), true, 'failed current deletion keeps editor usable');
+  let releaseCheckpoint;
+  deletion.actions.env.coordinator = { state: 'dirty', checkpointNow: () => new Promise(resolve => { releaseCheckpoint = resolve; }) };
   deletion.actions.env.internal.deleteLibrary = () => true;
   deletion.actions.env.meta.saveRecent = async () => { throw Error('disk full'); };
-  deletion.actions.deleteDocument('library/remove.md'); dialogs.at(-1).primaryButton.action();
-  await new Promise(resolve => setImmediate(resolve));
-  assert.match(toasts.at(-1).message, /记录更新失败/); assert.equal(deletion.state.deliveryBusy, false);
-  deletion.actions.env.disposed = true; dialogs.length = 0;
+  deletion.actions.deleteCurrentDocument(); dialogs.at(-1).primaryButton.action();
+  assert.equal(deletion.actions.isActive(), true);
+  assert.equal(deletion.state.deliveryBusy, true, 'wait for pending checkpoint before removing file');
+  releaseCheckpoint(true); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(deletion.actions.isActive(), false);
+  assert.match(toasts.at(-1).message, /记录清理失败/); assert.equal(deletion.state.deliveryBusy, false);
+  assert.equal(routes.at(-1).url, 'pages/HomePage', 'deleted current editor must exit even if metadata fails');
+  assert.ok(removedDrafts.includes(deletion.actions.env.sessionDraftId));
+  await assert.rejects(() => deletion.actions.doSaveCheckpoint('late'), /session ended/);
+  assert.equal((await deletion.actions.doPersist('late')).ok, false, 'late save must not recreate deleted file');
+  dialogs.length = 0;
   deletion.actions.deleteDocument('library/remove.md'); assert.equal(dialogs.length, 0);
+  const savingDeletion = fixture();
+  savingDeletion.state.docTarget = { kind: 'internal', relativePath: 'library/busy.md' };
+  savingDeletion.actions.env.coordinator = { state: 'saving' };
+  savingDeletion.actions.deleteCurrentDocument(); dialogs.at(-1).primaryButton.action();
+  assert.match(toasts.at(-1).message, /正在保存/);
+  assert.equal(savingDeletion.actions.isActive(), true);
+  const switchedDeletion = fixture(); let switchRecords = [{ documentId: 'library/gone.md', pinned: false }];
+  switchedDeletion.actions.env.internal.deleteLibrary = () => true;
+  switchedDeletion.actions.env.meta.loadRecent = async () => switchRecords;
+  switchedDeletion.actions.env.meta.saveRecent = async list => { switchRecords = list; };
+  switchedDeletion.actions.env.drafts.remove = () => {};
+  switchedDeletion.actions.deleteDocument('library/gone.md');
+  switchedDeletion.state.docTarget = { kind: 'internal', relativePath: 'library/gone.md' };
+  dialogs.at(-1).primaryButton.action(); await new Promise(resolve => setImmediate(resolve));
+  assert.equal(switchedDeletion.actions.isActive(), false, 'resolve current target again on confirmation');
+  assert.deepEqual(switchRecords, []);
   records = [{ documentId: 'library/missing.md', lastOpenedAt: 3, pinned: false },
     { documentId: 'library/keep.md', lastOpenedAt: 1, pinned: true },
     { documentId: 'file://docs/external.md', lastOpenedAt: 2, pinned: false }];
@@ -242,5 +264,5 @@ function fixture() {
   await fresh.actions.trackRecent({ kind: 'internal', relativePath: 'library/fresh.md' });
   await Promise.resolve();
   assert.deepEqual(fresh.state.sidebarRecent.map(r => r.documentId), ['library/fresh.md']);
-  console.log('40 editor/home controller scenarios passed (real modules, platform boundaries mocked)');
+  console.log('Editor/home controller scenarios passed, including current deletion and late-save rejection (real modules, platform boundaries mocked)');
 })().catch(error => { console.error(error); process.exitCode = 1; });

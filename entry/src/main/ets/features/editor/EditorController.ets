@@ -57,6 +57,10 @@ export class EditorController {
   initSidebar(): void { return this.lifecycle.initSidebar(); }
   refreshSidebarData(): void { return this.lifecycle.refreshSidebarData(); }
   deleteDocument(docId: string): void { this.documents.deleteDocument(docId); }
+  deleteCurrentDocument(): void {
+    const target = this.state.docTarget;
+    if (target?.kind === 'internal') { this.documents.deleteDocument(target.relativePath); }
+  }
   toggleRecentPin(docId: string): Promise<void> { return this.documents.toggleRecentPin(docId); }
   toggleSidebar(): void { return this.lifecycle.toggleSidebar(); }
   aboutToDisappear(): void { return this.lifecycle.aboutToDisappear(); }

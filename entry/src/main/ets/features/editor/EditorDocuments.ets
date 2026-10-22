@@ -25,7 +25,7 @@ export class EditorDocuments {
   }
 
   deleteDocument(docId: string): void {
-    if (!this.host.isActive() || this.host.state.deliveryBusy) { return; }
+    if (!this.host.isActive() || this.host.state.deliveryBusy || this.host.state.dropBusy) { return; }
     if (!docId.startsWith('library/')) {
       promptAction.showToast({ message: '外部原文件请在文件管理器中删除' });
       return;
@@ -34,13 +34,8 @@ export class EditorDocuments {
       promptAction.showToast({ message: '无效的应用内文件名，无法删除' });
       return;
     }
-    const target = this.host.state.docTarget;
-    if (target?.kind === 'internal' && target.relativePath === docId) {
-      promptAction.showToast({ message: '请先切换到其他文档，再删除当前文档' });
-      return;
-    }
     AlertDialog.show({
-      title: '删除文档', message: `确定删除“${RecentFileList.displayName(docId)}”？文件将直接删除，无法恢复。`,
+      title: '删除文档', message: `确定删除“${RecentFileList.displayName(docId)}”？文件及未保存修改将直接删除，无法恢复。`,
       primaryButton: { value: '删除', fontColor: this.host.state.pal.DANGER,
         action: () => { this.deleteConfirmed(docId); } },
       secondaryButton: { value: '取消', action: () => {} },
@@ -49,13 +44,29 @@ export class EditorDocuments {
 
   private async deleteConfirmed(docId: string): Promise<void> {
     const target = this.host.state.docTarget;
-    if (!this.host.isActive() || this.host.state.deliveryBusy ||
-      (target?.kind === 'internal' && target.relativePath === docId)) { return; }
+    if (!this.host.isActive() || this.host.state.deliveryBusy || this.host.state.dropBusy) { return; }
+    const current = target?.kind === 'internal' && target.relativePath === docId;
+    const c = this.host.env.coordinator;
+    if (current && c?.state === SaveState.SAVING) {
+      promptAction.showToast({ message: '文档正在保存，请稍后再删除' }); return;
+    }
     this.host.state.deliveryBusy = true;
+    let fileDeleted = false;
     try {
+      // 已开始的检查点必须结束后再移除草稿；门控阻止后续自动保存和检查点。
+      if (current && c !== undefined) { await c.checkpointNow(); }
+      if (!this.host.isActive()) { return; }
+      if (current && c?.state === SaveState.SAVING) {
+        promptAction.showToast({ message: '文档正在保存，请稍后再删除' }); return;
+      }
       if (!this.host.env.internal.deleteLibrary(docId.substring('library/'.length))) {
         promptAction.showToast({ message: '删除失败，请重试' });
         return;
+      }
+      fileDeleted = true;
+      if (current) {
+        this.host.aboutToDisappear();
+        await this.host.clearSavedDrafts();
       }
       this.host.env.drafts.remove(`internal:${docId}`);
       const entries = await this.host.env.meta.loadRecent();
@@ -64,11 +75,12 @@ export class EditorDocuments {
       await this.host.env.meta.saveRecent(list.snapshot());
       promptAction.showToast({ message: '已删除' });
     } catch (e) {
-      MuLogger.warn('[最近] 文件已删除，但最近记录更新失败');
-      promptAction.showToast({ message: '文件已删除，但最近记录更新失败' });
+      MuLogger.warn(`[删除] ${fileDeleted ? '文件已删除，记录清理失败' : '文件删除失败'}：${String(e)}`);
+      promptAction.showToast({ message: fileDeleted ? '文件已删除，但记录清理失败' : '删除失败，请重试' });
     } finally {
       this.host.state.deliveryBusy = false;
-      if (this.host.isActive()) { this.host.refreshSidebarData(); }
+      if (fileDeleted && current) { router.replaceUrl({ url: 'pages/HomePage' }); }
+      else if (this.host.isActive()) { this.host.refreshSidebarData(); }
     }
   }
 

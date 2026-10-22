@@ -11,6 +11,7 @@ import { SettingsViewModel } from '../features/settings/SettingsViewModel';
 @Component
 struct SettingsPage {
   @State state: SettingsState = new SettingsState();
+  @State helpExpanded: boolean = false;
   @StorageProp('colorMode') @Watch('colorModeChanged') colorMode: number = -1;
   private colorModeChanged(): void { this.actions.refreshTheme(); }
   @StorageProp('titleControlsBottom') captionBottom: number = 0;
@@ -22,9 +23,9 @@ struct SettingsPage {
   @Builder
   sectionTitle(title: string) {
     Text(title)
-      .fontSize(13)
+      .fontSize(14).fontWeight(FontWeight.Medium)
       .fontColor(this.state.pal.TEXT_SUB)
-      .padding({ left: 14, top: 14, bottom: 6 })
+      .padding({ left: 4, top: 24, bottom: 10 })
       .width('100%')
   }
 
@@ -33,10 +34,7 @@ struct SettingsPage {
   rowDiv(show: boolean) {
     if (show) {
       Row() {}
-        .width('100%')
-        .height(1)
-        .backgroundColor(this.state.pal.DIVIDER)
-        .margin({ left: 16 })
+        .width('100%').height(0.5).backgroundColor(this.state.pal.DIVIDER)
     }
   }
 
@@ -46,7 +44,7 @@ struct SettingsPage {
     Column({ space: 2 }) {
       Text(label).fontSize(15).fontColor(this.state.pal.TEXT)
       if (sub.length > 0) {
-        Text(sub).fontSize(11).fontColor(this.state.pal.TEXT_FAINT)
+        Text(sub).fontSize(13).fontColor(this.state.pal.TEXT_SUB).lineHeight(19)
       }
     }
     .alignItems(HorizontalAlign.Start)
@@ -76,7 +74,7 @@ struct SettingsPage {
   helpContent() {
     this.sectionTitle('使用帮助')
     Column() {
-      this.helpItem('打开与拖入', '通过“打开文件”编辑外部原文件；拖入文档会导入“我的文档”，编辑的是应用内副本。')
+      this.helpItem('打开与拖入', 'Markdown 文档单独打开；拖入 TXT、图片或 HTML 会插入当前正文。通过“打开文档”选择外部原文件，可保存写回原位置。')
       this.rowDiv(true)
       this.helpItem('保存与带走文档', '“保存”写回当前文件；“另存为”切换保存位置。带图片的文档请导出图文 ZIP，单个 Markdown 文件仅包含正文；HTML 可用于阅读分享。')
       this.rowDiv(true)
@@ -124,7 +122,7 @@ struct SettingsPage {
             })
         }
         .width('100%')
-        .padding({ left: 4, top: 2 })
+        .padding({ left: 16, right: 16, top: 8, bottom: 4 })
 
         Scroll() {
           Column() {
@@ -132,7 +130,8 @@ struct SettingsPage {
             this.sectionTitle('外观')
             Column() {
               Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
-                this.rowLabel('主题', '', this.state.narrow)
+                this.rowLabel('主题', '为编辑区与预览选择外观', true)
+                Row({ space: 4 }) {
                 SegBtn({ label: '跟随系统', active: this.state.themeMode === ThemeMode.SYSTEM, pal: this.state.pal, action: () => {
                   this.actions.setTheme(ThemeMode.SYSTEM);
                 } })
@@ -142,10 +141,11 @@ struct SettingsPage {
                 SegBtn({ label: '深色', active: this.state.themeMode === ThemeMode.DARK, pal: this.state.pal, action: () => {
                   this.actions.setTheme(ThemeMode.DARK);
                 } })
+                }.padding(4).backgroundColor(this.state.pal.CARD).borderRadius(10)
               }
               .width('100%')
-              .constraintSize({ minHeight: 52 })
-              .padding({ left: 16, right: 14 })
+              .constraintSize({ minHeight: 68 })
+              .padding({ left: 16, right: 16, top: 12, bottom: 12 })
               this.rowDiv(true)
 
               Row({ space: 10 }) {
@@ -166,8 +166,8 @@ struct SettingsPage {
                   .fontColor(this.state.pal.TEXT_FAINT)
               }
               .width('100%')
-              .constraintSize({ minHeight: 52 })
-              .padding({ left: 16, right: 14 })
+              .constraintSize({ minHeight: 68 })
+              .padding({ left: 16, right: 16, top: 12, bottom: 12 })
             }
             .width('100%')
             .backgroundColor(this.state.pal.CONTENT)
@@ -178,25 +178,25 @@ struct SettingsPage {
             this.sectionTitle('编辑器')
             Column() {
               Row({ space: 12 }) {
-                this.rowLabel('自动换行', '')
+                this.rowLabel('自动换行', '长段落随窗口宽度换行')
                 Toggle({ type: ToggleType.Switch, isOn: this.state.wrap })
                   .selectedColor(this.state.pal.PRIMARY)
                   .onChange((v: boolean) => { this.actions.setWrap(v); })
               }
               .width('100%')
-              .constraintSize({ minHeight: 52 })
-              .padding({ left: 16, right: 14 })
+              .constraintSize({ minHeight: 68 })
+              .padding({ left: 16, right: 16, top: 12, bottom: 12 })
               this.rowDiv(true)
 
               Row({ space: 12 }) {
-                this.rowLabel('显示行号', '')
+                this.rowLabel('显示行号', '在编辑区左侧显示行号')
                 Toggle({ type: ToggleType.Switch, isOn: this.state.lineNumbers })
                   .selectedColor(this.state.pal.PRIMARY)
                   .onChange((v: boolean) => { this.actions.setLineNumbers(v); })
               }
               .width('100%')
-              .constraintSize({ minHeight: 52 })
-              .padding({ left: 16, right: 14 })
+              .constraintSize({ minHeight: 68 })
+              .padding({ left: 16, right: 16, top: 12, bottom: 12 })
               this.rowDiv(true)
 
               Row({ space: 12 }) {
@@ -206,12 +206,12 @@ struct SettingsPage {
                   .onChange((v: boolean) => { this.actions.setAutoSave(v); })
               }
               .width('100%')
-              .constraintSize({ minHeight: 52 })
-              .padding({ left: 16, right: 14 })
+              .constraintSize({ minHeight: 68 })
+              .padding({ left: 16, right: 16, top: 12, bottom: 12 })
               this.rowDiv(true)
 
               Flex({ wrap: FlexWrap.Wrap, alignItems: ItemAlign.Center }) {
-                this.rowLabel('默认视图', '平板与电脑可选分屏', this.state.narrow)
+                this.rowLabel('打开文档时的视图', '修改后返回文档即生效；分屏需要足够宽度', true)
                 Row({ space: 6 }) {
                 SegBtn({ label: '编辑', active: this.state.defaultView === DefaultView.EDIT, pal: this.state.pal, action: () => {
                   this.actions.setDefaultView(DefaultView.EDIT);
@@ -222,11 +222,11 @@ struct SettingsPage {
                 SegBtn({ label: '分屏', active: this.state.defaultView === DefaultView.SPLIT, pal: this.state.pal, action: () => {
                   this.actions.setDefaultView(DefaultView.SPLIT);
                 } })
-                }
+                }.padding(4).backgroundColor(this.state.pal.CARD).borderRadius(10)
               }
               .width('100%')
               .constraintSize({ minHeight: 56 })
-              .padding({ left: 16, right: 14, top: 8, bottom: 8 })
+              .padding({ left: 16, right: 16, top: 16, bottom: 16 })
             }
             .width('100%')
             .backgroundColor(this.state.pal.CONTENT)
@@ -234,33 +234,38 @@ struct SettingsPage {
             .alignItems(HorizontalAlign.Start)
 
             // ---- 数据 ----
-            this.sectionTitle('数据')
+            this.sectionTitle('草稿与帮助')
             Column() {
-              Row({ space: 12 }) {
-                this.rowLabel('未保存草稿', '应用意外退出时自动保留')
-                Text(`${this.state.draftCount} 个`)
-                  .fontSize(14)
-                  .fontColor(this.state.pal.TEXT_SUB)
-              }
-              .width('100%')
-              .constraintSize({ minHeight: 52 })
-              .padding({ left: 16, right: 14 })
-              this.rowDiv(true)
-
-              Button(this.state.draftCount > 0 ? '查看并恢复草稿' : '打开恢复页', { type: ButtonType.Normal })
-                .width(180)
-                .margin({ left: 16, top: 10, bottom: 12 })
-                .attributeModifier(new ControlStyle(this.state.pal, 'secondary'))
+              Button({ type: ButtonType.Normal }) {
+                Row({ space: 12 }) {
+                  this.rowLabel('恢复草稿', '查看意外退出前保留的内容')
+                  Text(`${this.state.draftCount} 个`).fontSize(14).fontColor(this.state.pal.TEXT_SUB)
+                  SymbolGlyph($r('sys.symbol.chevron_right')).fontSize(14).fontColor([this.state.pal.TEXT_SUB])
+                }.width('100%')
+              }.width('100%').constraintSize({ minHeight: 68 }).padding(16)
+                .backgroundColor(Color.Transparent).borderRadius(12).hoverEffect(HoverEffect.Highlight)
                 .onClick(() => router.pushUrl({ url: 'pages/RecoveryPage' }))
+              this.rowDiv(true)
+              Button({ type: ButtonType.Normal }) {
+                Row() {
+                  Text('使用帮助与快捷键').fontSize(15).fontColor(this.state.pal.TEXT).layoutWeight(1)
+                    .textAlign(TextAlign.Start)
+                  SymbolGlyph($r('sys.symbol.chevron_down')).fontSize(14).fontColor([this.state.pal.TEXT_SUB])
+                    .rotate({ angle: this.helpExpanded ? 180 : 0 })
+                }.width('100%')
+              }.width('100%').constraintSize({ minHeight: 64 }).padding(16)
+                .backgroundColor(Color.Transparent).borderRadius(12).hoverEffect(HoverEffect.Highlight)
+                .accessibilityText(this.helpExpanded ? '收起使用帮助与快捷键' : '展开使用帮助与快捷键')
+                .onClick(() => { this.helpExpanded = !this.helpExpanded; })
             }
             .width('100%')
             .backgroundColor(this.state.pal.CONTENT)
             .borderRadius(12)
             .alignItems(HorizontalAlign.Start)
-            this.helpContent()
+            if (this.helpExpanded) { this.helpContent() }
           }
           .width('100%')
-          .padding({ bottom: 24 })
+          .padding({ left: 16, right: 16, bottom: 32 })
         }
         .layoutWeight(1)
         .align(Alignment.TopStart)
@@ -273,7 +278,6 @@ struct SettingsPage {
     }
     .width('100%')
     .height('100%').padding({ top: this.captionBottom })
-    .onAreaChange((_old: Area, area: Area) => { this.state.narrow = (area.width as number) < 600; })
     .alignItems(HorizontalAlign.Center)
     .backgroundColor(this.state.pal.BG)
   }

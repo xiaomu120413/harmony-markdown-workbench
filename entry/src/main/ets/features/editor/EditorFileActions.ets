@@ -20,6 +20,11 @@ export struct EditorFileActions {
         MenuItem({ content: '复制内容', builder: this.copyMenu })
         MenuItem({ content: '查看保存位置' }).onClick(() => this.actions.showLocation())
       }
+      if (this.state.docTarget?.kind === 'internal') {
+        MenuItemGroup() {
+          MenuItem({ content: '删除文档' }).contentFontColor(this.state.pal.DANGER).onClick(() => this.actions.deleteCurrentDocument())
+        }
+      }
     }.width(264)
   }
   @Builder
@@ -77,6 +82,11 @@ export struct EditorFileActions {
             this.fileActionRow('复制内容', '', true, () => { this.state.fileSheetSection = 'copy'; })
             this.fileActionRow('保存位置', this.actions.documentLocation(), false, () => this.actions.dismissFileSheet(() => this.actions.showLocation()))
             this.fileActionRow('设置与使用帮助', '', false, () => this.actions.dismissFileSheet(() => this.actions.showSettings()))
+            if (this.state.docTarget?.kind === 'internal') {
+              Divider().color(this.state.pal.DIVIDER).margin({ top: 4, bottom: 4 })
+              this.fileActionRow('删除文档', '直接删除，无法恢复', false,
+                () => this.actions.dismissFileSheet(() => this.actions.deleteCurrentDocument()))
+            }
           } else if (this.state.fileSheetSection === 'export') {
             this.fileActionRow('图文包 ZIP', 'Markdown 正文和引用的本地图片', false, () => this.actions.dismissFileSheet(() => this.actions.deliverDocument(2)))
             this.fileActionRow('网页 HTML', '在浏览器查看，本地图片嵌入文件', false, () => this.actions.dismissFileSheet(() => this.actions.deliverDocument(3)))

@@ -4,7 +4,7 @@ import { ControlStyle, ControlMetrics } from '../common/ControlStyle';
 
 /**
  * 文档侧栏（B1/B2：编辑页内切换文档，不必返回首页）。
- * 最近、置顶与资料库共用搜索，文件操作由调用方处理。
+ * 最近（置顶优先）与资料库共用搜索，文件操作由调用方处理。
  * 选择文档经回调（调用方负责 A3 离开流程与加载）。
  */
 @Component
@@ -13,18 +13,14 @@ export struct DocumentSidebar {
   @Prop libraryFiles: string[] = [];
   @Prop pal: AppTheme = AppTheme.light();
   @Prop busy: boolean = false;
-  @State filter: 'recent' | 'pinned' | 'library' = 'recent';
+  @State filter: 'recent' | 'library' = 'recent';
   @State searchQuery: string = '';
   onDocSelected: (docId: string) => void = () => {};
   onDelete: (docId: string) => void = () => {};
   onPin: (docId: string) => void = () => {};
 
-  private pinned(): RecentEntry[] {
-    return this.recent.filter((e: RecentEntry): boolean => e.pinned);
-  }
-
   private visibleRecent(): RecentEntry[] {
-    const entries = this.filter === 'pinned' ? this.pinned() : this.recent;
+    const entries = this.recent;
     const q = this.searchQuery.trim().toLowerCase();
     return q.length === 0 ? entries : entries.filter((e: RecentEntry): boolean =>
       RecentFileList.displayName(e.documentId).toLowerCase().includes(q) || RecentFileList.location(e.documentId).toLowerCase().includes(q));
@@ -39,7 +35,7 @@ export struct DocumentSidebar {
   }
 
   @Builder
-  filterTab(label: string, mode: 'recent' | 'pinned' | 'library', count: number) {
+  filterTab(label: string, mode: 'recent' | 'library', count: number) {
     Button(label, { type: ButtonType.Normal })
       .attributeModifier(new ControlStyle(this.pal, this.filter === mode ? 'selected' : 'quiet'))
       .accessibilityText(`${label}，${count} 个文档`).accessibilitySelected(this.filter === mode)
@@ -95,7 +91,6 @@ export struct DocumentSidebar {
       // 筛选 Tab
       Row({ space: 4 }) {
         this.filterTab('最近', 'recent', this.recent.length)
-        this.filterTab('置顶', 'pinned', this.pinned().length)
         this.filterTab('资料库', 'library', this.libraryFiles.length)
       }
       .width('100%')
@@ -119,9 +114,6 @@ export struct DocumentSidebar {
       if (this.searchQuery.trim().length > 0 &&
         (this.filter === 'library' ? this.visibleLibrary().length === 0 : this.visibleRecent().length === 0)) {
         Text('没有匹配的文档').fontSize(12).fontColor(this.pal.TEXT_FAINT).padding(12)
-      } else if (this.filter === 'pinned' && this.pinned().length === 0) {
-        Text('点击文档旁的图钉，将常用文档置顶')
-          .fontSize(12).fontColor(this.pal.TEXT_FAINT).padding(12)
       }
       List({ space: 0 }) {
         if (this.filter === 'library') {

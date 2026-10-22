@@ -51,13 +51,14 @@ const { EditorLifecycle } = load(`${root}/features/editor/EditorLifecycle`);
   const editorState = { viewMode: 'split', docLength: 92, cursorLine: 5, cursorCol: 3, saveState: 'dirty' };
   const host = { state: editorState, isActive: () => true, enforceWorkspaceBudget() {},
     env: { ctx, webReady: true, previewReady: true, activeSession: session, coordinator: session,
-      settings: { load: async () => SettingsValidator.defaults() },
+      appSettings: SettingsValidator.defaults(), settings: { load: async () => SettingsValidator.defaults() },
       previewController: { runJavaScript: code => previewCalls.push(code) } },
     runJsValue: code => editorCalls.push(code),
   };
   const lifecycle = new EditorLifecycle(host);
   host.applyEditorStyle = () => lifecycle.applyEditorStyle();
   host.applyPreviewStyle = () => lifecycle.applyPreviewStyle();
+  host.syncDocNow = () => editorCalls.push('sync');
   const before = { ...editorState };
   for (const [mode, dark] of [[0, true], [1, false]]) {
     ctx.config.colorMode = mode; lifecycle.applyAppSettings(true); await Promise.resolve();
@@ -68,5 +69,16 @@ const { EditorLifecycle } = load(`${root}/features/editor/EditorLifecycle`);
   }
   assert.equal(editorCalls.length, 8, 'theme refresh only changes four style compartments each time');
   assert.equal(previewCalls.length, 4);
+  host.env.settings.load = async () => ({ ...SettingsValidator.defaults(), defaultView: 'preview' });
+  lifecycle.applyAppSettings(true); await Promise.resolve();
+  assert.equal(editorState.viewMode, 'preview'); assert.equal(editorCalls.at(-1), 'sync');
+  editorState.viewMode = 'edit'; lifecycle.applyAppSettings(true); await Promise.resolve();
+  assert.equal(editorState.viewMode, 'edit', 'unchanged preference preserves temporary view');
+  editorState.bp = 'phone';
+  host.env.settings.load = async () => ({ ...SettingsValidator.defaults(), defaultView: 'split' });
+  lifecycle.applyAppSettings(true); await Promise.resolve();
+  assert.equal(editorState.viewMode, 'edit', 'phone split preference falls back to editor');
+  editorState.bp = 'pc'; lifecycle.applyAppSettings(); await Promise.resolve();
+  assert.equal(editorState.viewMode, 'split', 'wide editor applies initial split preference');
   console.log('System theme checks passed: defaults, legacy choices, native modes, live palette and unchanged preferences');
 })().catch(error => { console.error(error); process.exitCode = 1; });

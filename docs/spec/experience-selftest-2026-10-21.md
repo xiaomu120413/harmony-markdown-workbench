@@ -1,10 +1,10 @@
 # 木笺应用体验自测报告
 
-2026-10-22 更新 · 版本 1.0.0 · API 24 · ST-QUALITY-001 / 002 / 003
+2026-10-22 更新 · 版本 1.0.0 · API 24 · ST-QUALITY-001 / 002 / 003 / 004
 
 ## 结论与审核信息
 
-已完成本报告列出的 PC 真机及 API 24 手机模拟器检查，11 组宿主回归及 SDK 本地单测 205/205 通过。本次再补齐手机横屏，修复入口旋转策略、横屏工具栏被隐藏及查找面板占满可用高度的问题。系统主题、PC 键盘与分屏比例保留本日已验证记录，原有窗口和 HTML 导出结果为 10 月 21 日记录。
+已完成本报告列出的 PC 真机及 API 24 手机模拟器检查，11 组宿主回归及 SDK 本地单测 205/205 通过。已补齐手机横屏，本轮另修正当前文档删除、置顶列表和设置默认视图，整理设置页布局。系统主题、PC 键盘与分屏比例保留本日已验证记录，原有窗口和 HTML 导出结果为 10 月 21 日记录。
 
 本报告用于 L1/L2 送测前自查，不是华为认证报告。当前官方公开 UX 页面使用“必须、强烈推荐、推荐”标记，未取得当前申请入口的 L1/L2 原始检测清单和等级对照，不能给出 L1 或 L2 全项通过结论。宿主机测试也不等同于官方体验等级检测。
 
@@ -22,11 +22,11 @@
 |---|---|
 | 应用身份 | 木笺 MuMark；com.mumark.app；1.0.0；versionCode 1000000 |
 | 最低及目标 API | HarmonyOS 6.1.1 / API 24；打包值 minAPIVersion/targetAPIVersion 均为 60101024 |
-| 源码基线 | 0d29b59 加 ST-QUALITY-003；本次提交包含横屏修正、SDK 测试门禁及报告；历史基线 c796a83、aa53fd2 |
+| 源码基线 | 8bdbdff 加 ST-QUALITY-004；本次为当前删除、置顶和设置修正；历史基线 c796a83、aa53fd2 |
 | PC 真机 | HUAWEI MateBook Pro HAD-W32；OpenHarmony 7.0.0.106；API 26；3120×2080 |
 | 手机模拟器 | emulator；OpenHarmony 6.1.1.125；API 24；1320×2856 |
-| 设备验收包 | 相同 API 24 源码、release 构建模式、既有调试签名；原包覆盖安装，不卸载、不清文档 |
-| 正式交付包 | 本次源码以原正式签名重新构建 APP/HAP；验签结果见本次补验记录；设备使用既有调试签名覆盖安装，未安装 app_gallery 正式包 |
+| 设备验收包 | 本轮 API 24 源码、既有调试签名 HAP；原包覆盖安装，不卸载、不清文档 |
+| 正式交付包 | 以下正式 APP/HAP 对应上一轮 ST-QUALITY-003（8bdbdff）；本轮 004 未重打正式包，设备使用既有调试签名覆盖安装 |
 | 权限 | 仅 FILE_ACCESS_PERSIST；未声明 INTERNET、READ_PASTEBOARD 或全盘存储权限 |
 
 正式 APP SHA-256：E24F8E65396E1AA18C11095461BAECECC02CC58A5C4C6AE60A120A8F0A2AC3B0。
@@ -46,7 +46,7 @@
 | 2.1.3.2 手势时长 | 待验证 | 没有测量长按/双击识别时间；不能用点击成功替代 |
 | 2.1.3.3 点击热区 | 部分 | 共用按钮高 44vp，文字按钮最小宽 72vp，图标按钮 44vp；未测全部可交互节点及 PC 实际毫米尺寸 |
 | 2.1.4.1 色彩对比 | 部分 | 主要正文与背景可读；没有逐状态像素测量或全部组合比值报告 |
-| 2.1.4.2 字号 | 部分 | 主按钮 14vp、设置说明 11vp；系统字号变化及所有节点未遍历 |
+| 2.1.4.2 字号 | 部分 | 主按钮 14vp、设置说明 13vp；系统字号变化及所有节点未遍历 |
 | 2.1.4.3.1 应用图标 | 通过 | foreground/background 均 1024×1024，layered-image 双层引用；背景 alpha 范围 255–255 |
 | 2.1.5 动效与时长 | 待验证 | 未采集帧序列及转场时长，不以静态截图判断动效合规 |
 | 2.2.1 导航条适配 | 部分 | 手机竖屏与横屏编辑/查找/键盘场景已采集，底部手势条不盖住内容；浮窗未覆盖 |
@@ -92,7 +92,7 @@
 | 文件名 | 实际结果 |
 |---|---|
 | test-host.cjs | 268/268 |
-| test-editor-actions.cjs | 40 场景 |
+| test-editor-actions.cjs | 编辑器与首页回归通过，含当前删除和迟到保存拒绝 |
 | test-file-transactions.cjs | 35 场景 |
 | test-clipboard-image.cjs | 图片粘贴检查通过，未输出数量 |
 | test-external-access.cjs | 9 场景 |
@@ -103,7 +103,7 @@
 | test-html-resources.cjs | 10 组 |
 | test-html-embed.cjs | 13 组 |
 
-设备包构建命令：hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release --no-daemon，33 tasks 成功；复用现有调试签名，不新建证书。正式签名 assembleApp 42 tasks 成功，APP/HAP verify-app 均通过，Profile 与原正式材料哈希一致，API 24 元数据核对无误。SDK hvigorw.bat test 20 tasks 成功并通过独立断言门禁，详见 ST-QUALITY-003。
+ST-QUALITY-003 的设备包构建命令：hvigorw.bat assembleHap --mode module -p product=default -p buildMode=release --no-daemon，33 tasks 成功；复用现有调试签名，不新建证书。正式签名 assembleApp 42 tasks 成功，APP/HAP verify-app 均通过，Profile 与原正式材料哈希一致，API 24 元数据核对无误。SDK hvigorw.bat test 20 tasks 成功并通过独立断言门禁，详见 ST-QUALITY-003。
 
 输入工具首次比较 UI 树时提示空行不一致；取回实际文件确认空行未丢失。PC 输入工具额外注入的“中”哨兵已用键盘删除，重新取回文件确认末尾正确。没有将自动化工具的上述现象误报为应用数据损坏。
 
@@ -125,9 +125,23 @@ SDK 排查先发现依赖空目录，再遇旧缓存 scopeNames 冲突；重新�
 
 此前将 LocalSocket 日志直接写成 SDK 单测阻断不准确，本次已纠正：当前 SDK coverage 插件固定传入 IDE 命令/trace 管道名，纯 CLI 没有对应管道，Previewer 输出 CreateFileW 2、WriteFile 6；引擎仍完成测试并生成逐例结果与覆盖率。SDK 原始诊断尚未消失，没有修改 SDK、伪造管道或删除日志。新增门禁以本次时间戳、编译成功、205 条逐例结果、完成摘要和覆盖率综合判断；已验证失败用例、缺失摘要、零用例、过期结果及编译失败均被拒绝。CI 和本地 clean-build 已接入，不能仅凭 BUILD SUCCESSFUL 放行。
 
+## 编辑器文件操作和设置补验
+
+ST-QUALITY-004 在 API 24 手机模拟器和 API 26 MateBook Pro 复用原调试签名覆盖安装，33 tasks 构建成功。11 个宿主回归脚本及 SDK 205/205 再次通过；SDK Previewer 的 LocalSocket 原始诊断仍存在。
+
+删除当前应用内文档可从侧栏或文档操作进入，确认后回到首页。等待既有检查点结束后再移除草稿，保存进行中提示稍后重试；结束会话后拒绝迟到保存，防止被删文档重新出现。外部原文件仍通过文件管理器删除。
+
+手机测试确认取消后文件保留，确认删除后文件消失并返回最近列表。PC 另测关闭自动保存、手动保存后追加未保存修改，UI 显示“未保存”；对应恢复草稿已核对 documentId。删除后文件及草稿均移除，后续检查未重建。仅删除任务新建的测试文件，既有文档保留，自动保存已恢复。
+
+置顶测试文档会移动到最近顶部；编辑侧栏只保留“最近”和“资料库”，取消独立置顶 Tab。设置统一卡片留白、行高、说明文字及选项容器，帮助和快捷键默认收起并可展开。
+
+默认视图变化后返回当前文档即时应用，未修改偏好时保留临时视图。手机从设置返回后切换编辑器 Web，PC 改分屏后 editor.html 和 preview.html 同时显示相同标题；新开文档沿用偏好。手机窄窗口的分屏偏好仍回退为编辑，不改写已保存偏好。
+
+本轮设备验收为调试签名 HAP，正式 APP/HAP 仍是上述 8bdbdff 产物。截图、SDK 日志与测试草稿样本保留在本地 build-logs/quality24-*；设计及命令详见 editor-settings-2026-10-22.md。未覆盖实体手机、平板与官方认证。
+
 ## 证据与未覆盖项
 
-本地 build-logs/l1l2-* 保留 10 月 21 日截图与落盘样本，quality22-* 保存本次截图、构建日志与落盘样本。DOCX 内包含现场采集截图；PC 图片裁掉窗口外桌面和配对应用中的个人信息。应用现有文档和原签名材料均保留。
+本地 build-logs/l1l2-* 保留 10 月 21 日截图与落盘样本，quality22-* 至 quality24-* 保存分轮截图、构建日志与落盘样本。DOCX 内截图为 002/003 留档，其中旧置顶 Tab 已在 004 移除，004 的设置截图留在 quality24-*；PC 图片裁掉窗口外桌面和配对应用中的个人信息。应用现有文档和原签名材料均保留。
 
 本轮未完成：L1/L2 申请入口的逐条等级对照、官方 DevEco Testing/云测、功耗、内存泄漏、长时间稳定性、启动 P95、逐帧卡顿、所有授权/异常弹层的键盘链、实体触控板、外接键盘插拔、系统字号放大及完整分屏搭配矩阵。SDK Previewer 的 CLI 管道诊断仍存在。源码与权限扫描不是正式安全隐私认证。
 
@@ -141,4 +155,4 @@ SDK 排查先发现依赖空目录，再遇旧缓存 scopeNames 冲突；重新�
 - [HarmonyOS 开发者测试服务入门](https://developer.huawei.com/consumer/cn/testing/get-started/)，区分单元测试、开发自测与上架预检。
 - [窗口旋转](https://developer.huawei.com/consumer/cn/doc/doccenter-capabilities/window-rotation)，说明手机默认策略与受系统锁定控制的自动旋转，2026-10-22 查阅。
 
-ST-QUALITY-001 为纯验证记录，002 为主题与键盘修正，003 为横屏与 SDK 测试交付。均不增加权限或改变文档格式，设计、证据和回退见 system-theme-keyboard-2026-10-22.md 及 landscape-sdk-tests-2026-10-22.md。
+ST-QUALITY-001 为纯验证记录，002 为主题与键盘修正，003 为横屏与 SDK 测试交付，004 为当前删除、置顶与设置修正。均不增加权限或改变文档格式；设计、证据和回退另见对应日期规格。

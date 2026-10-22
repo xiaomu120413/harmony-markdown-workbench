@@ -10,6 +10,7 @@ export class EditorPersistence {
   private host: EditorController;
   constructor(host: EditorController) { this.host = host; }
   doSaveCheckpoint(content: string): Promise<void> {
+    if (!this.host.isActive()) { return Promise.reject(new Error('editor session ended')); }
     const target = this.host.state.docTarget;
     if (target === undefined) {
       this.host.env.drafts.save(
@@ -33,6 +34,7 @@ export class EditorPersistence {
   }
 
   async doPersist(content: string): Promise<WriteDocumentResult> {
+    if (!this.host.isActive()) { return { ok: false, reason: 'io', message: 'editor session ended' }; }
     let target = this.host.state.docTarget;
     if (target === undefined) {
       const name = DocumentNamer.derive(content, this.host.env.internal.listLibrary());
@@ -197,6 +199,7 @@ export class EditorPersistence {
     if (!await this.host.protectDraft()) {
       promptAction.showToast({ message: '无法确认正文快照，请重试或导出' }); return;
     }
+    if (!this.host.isActive() || this.host.state.deliveryBusy) { return; }
     if (c.state === SaveState.CLEAN) {
       MuLogger.info('[保存] 无修改');
       return;

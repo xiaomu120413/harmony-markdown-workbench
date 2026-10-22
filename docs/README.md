@@ -6,6 +6,7 @@
 
 - [spec/experience-selftest-2026-10-21.md](spec/experience-selftest-2026-10-21.md) — PC 真机与手机模拟器体验自测、L1/L2 送测边界与审核备注
 - [spec/system-theme-keyboard-2026-10-22.md](spec/system-theme-keyboard-2026-10-22.md) — 系统主题、PC 键盘导航和分屏比例补验及原签名交付记录
+- [spec/editor-settings-2026-10-22.md](spec/editor-settings-2026-10-22.md) — 当前文档删除、置顶列表和设置视图修正
 - [spec/landscape-sdk-tests-2026-10-22.md](spec/landscape-sdk-tests-2026-10-22.md) — 手机横屏修正、SDK 205 条断言验证及 LocalSocket 排查
 - [自测 DOCX 附件](store/mumark-1.0.0/mumark-1.0.0-api24-experience-selftest.docx) — 含逐项结果与现场截图，可用于应用审核自测附件
 
